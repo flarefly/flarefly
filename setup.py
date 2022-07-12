@@ -6,14 +6,6 @@
 import re
 import os.path
 from setuptools import setup, find_packages
-from setuptools.command.install import install
-from subprocess import call
-
-
-class CustomInstall(install):
-    def run(self):
-        install.run(self)
-        call(['pip', 'install', 'zfit', '--pre'])
 
 
 class Setup():
@@ -94,7 +86,7 @@ SETUP = Setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
         "psutil", "dutil", "prophet==1.0.1", "numpy>=1.15", "pandas>=1.1.5",
-        "ipython>=7.16.1", "jedi==0.17.2"
+        "ipython>=7.16.1", "jedi==0.17.2", "zfit==0.9.0a3"
     ],
     python_requires=">=3.7",
 
@@ -120,12 +112,7 @@ SETUP = Setup(
     entry_points={
         "console_scripts":
         ["flarefly = flarefly:entrypoint"]
-    },
-
-    cmdclass={
-        'install': CustomInstall,
-    },
-)
+    })
 
 if __name__ == "__main__":
     SETUP()
