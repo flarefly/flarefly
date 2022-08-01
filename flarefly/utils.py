@@ -8,9 +8,11 @@ class Logger:
     """
     Class to print in colour
     """    
-    OKGREEN = '\033[92m'
+    DEBUG = '\033[96m'
+    INFO = '\033[92m'
     WARNING = '\033[93m'
-    FAIL = '\033[91m'
+    ERROR = '\033[91m'
+    FATAL = '\33[101m'
     ENDC = '\033[0m'
     
     def __init__(self, text, level):
