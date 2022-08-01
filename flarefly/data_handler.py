@@ -108,7 +108,7 @@ class DataHandler:
         if self._use_zfit_:
             return self._obs_
         else:
-            print('Observable not available for non-zfit data')
+            Logger('Observable not available for non-zfit data', 'ERROR')
             return None
 
     def get_data_instance(self):
