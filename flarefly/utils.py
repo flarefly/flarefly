@@ -11,24 +11,29 @@ class Colour_print:
     FAIL = '\033[91m'
     ENDC = '\033[0m'
     
-    def __init__(self, text, colour):
+    def __init__(self, text, level):
         """
         Initialize the class
         Parameters
         ------------------------------------------------
         text: str
             Text to be printed
-        colour: str
-            Colour of the text
+        level: str
+            Level of logger, possible values [DEBUG, INFO, WARNING, ERROR, FATAL]
         """
         self._text_ = text
-        self._colour_ = colour
+        self._level_ = level
         
-        if 'OK' in colour:
-            print(f'{Colour_print.OKGREEN}{text}{Colour_print.ENDC}')
-        elif colour == 'WARNING':
-            print(f'{Colour_print.WARNING}{text}{Colour_print.ENDC}')
-        elif colour == 'FAIL':
-            print(f'{Colour_print.FAIL}{text}{Colour_print.ENDC}')
+        if level == 'DEBUG':
+            print(f'{Colour_print.DEBUG}DEBUG{Colour_print.ENDC}: {text}')
+        elif level == 'INFO':
+            print(f'{Colour_print.INFO}INFO{Colour_print.ENDC}: {text}')
+        elif level == 'WARNING':
+            print(f'{Colour_print.WARNING}WARNING{Colour_print.ENDC}: {text}')
+        elif level == 'ERROR':
+            print(f'{Colour_print.ERROR}ERROR{Colour_print.ENDC}: {text}')
+        elif level == 'FATAL':
+            print(f'{Colour_print.FATAL}FATAL{Colour_print.ENDC}: {text}')
+            sys.exit(0)
         else:
-            print(f'{text}')
+            print(text)
