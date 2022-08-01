@@ -55,8 +55,7 @@ class DataHandler:
                     self.__format__ = 'parquet'
                     self._data_ = pd.read_parquet(data)
                 else:
-                    Colour_print('Data format not supported yet. Please use .root or .parquet', 'FAIL')
-                    sys.exit()
+                    Logger('Data format not supported yet. Please use .root or .parquet', 'FATAL')
 
             elif isinstance(data, np.ndarray):
                 self.__format__ = 'ndarray'
