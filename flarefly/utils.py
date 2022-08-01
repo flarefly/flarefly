@@ -2,7 +2,9 @@
 Simple module with a class to manage the data used in the analysis
 """
 
-class Colour_print:
+import sys
+
+class Logger:
     """
     Class to print in colour
     """    
