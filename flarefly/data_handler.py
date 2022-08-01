@@ -127,5 +127,5 @@ class DataHandler:
             self.__format__ = 'pandas'
             return self._data_.to_pandas()
         else:
-            Colour_print('Data format not supported yet for pandas dump.', 'WARNING')
+            Logger('Data format not supported yet for pandas dump.', 'ERROR')
             return None
