@@ -6,7 +6,7 @@ import numpy as np
 import zfit
 import pandas as pd
 import uproot
-from flarefly.utils import Colour_print
+from flarefly.utils import Logger
 
 class DataHandler:
     """
