@@ -44,9 +44,8 @@ class DataHandler:
                         histoname = kwargs['histoname']
                         self._obs_ = zfit.Space(f'{histoname}', limits=(limits[0], limits[1]))
                     else:
-                        Colour_print('"histoname" not specified. Please specify\
-                                     the name of the histogram to be used', 'FAIL')
-                        sys.exit()
+                        Logger('"histoname" not specified. Please specify the '
+                               'name of the histogram to be used', 'FATAL')
                     hist = uproot.open(data)[histoname].to_numpy()
                     self._input_ = hist
                     hist_conv = np.asarray(hist[0], dtype=np.float64)
