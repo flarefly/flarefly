@@ -122,7 +122,7 @@ class DataHandler:
         Dump data in pandas df
         """
         if self.__format__ == 'pandas':
-            Colour_print('Data already in pandas format.', 'WARNING')
+            Logger('Data already in pandas format.', 'WARNING')
         if isinstance(self._input_, np.ndarray):
             self.__format__ = 'pandas'
             return self._data_.to_pandas()
