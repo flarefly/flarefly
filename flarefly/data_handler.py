@@ -1,7 +1,6 @@
 """
 Simple module with a class to manage the data used in the analysis
 """
-import sys
 import numpy as np
 import zfit
 import pandas as pd
@@ -13,7 +12,7 @@ class DataHandler:
     Class for storing and managing the data of (ROOT tree, TH1, numpy array, etc.)
     """
 
-    def __init__(self, data = None, var_name = '', limits = [], use_zfit = True, **kwargs):
+    def __init__(self, data=None, var_name='', limits=None, use_zfit=True, **kwargs):
         """
         Initialize the data handler
         Parameters
@@ -31,11 +30,11 @@ class DataHandler:
         """
         self._input_ = data
         self._var_name_ = var_name
-        self._limits_ = limits
+        self._limits_ = limits if limits is not None else [0, 1]
         self._use_zfit_ = use_zfit
 
         if use_zfit:
-            self._obs_ = zfit.Space(f'{var_name}', limits=(limits[0], limits[1]))
+            self._obs_ = zfit.Space(var_name, limits=(limits[0], limits[1]))
 
             if isinstance(data, str):
                 if data.endswith('.root'):
@@ -51,7 +50,7 @@ class DataHandler:
                     hist_conv = np.asarray(hist[0], dtype=np.float64)
                     self._data_ = zfit.data.Data.from_numpy(obs=self._obs_, array=hist_conv)
                     del hist_conv, hist
-                elif data.endswith('.parquet'):
+                elif data.endswith('.parquet') or data.endswith('.parquet.gzip'):
                     self.__format__ = 'parquet'
                     self._data_ = pd.read_parquet(data)
                 else:
@@ -66,13 +65,11 @@ class DataHandler:
                 self._data_ = zfit.data.Data.from_pandas(obs=self._obs_, df=data)
 
             else:
-                print('Data format not supported', 'FAIL')
-                sys.exit()
+                Logger('Data format not supported', 'FATAL')
         else:
-            print('Non-zfit data not available', 'FAIL')
-            sys.exit()
+            Logger('Non-zfit data not available', 'FATAL')
 
-    def get_data(self, input_data = False):
+    def get_data(self, input_data=False):
         """
         Get the data
         input_data: bool
@@ -126,6 +123,6 @@ class DataHandler:
         if isinstance(self._input_, np.ndarray):
             self.__format__ = 'pandas'
             return self._data_.to_pandas()
-        else:
-            Logger('Data format not supported yet for pandas dump.', 'ERROR')
-            return None
+
+        Logger('Data format not supported yet for pandas dump.', 'ERROR')
+        return None
