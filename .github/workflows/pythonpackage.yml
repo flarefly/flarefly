@@ -22,18 +22,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install --upgrade setuptools
           pip install -r requirements.txt
-      # - name: Test with ${{ matrix.test-tool }}
-      #   run: |
-      #     pip install ${{ matrix.test-tool }}
-      #     tests/run_tests.sh ${{ matrix.test-tool }}
-      # - name: Lint with flake8
-      #   run: |
-      #     pip install flake8
-      #     tests/run_tests.sh flake8
-      # - name: Test with pytest
-      #   run: |
-      #     pip install pytest
-      #     tests/run_tests.sh pytest
+      - name: Test with ${{ matrix.test-tool }}
+        run: |
+          pip install ${{ matrix.test-tool }}
+          tests/run_tests.sh ${{ matrix.test-tool }}
+      - name: Lint with flake8
+        run: |
+          pip install flake8
+          tests/run_tests.sh flake8
+      - name: Test with pytest
+        run: |
+          pip install pytest
+          tests/run_tests.sh pytest
 
   build-macos-latest:
     runs-on: macOS-latest
@@ -54,15 +54,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install --upgrade setuptools
           pip install -r requirements.txt
-      # - name: Test with ${{ matrix.test-tool }}
-      #   run: |
-      #     pip install ${{ matrix.test-tool }}
-      #     tests/run_tests.sh ${{ matrix.test-tool }}
-      # - name: Lint with flake8
-      #   run: |
-      #     pip install flake8
-      #     tests/run_tests.sh flake8
-      # - name: Test with pytest
-      #   run: |
-      #     pip install pytest
-      #     tests/run_tests.sh pytest
+      - name: Test with ${{ matrix.test-tool }}
+        run: |
+          pip install ${{ matrix.test-tool }}
+          tests/run_tests.sh ${{ matrix.test-tool }}
+      - name: Lint with flake8
+        run: |
+          pip install flake8
+          tests/run_tests.sh flake8
+      - name: Test with pytest
+        run: |
+          pip install pytest
+          tests/run_tests.sh pytest
