@@ -4,6 +4,9 @@
 ![](https://github.com/hipe4ml/flarefly/actions/workflows/pythonpackage.yml/badge.svg?branch=main)
 ![](https://github.com/hipe4ml/flarefly/actions/workflows/pythonpublish.yml/badge.svg)
 
-# flarefly
-FLexible And REliable Fitting LibrarY for particle physics analysis
+# Introduction
+FLexible And REliable Fitting LibrarY is a library to perform fits to distributions for particle physics analysis
 
+# Documentation
+
+[https://flarefly.github.io/flarefly/index.html](https://flarefly.github.io/flarefly/index.html)
