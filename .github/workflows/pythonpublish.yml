@@ -24,9 +24,9 @@ jobs:
       run: |
         python setup.py sdist bdist_wheel
         twine upload dist/*
-#    - name: Upload documentation
-#      env:
-#        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-#      run: |
-#        pip install -e .
-#        doc/build_doc.sh
+    - name: Upload documentation
+      env:
+        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      run: |
+        pip install -e .
+        doc/build_doc.sh
