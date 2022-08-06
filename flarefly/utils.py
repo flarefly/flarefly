@@ -44,6 +44,7 @@ class Logger:
             print(f'\n\n{text}\n\n')
         else:
             print(text)
+
 class MCparticle:
     """
     Class containg MC particle informations
