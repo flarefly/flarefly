@@ -44,3 +44,131 @@ class Logger:
             print(f'\n\n{text}\n\n')
         else:
             print(text)
+class MCparticle:
+    """
+    Class containg MC particle informations
+    """
+    def __init__(self, pdg):
+        """
+        Initialize the class
+        Parameters
+        ------------------------------------------------
+        pdg:int
+            PDG code of the particle
+        """
+        self._pdg_ = pdg
+        self._name_ = self.get_name()
+        self._mass_ = self.get_mass()
+
+    def get_name(self):
+        """
+        Get the name of the particle
+        """
+        return self.pdg_dict()[0]
+
+    def get_mass(self, unit='GeV'):
+        """
+        Get the mass of the particle
+        """
+        if unit == 'GeV':
+            return self.pdg_dict()[1]
+        elif unit == 'MeV':
+            return self.pdg_dict()[1] * 1000
+        else:
+            Logger(f'Unit {unit} not supported', 'FATAL')
+
+    def pdg_dict(self):
+        """
+        Create a dictionary with the PDG code and particle information
+        """
+        if self._pdg_ == 22:
+            return  ('photon', 0.0)
+        elif self._pdg_ == -2112:
+            return  ('anti-neutron', 939.565)
+        elif self._pdg_ == -11:
+            return  ('e+', 0.510998928)
+        elif self._pdg_ == -3122:
+            return  ('anti-Lambda', 1.115683)
+        elif self._pdg_ == 11:
+            return  ('e-', 0.510998928)
+        elif self._pdg_ == -3222:
+            return  ('Sigma-', 1.18937)
+        elif self._pdg_ == 12:
+            return  ('e-neutrino', 0.0)
+        elif self._pdg_ == -3212:
+            return  ('Sigma0', 1.18937)
+        elif self._pdg_ == -13:
+            return  ('mu+', 105.6583745)
+        elif self._pdg_ == -3112:
+            return  ('anti-Sigma-', 1.18937)
+        elif self._pdg_ == 13:
+            return  ('mu-', 105.6583745)
+        elif self._pdg_ == -3322:
+            return  ('Xi0', 1.32171)
+        elif self._pdg_ == 111:
+            return  ('pi0', 0.135)
+        elif self._pdg_ == -3312:
+            return  ('Sigma-', 1.18937)
+        elif self._pdg_ == 211:
+            return  ('pi+', 0.13957018)
+        elif self._pdg_ == -3334:
+            return  ('Omega-', 1.67245)
+        elif self._pdg_ == -211:
+            return  ('pi-', 0.13957018)
+        elif self._pdg_ == -15:
+            return  ('tau+', 1.77682)
+        elif self._pdg_ == 130:
+            return  ('KL0', 0.497614)
+        elif self._pdg_ == 15:
+            return  ('tau-', 1.77682)
+        elif self._pdg_ == 321:
+            return  ('K+', 0.493677)
+        elif self._pdg_ == 411:
+            return  ('D+', 1.86957)
+        elif self._pdg_ == -321:
+            return  ('K-', 0.493677)
+        elif self._pdg_ == -411:
+            return  ('D-', 1.86957)
+        elif self._pdg_ == 2112:
+            return  ('neutron', 939.565)
+        elif self._pdg_ == 421:
+            return  ('D0', 1.86484)
+        elif self._pdg_ == 2212:
+            return  ('proton', 938.272013)
+        elif self._pdg_ == -421:
+            return  ('anti-D0', 1.86484)
+        elif self._pdg_ == -2212:
+            return  ('anti-proton', 938.272013)
+        elif self._pdg_ == 431:
+            return  ('D_s+', 1.96847)
+        elif self._pdg_ == 310:
+            return  ('KL_0', 0.497614)
+        elif self._pdg_ == -431:
+            return  ('anti-D_s-', 1.96847)
+        elif self._pdg_ == 221:
+            return  ('eta', 0.54785)
+        elif self._pdg_ == 4122:
+            return  ('Lambda', 1.115683)
+        elif self._pdg_ == 3122:
+            return  ('Lambda', 1.115683)
+        elif self._pdg_ == 24:
+            return  ('W+', 80.385)
+        elif self._pdg_ == 3222:
+            return  ('Sigma+', 1.18937)
+        elif self._pdg_ == -24:
+            return  ('W-', 80.385)
+        elif self._pdg_ == 3212:
+            return  ('Sigma0', 1.18937)
+        elif self._pdg_ == 23:
+            return  ('Z', 91.1876)
+        elif self._pdg_ == 3112:
+            return  ('Sigma+', 1.18937)
+        elif self._pdg_ == 3322:
+            return  ('Xi+', 1.32171)
+        elif self._pdg_ == 3312:
+            return  ('Sigma+', 1.18937)
+        elif self._pdg_ == 3334:
+            return  ('Omega+', 1.67245)
+        else:
+            Logger('Unknown particle', 'ERROR')
+            return ('unknown', 0.0)
