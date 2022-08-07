@@ -77,11 +77,14 @@ class MCparticle:
         unit: str
             Unit of the mass, possible values ['GeV', 'MeV']
         """
-        if unit == 'GeV':
-            return self.pdg_dict()['mass']
-        if unit == 'MeV':
-            return self.pdg_dict() * 1000
-        Logger(f'Unit {unit} not supported', 'FATAL')
+        if unit not in ['GeV', 'MeV']:
+            Logger(f'Unit {unit} not supported', 'FATAL')
+            mass = -999
+        elif unit == 'MeV':
+            mass= self.pdg_dict()['mass'] * 1000
+        else:
+            mass = self.pdg_dict()['mass']
+        return mass
 
     def pdg_dict(self): # pylint: disable=too-many-statements, too-many-branches
         """
