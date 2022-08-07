@@ -52,6 +52,7 @@ class MCparticle:
     def __init__(self, pdg):
         """
         Initialize the class
+
         Parameters
         ------------------------------------------------
         pdg:int
@@ -63,111 +64,121 @@ class MCparticle:
 
     def get_name(self):
         """
-        Get the name of the particle
+        Get particle name
         """
-        return self.pdg_dict()[0]
+        return self.pdg_dict()['name']
 
     def get_mass(self, unit='GeV'):
         """
-        Get the mass of the particle
+        Get particle mass
+
+        Parameters
+        -------------------------------------------------
+        unit: str
+            Unit of the mass, possible values ['GeV', 'MeV']
         """
         if unit == 'GeV':
-            return self.pdg_dict()[1]
+            return self.pdg_dict()['mass']
         if unit == 'MeV':
-            return self.pdg_dict()[1] * 1000
+            return self.pdg_dict() * 1000
         Logger(f'Unit {unit} not supported', 'FATAL')
 
-    def pdg_dict(self):
+    def pdg_dict(self): # pylint: disable=too-many-statements, too-many-branches
         """
-        Create a dictionary with the PDG code and particle information
+        Associate PDG code with particle name and mass
+
+        Returns
+        -------------------------------------------------
+        pdg_dict: dict
+            Dictionary with the particle name and mass
         """
         if self._pdg_ == 22:
-            return  ('photon', 0.0)
-        if self._pdg_ == -2112:
-            return  ('anti-neutron', 939.565)
-        if self._pdg_ == -11:
-            return  ('e+', 0.510998928)
-        if self._pdg_ == -3122:
-            return  ('anti-Lambda', 1.115683)
-        if self._pdg_ == 11:
-            return  ('e-', 0.510998928)
-        if self._pdg_ == -3222:
-            return  ('Sigma-', 1.18937)
-        if self._pdg_ == 12:
-            return  ('e-neutrino', 0.0)
-        if self._pdg_ == -3212:
-            return  ('Sigma0', 1.18937)
-        if self._pdg_ == -13:
-            return  ('mu+', 105.6583745)
-        if self._pdg_ == -3112:
-            return  ('anti-Sigma-', 1.18937)
-        if self._pdg_ == 13:
-            return  ('mu-', 105.6583745)
-        if self._pdg_ == -3322:
-            return  ('Xi0', 1.32171)
-        if self._pdg_ == 111:
-            return  ('pi0', 0.135)
-        if self._pdg_ == -3312:
-            return  ('Sigma-', 1.18937)
-        if self._pdg_ == 211:
-            return  ('pi+', 0.13957018)
-        if self._pdg_ == -3334:
-            return  ('Omega-', 1.67245)
-        if self._pdg_ == -211:
-            return  ('pi-', 0.13957018)
-        if self._pdg_ == -15:
-            return  ('tau+', 1.77682)
-        if self._pdg_ == 130:
-            return  ('KL0', 0.497614)
-        if self._pdg_ == 15:
-            return  ('tau-', 1.77682)
-        if self._pdg_ == 321:
-            return  ('K+', 0.493677)
-        if self._pdg_ == 411:
-            return  ('D+', 1.86957)
-        if self._pdg_ == -321:
-            return  ('K-', 0.493677)
-        if self._pdg_ == -411:
-            return  ('D-', 1.86957)
-        if self._pdg_ == 2112:
-            return  ('neutron', 939.565)
-        if self._pdg_ == 421:
-            return  ('D0', 1.86484)
-        if self._pdg_ == 2212:
-            return  ('proton', 938.272013)
-        if self._pdg_ == -421:
-            return  ('anti-D0', 1.86484)
-        if self._pdg_ == -2212:
-            return  ('anti-proton', 938.272013)
-        if self._pdg_ == 431:
-            return  ('D_s+', 1.96847)
-        if self._pdg_ == 310:
-            return  ('KL_0', 0.497614)
-        if self._pdg_ == -431:
-            return  ('anti-D_s-', 1.96847)
-        if self._pdg_ == 221:
-            return  ('eta', 0.54785)
-        if self._pdg_ == 4122:
-            return  ('Lambda', 1.115683)
-        if self._pdg_ == 3122:
-            return  ('Lambda', 1.115683)
-        if self._pdg_ == 24:
-            return  ('W+', 80.385)
-        if self._pdg_ == 3222:
-            return  ('Sigma+', 1.18937)
-        if self._pdg_ == -24:
-            return  ('W-', 80.385)
-        if self._pdg_ == 3212:
-            return  ('Sigma0', 1.18937)
-        if self._pdg_ == 23:
-            return  ('Z', 91.1876)
-        if self._pdg_ == 3112:
-            return  ('Sigma+', 1.18937)
-        if self._pdg_ == 3322:
-            return  ('Xi+', 1.32171)
-        if self._pdg_ == 3312:
-            return  ('Sigma+', 1.18937)
-        if self._pdg_ == 3334:
-            return  ('Omega+', 1.67245)
-        Logger('Unknown particle', 'ERROR')
-        return ('unknown', 0.0)
+            pdg_dict = {'name': 'photon', 'mass': 0.0}
+        elif self._pdg_ == -2112:
+            pdg_dict = {'name': 'anti-neutron', 'mass': 939.565}
+        elif self._pdg_ == -11:
+            pdg_dict = {'name': 'e-', 'mass': 0.510998928}
+        elif self._pdg_ == -3122:
+            pdg_dict = {'name': 'Lambda', 'mass': 1.115683}
+        elif self._pdg_ == 11:
+            pdg_dict = {'name': 'e+', 'mass': 0.510998928}
+        elif self._pdg_ == -3222:
+            pdg_dict = {'name': 'Sigma', 'mass': 1.18937}
+        elif self._pdg_ == 12:
+            pdg_dict = {'name': 'e-neutrino', 'mass': 0.0}
+        elif self._pdg_ == -3212:
+            pdg_dict = {'name': 'Sigma-', 'mass': 1.18937}
+        elif self._pdg_ == -13:
+            pdg_dict = {'name': 'mu+', 'mass': 0.1056583715}
+        elif self._pdg_ == -3112:
+            pdg_dict = {'name': 'Sigma-', 'mass': 1.18937}
+        elif self._pdg_ == 13:
+            pdg_dict = {'name': 'mu-', 'mass': 0.1056583715}
+        elif self._pdg_ == -3322:
+            pdg_dict = {'name': 'Xi0', 'mass': 1.32132}
+        elif self._pdg_ == 111:
+            pdg_dict = {'name': 'pi0', 'mass': 0.1349766}
+        elif self._pdg_ == -3312:
+            pdg_dict = {'name': 'Xi+', 'mass': 1.32132}
+        elif self._pdg_ == 211:
+            pdg_dict = {'name': 'pi+', 'mass': 0.13957018}
+        elif self._pdg_ == -3334:
+            pdg_dict = {'name': 'Omega+', 'mass': 1.67245}
+        elif self._pdg_ == -211:
+            pdg_dict = {'name': 'pi-', 'mass': 0.13957018}
+        elif self._pdg_ == -15:
+            pdg_dict = {'name': 'tau+', 'mass': 1.77682}
+        elif self._pdg_ == 130:
+            pdg_dict = {'name': 'KL0', 'mass': 0.497614}
+        elif self._pdg_ == 15:
+            pdg_dict = {'name': 'tau-', 'mass': 1.77682}
+        elif self._pdg_ == 321:
+            pdg_dict = {'name': 'K+', 'mass': 0.493677}
+        elif self._pdg_ == 411:
+            pdg_dict = {'name': 'D+', 'mass': 1.86962}
+        elif self._pdg_ == -321:
+            pdg_dict = {'name': 'K-', 'mass': 0.493677}
+        elif self._pdg_ == -411:
+            pdg_dict = {'name': 'D-', 'mass': 1.86962}
+        elif self._pdg_ == 2112:
+            pdg_dict = {'name': 'neutron', 'mass': 939.565}
+        elif self._pdg_ == 421:
+            pdg_dict = {'name': 'D0', 'mass': 1.8646}
+        elif self._pdg_ == 2212:
+            pdg_dict = {'name': 'proton', 'mass': 938.272}
+        elif self._pdg_ == -421:
+            pdg_dict = {'name': 'D0bar', 'mass': 1.8646}
+        elif self._pdg_ == -2212:
+            pdg_dict = {'name': 'anti-proton', 'mass': 938.272}
+        elif self._pdg_ == 431:
+            pdg_dict = {'name': 'D_s^+', 'mass': 1.96847}
+        elif self._pdg_ == 310:
+            pdg_dict = {'name': 'KS0', 'mass': 0.497614}
+        elif self._pdg_ == -431:
+            pdg_dict = {'name': 'D_s^-', 'mass': 1.96847}
+        elif self._pdg_ == 4122:
+            pdg_dict = {'name': 'Lambda_c+', 'mass': 2.2849}
+        elif self._pdg_ == 3122:
+            pdg_dict = {'name': 'Lambda0', 'mass': 1.115683}
+        elif self._pdg_ == 24:
+            pdg_dict = {'name': 'W+', 'mass': 80.399}
+        elif self._pdg_ == 3222:
+            pdg_dict = {'name': 'Sigma+', 'mass': 1.18937}
+        elif self._pdg_ == -24:
+            pdg_dict = {'name': 'W-', 'mass': 80.399}
+        elif self._pdg_ == 3212:
+            pdg_dict = {'name': 'Sigma0', 'mass': 1.18937}
+        elif self._pdg_ == 23:
+            pdg_dict = {'name': 'Z0', 'mass': 91.1876}
+        elif self._pdg_ == 3112:
+            pdg_dict = {'name': 'Sigma+', 'mass': 1.18937}
+        elif self._pdg_ == 3322:
+            pdg_dict = {'name': 'Xi0', 'mass': 1.32132}
+        elif self._pdg_ == 3312:
+            pdg_dict = {'name': 'Xi-', 'mass': 1.32132}
+        elif self._pdg_ == 3334:
+            pdg_dict = {'name': 'Omega-', 'mass': 1.67245}
+        else:
+            pdg_dict = {'name': 'unknown', 'mass': 0.0}
+            Logger('Unknown particle', 'FATAL')
+        return pdg_dict
