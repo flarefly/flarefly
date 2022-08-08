@@ -43,9 +43,12 @@ class F2MassFitter:
         self._fit_result_ = None
         self._init_mass_ = 1.865
         self._init_width_ = 0.01
-        self._signal_frac_ = 0.1
-        self._alpha_ = 0.5
-        self._bkg_pars_ = [-0.1]
+        self._mass_ = None
+        self._width_ = None
+        self._signal_frac_ = None
+        self._alpha_ = None
+        self._nsig_ = None
+        self._bkg_pars_ = [None]
         self._minimizer_ = zfit.minimize.Minuit(verbosity=7)
         self._rawyield_ = 0.
         self._rawyield_err_ = 0.
@@ -53,24 +56,45 @@ class F2MassFitter:
         zfit.settings.advanced_warnings.all = False
         zfit.settings.changed_warnings.all = False
 
+    # pylint: disable=too-many-branches
     def __build_total_pdf(self):
         """
         Helper function to compose the total pdf
         """
 
+        if self._total_pdf_ is not None:
+            del self._total_pdf_, self._total_pdf_binned_, self._signal_pdf_, self._background_pdf_
+            self._total_pdf_ = self._total_pdf_binned_ = \
+                self._signal_pdf_ = self._background_pdf_ = None
+
         obs = self._data_handler_.get_obs()
 
         # signal pdf
         if self._name_signal_pdf_ == 'gaussian':
-            mass = zfit.Parameter('mass', self._init_mass_)
-            width = zfit.Parameter('width', self._init_width_)
-            self._signal_pdf_ = zfit.pdf.Gauss(obs=obs, mu=mass, sigma=width)
+            if self._mass_ is None:
+                self._mass_ = zfit.Parameter('mass', self._init_mass_)
+            else:
+                self._mass_.set_value(self._init_mass_)
+            if self._width_ is None:
+                self._width_ = zfit.Parameter('width', self._init_width_)
+            else:
+                self._width_.set_value(self._init_width_)
+            self._signal_pdf_ = zfit.pdf.Gauss(obs=obs, mu=self._mass_, sigma=self._width_)
         elif self._name_signal_pdf_ == 'crystalball':
-            mass = zfit.Parameter('mass', self._init_mass_)
-            width = zfit.Parameter('width', self._init_width_)
-            alpha = zfit.Parameter('alpha', self._alpha_)
-            nsig = zfit.Parameter('nsig', self._alpha_)
-            self._signal_pdf_ = zfit.pdf.CrystalBall(obs=obs, mu=mass, sigma=width, alpha=alpha, n=nsig)
+            if self._mass_ is None:
+                self._mass_ = zfit.Parameter('mass', self._init_mass_)
+            else:
+                self._mass_.set_value(self._init_mass_)
+            if self._width_ is None:
+                self._width_ = zfit.Parameter('width', self._init_width_)
+            else:
+                self._width_.set_value(self._init_width_)
+            if self._alpha_ is None:
+                self._alpha_ = zfit.Parameter('alpha', 0.5)
+            if self._nsig_ is None:
+                self._nsig_ = zfit.Parameter('nsig', 1.)
+            self._signal_pdf_ = zfit.pdf.CrystalBall(obs=obs, mu=self._mass_, sigma=self._width_,
+                                                     alpha=self._alpha_, n=self._nsig_)
         else:
             Logger('Signal pdf not supported', 'FATAL')
 
@@ -78,12 +102,13 @@ class F2MassFitter:
         if self._name_background_pdf_ == 'nobkg':
             Logger('Performing fit with no bkg pdf', 'WARNING')
         elif self._name_background_pdf_ == 'expo':
-            lambd = zfit.Parameter('lambda', self._bkg_pars_[0])
-            self._background_pdf_ = zfit.pdf.Exponential(lambd, obs=obs)
+            if self._bkg_pars_[0] is None:
+                self._bkg_pars_[0] = zfit.Parameter('bkg_p0', 0.1)
+            self._background_pdf_ = zfit.pdf.Exponential(self._bkg_pars_[0], obs=obs)
         else:
             Logger('Background pdf not supported', 'FATAL')
 
-        if self._background_pdf_:
+        if self._background_pdf_ and self._signal_frac_ is None:
             self._signal_frac_ = zfit.Parameter('sig_frac', 0.1, 0., 1.)
 
             self._total_pdf_ = zfit.pdf.SumPDF(
@@ -92,6 +117,7 @@ class F2MassFitter:
         else:
             self._total_pdf_ = self._signal_pdf_
 
+    # pylint: disable=no-self-use
     def __prefit(self):
         """
         Helper function to perform a prefit to the sidebands
