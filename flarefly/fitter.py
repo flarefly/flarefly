@@ -2,7 +2,6 @@
 Module containing the class used to perform mass fits
 """
 
-from cProfile import label
 import numpy as np
 import matplotlib.pyplot as plt
 
