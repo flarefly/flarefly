@@ -24,7 +24,7 @@ class Logger:
         text: str
             Text to be printed
         level: str
-            Level of logger, possible values [DEBUG, INFO, WARNING, ERROR, FATAL]
+            Level of logger, possible values [DEBUG, INFO, WARNING, ERROR, FATAL, RESULT]
         """
         self._text_ = text
         self._level_ = level
@@ -40,5 +40,7 @@ class Logger:
         elif level == 'FATAL':
             print(f'{Logger.FATAL}FATAL{Logger.ENDC}: {text}')
             sys.exit(0)
+        elif level == 'RESULT':
+            print(f'\n\n{text}\n\n')
         else:
             print(text)

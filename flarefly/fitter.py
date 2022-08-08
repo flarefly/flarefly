@@ -2,6 +2,7 @@
 Module containing the class used to perform mass fits
 """
 
+from cProfile import label
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -38,9 +39,10 @@ class F2MassFitter:
         self._signal_pdf_ = None
         self._background_pdf_ = None
         self._total_pdf_ = None
+        self._total_pdf_binned_ = None
         self._fit_result_ = None
-        self._mass_ = 1.865
-        self._width_ = 0.010
+        self._init_mass_ = 1.865
+        self._init_width_ = 0.01
         self._signal_frac_ = 0.1
         self._alpha_ = 0.5
         self._bkg_pars_ = [-0.1]
@@ -60,12 +62,12 @@ class F2MassFitter:
 
         # signal pdf
         if self._name_signal_pdf_ == 'gaussian':
-            mass = zfit.Parameter('mass', self._mass_)
-            width = zfit.Parameter('sigma', self._width_)
+            mass = zfit.Parameter('mass', self._init_mass_)
+            width = zfit.Parameter('width', self._init_width_)
             self._signal_pdf_ = zfit.pdf.Gauss(obs=obs, mu=mass, sigma=width)
         elif self._name_signal_pdf_ == 'crystalball':
-            mass = zfit.Parameter('mass', self._mass_)
-            width = zfit.Parameter('width', self._width_)
+            mass = zfit.Parameter('mass', self._init_mass_)
+            width = zfit.Parameter('width', self._init_width_)
             alpha = zfit.Parameter('alpha', self._alpha_)
             nsig = zfit.Parameter('nsig', self._alpha_)
             self._signal_pdf_ = zfit.pdf.CrystalBall(obs=obs, mu=mass, sigma=width, alpha=alpha, n=nsig)
@@ -106,7 +108,7 @@ class F2MassFitter:
         mass: float
             The mass to be set
         """
-        self._mass_ = mass
+        self._init_mass_ = mass
 
     def set_peak_width(self, width):
         """
@@ -117,7 +119,7 @@ class F2MassFitter:
         width: float
             The width to be set
         """
-        self._width_ = width
+        self._init_width_ = width
 
     def mass_zfit(self):
         """
@@ -135,20 +137,25 @@ class F2MassFitter:
         self.__prefit()
 
         if self._data_handler_.get_is_binned():
-            Logger('Binned data not yet supported', 'FATAL')
+            self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._total_pdf_,
+                                                                     self._data_handler_.get_obs())
+            nll = zfit.loss.BinnedNLL(self._total_pdf_binned_,
+                                      self._data_handler_.get_binned_data())
         else:
             nll = zfit.loss.UnbinnedNLL(
-                model=self._total_pdf_, data=self._data_handler_.get_data())  # loss
-            self._fit_result_ = self._minimizer_.minimize(loss=nll)
-            self._fit_result_.hesse()
+                model=self._total_pdf_, data=self._data_handler_.get_data())
 
-            if self._background_pdf_:
-                tot_num = len(self._data_handler_.get_data().to_pandas())
-                self._rawyield_ = self._fit_result_.params['sig_frac']['value'] * tot_num
-                self._rawyield_err_ = self._fit_result_.params['sig_frac']['hesse']['error'] * tot_num
-            else:
-                self._rawyield_ = len(self._data_handler_.get_data().to_pandas())
-                self._rawyield_err_ = np.sqrt(self._rawyield_)
+        self._fit_result_ = self._minimizer_.minimize(loss=nll)
+        self._fit_result_.hesse()
+        Logger(self._fit_result_, 'RESULT')
+
+        if self._background_pdf_:
+            norm = self._data_handler_.get_norm()
+            self._rawyield_ = self._fit_result_.params['sig_frac']['value'] * norm
+            self._rawyield_err_ = self._fit_result_.params['sig_frac']['hesse']['error'] * norm
+        else:
+            self._rawyield_ = self._data_handler_.get_norm()
+            self._rawyield_err_ = np.sqrt(self._rawyield_)
 
         return self._fit_result_
 
@@ -169,25 +176,44 @@ class F2MassFitter:
         mplhep.style.use(style)
 
         obs = self._data_handler_.get_obs()
-        lower, upper = obs.limits
-        data_np = zfit.run(self._data_handler_.get_data()[:, 0])
+        limits = self._data_handler_.get_limits()
 
         fig = plt.figure(figsize=(7, 7))
-        if not self._data_handler_.get_is_binned():
+        if self._data_handler_.get_is_binned():
+            hist = self._data_handler_.get_binned_data().to_hist()
+            hist.plot(yerr=True, color='black', histtype='errorbar',
+                      label='data')
+            bins = len(self._data_handler_.get_binned_data().values())
+            bin_width = (limits[1] - limits[0]) / bins
+            norm = self._data_handler_.get_norm() * bin_width
+        else:
+            data_np = zfit.run(self._data_handler_.get_data()[:, 0])
             bins = 100
-            counts, bin_edges = np.histogram(data_np, bins, range=(lower[-1][0], upper[0][0]))
-            mplhep.histplot((counts, bin_edges), yerr=True, color='black', histtype='errorbar')
+            counts, bin_edges = np.histogram(data_np, bins, range=(limits[0], limits[1]))
+            mplhep.histplot((counts, bin_edges), yerr=True, color='black', histtype='errorbar',
+                            label='data')
+            norm = data_np.shape[0] / bins * obs.area()
 
-        x_plot = np.linspace(lower[-1][0], upper[0][0], num=1000)
+        x_plot = np.linspace(limits[0], limits[1], num=1000)
         total_func = zfit.run(self._total_pdf_.pdf(x_plot, norm_range=obs))
-        bkg_func = zfit.run(self._background_pdf_.pdf(x_plot, norm_range=obs))
         signal_func = zfit.run(self._signal_pdf_.pdf(x_plot, norm_range=obs))
-        signal_frac = self._fit_result_.params['sig_frac']['value']
-        plt.plot(x_plot, bkg_func * data_np.shape[0] / bins * obs.area() * (1-signal_frac), color='xkcd:red')
-        plt.plot(x_plot, signal_func * data_np.shape[0] / bins * obs.area() * signal_frac, color='xkcd:green')
-        plt.plot(x_plot, total_func * data_np.shape[0] / bins * obs.area(), color='xkcd:blue')
+
+        if self._name_background_pdf_ != "nobkg":
+            signal_frac = self._fit_result_.params['sig_frac']['value']
+            bkg_func = zfit.run(self._background_pdf_.pdf(x_plot, norm_range=obs))
+            plt.plot(x_plot, bkg_func * norm * (1-signal_frac), color='firebrick', ls="--",
+                     label='background')
+        else:
+            signal_frac = 1.
+
+        plt.plot(x_plot, signal_func * norm * signal_frac, color='seagreen')
+        plt.fill_between(x_plot, signal_func * norm * signal_frac, color='seagreen',
+                         alpha=0.5, label='signal')
+        plt.plot(x_plot, total_func * norm, color='xkcd:blue', label='total fit')
         plt.xlabel(self._data_handler_.get_var_name())
-        plt.ylabel(rf'counts / {(upper[0][0]-lower[-1][0])/bins*1000:0.1f} MeV/$c^2$')
+        plt.xlim(limits[0], limits[1])
+        plt.ylabel(rf'counts / {(limits[1]-limits[0])/bins*1000:0.1f} MeV/$c^2$')
+        plt.legend(loc='best')
 
         return fig
 
