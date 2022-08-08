@@ -117,7 +117,6 @@ class F2MassFitter:
         else:
             self._total_pdf_ = self._signal_pdf_
 
-    # pylint: disable=no-self-use
     def __prefit(self):
         """
         Helper function to perform a prefit to the sidebands
