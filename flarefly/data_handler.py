@@ -2,7 +2,6 @@
 Simple module with a class to manage the data used in the analysis
 """
 
-from dbm.ndbm import library
 import numpy as np
 import zfit
 import pandas as pd
