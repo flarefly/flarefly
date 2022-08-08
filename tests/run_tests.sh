@@ -35,7 +35,7 @@ test-pytest() {
     pinfo "running test: pytest"
     type pytest
     pytest tests/test_data_handler.py
-    pytest tests/ttest_massfitter_binned.py
+    pytest tests/test_massfitter_binned.py
     pytest tests/testest_massfitter_unbinned.py
 }
 
