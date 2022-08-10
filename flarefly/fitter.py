@@ -51,24 +51,25 @@ class F2MassFitter:
         self._minimizer_ = zfit.minimize.Minuit(verbosity=7)
         self._rawyield_ = 0.
         self._rawyield_err_ = 0.
+        self._name_secpeak_pdf_ = 'nosecpeak'
+        self._init_mass_secpeak_ = 1.870
+        self._init_width_secpeak_ = 0.01
+        self._mass_secpeak_ = None
+        self._width_secpeak_ = None
+        self._alpha_secpeak_ = None
+        self._nsig_secpeak_ = None
+        self._secpeak_frac_ = None
+        self._secpeak_pdf_ = None
 
         zfit.settings.advanced_warnings.all = False
         zfit.settings.changed_warnings.all = False
 
     # pylint: disable=too-many-branches
-    def __build_total_pdf(self):
+    def __build_signal_pdf(self, obs):
         """
-        Helper function to compose the total pdf
+        Helper function to compose the signal pdf
         """
 
-        if self._total_pdf_ is not None:
-            del self._total_pdf_, self._total_pdf_binned_, self._signal_pdf_, self._background_pdf_
-            self._total_pdf_ = self._total_pdf_binned_ = \
-                self._signal_pdf_ = self._background_pdf_ = None
-
-        obs = self._data_handler_.get_obs()
-
-        # signal pdf
         if self._name_signal_pdf_ == 'gaussian':
             if self._mass_ is None:
                 self._mass_ = zfit.Parameter('mass', self._init_mass_)
@@ -97,7 +98,11 @@ class F2MassFitter:
         else:
             Logger('Signal pdf not supported', 'FATAL')
 
-        # background pdf
+    def __build_background_pdf(self, obs):
+        """
+        Helper function to compose the background pdf
+        """
+
         if self._name_background_pdf_ == 'nobkg':
             Logger('Performing fit with no bkg pdf', 'WARNING')
         elif self._name_background_pdf_ == 'expo':
@@ -107,12 +112,76 @@ class F2MassFitter:
         else:
             Logger('Background pdf not supported', 'FATAL')
 
-        if self._background_pdf_ and self._signal_frac_ is None:
-            self._signal_frac_ = zfit.Parameter('sig_frac', 0.1, 0., 1.)
+    # pylint: disable=too-many-branches
+    def __build_secpeak_pdf(self, obs):
+        """
+        Helper function to compose the second peak pdf
+        """
 
-            self._total_pdf_ = zfit.pdf.SumPDF(
-                [self._signal_pdf_, self._background_pdf_], [self._signal_frac_]
-            )
+        if self._name_secpeak_pdf_ == 'noseckpeak':
+            return
+        elif self._name_secpeak_pdf_ == 'gaussian':
+            if self._mass_secpeak_ is None:
+                self._mass_secpeak_ = zfit.Parameter('mass_secpeak', self._init_mass_secpeak_)
+            else:
+                self._mass_secpeak_.set_value(self._init_mass_secpeak_)
+            if self._width_secpeak_ is None:
+                self._width_secpeak_ = zfit.Parameter('width_secpeak', self._init_width_secpeak_)
+            else:
+                self._width_secpeak_.set_value(self._init_width_secpeak_)
+            self._secpeak_pdf_ = zfit.pdf.Gauss(obs=obs, mu=self._mass_secpeak_,
+                                                sigma=self._width_secpeak_)
+        elif self._name_secpeak_pdf_ == 'crystalball':
+            if self._mass_secpeak_ is None:
+                self._mass_secpeak_ = zfit.Parameter('mass_secpeak', self._init_mass_secpeak_)
+            else:
+                self._mass_secpeak_.set_value(self._init_mass_secpeak_)
+            if self._width_secpeak_ is None:
+                self._width_secpeak_ = zfit.Parameter('width_secpeak', self._init_width_secpeak_)
+            else:
+                self._width_secpeak_.set_value(self._init_width_secpeak_)
+            if self._alpha_secpeak_ is None:
+                self._alpha_secpeak_ = zfit.Parameter('alpha_secpeak', 0.5)
+            if self._nsig_secpeak_ is None:
+                self._nsig_secpeak_ = zfit.Parameter('nsig_secpeak', 1.)
+            self._secpeak_pdf_ = zfit.pdf.CrystalBall(obs=obs, mu=self._mass_secpeak_,
+                                                      sigma=self._width_secpeak_,
+                                                      alpha=self._alpha_secpeak_,
+                                                      n=self._nsig_secpeak_)
+        else:
+            Logger('Second peak pdf not supported, the second peak will not be included.', 'ERORR')
+
+    def __build_total_pdf(self):
+        """
+        Helper function to compose the total pdf
+        """
+
+        obs = self._data_handler_.get_obs()
+
+        # order of the pdfs is signal, second peak, background
+
+        self.__build_signal_pdf(obs)
+        self.__build_secpeak_pdf(obs)
+        self.__build_background_pdf(obs)
+
+        list_pdfs = [self._signal_pdf_]
+        if self._secpeak_pdf_:
+            list_pdfs.append(self._secpeak_pdf_)
+            if not self._secpeak_frac_:
+                self._secpeak_frac_ = zfit.Parameter('secpeak_frac', 0.1, 0., 1.)
+        if self._background_pdf_:
+            list_pdfs.append(self._background_pdf_)
+
+        n_pdfs = len(list_pdfs)
+        list_fracs = []
+        if n_pdfs > 1:
+            if not self._signal_frac_:
+                self._signal_frac_ = zfit.Parameter('sig_frac', 0.1, 0., 1.)
+            list_fracs.append(self._signal_frac_)
+            if n_pdfs > 2:
+                list_fracs.append(self._secpeak_frac_)
+
+            self._total_pdf_ = zfit.pdf.SumPDF(list_pdfs, list_fracs)
         else:
             self._total_pdf_ = self._signal_pdf_
 
@@ -183,7 +252,7 @@ class F2MassFitter:
 
         return self._fit_result_
 
-    def plot_mass_fit(self, style='LHCb2'):
+    def plot_mass_fit(self, style='LHCb2', logy=False):
         """
         Plot the mass fit
 
@@ -191,6 +260,8 @@ class F2MassFitter:
         -------------------------------------------------
         style: str
             style to be used (see https://github.com/scikit-hep/mplhep for more details)
+        logy: bool
+            log scale in y axis
 
         Returns
         -------------------------------------------------
@@ -222,13 +293,23 @@ class F2MassFitter:
         total_func = zfit.run(self._total_pdf_.pdf(x_plot, norm_range=obs))
         signal_func = zfit.run(self._signal_pdf_.pdf(x_plot, norm_range=obs))
 
-        if self._name_background_pdf_ != "nobkg":
+        signal_frac = 1.
+        secpeak_frac = 0.
+        if self._signal_frac_:
             signal_frac = self._fit_result_.params['sig_frac']['value']
+        if self._secpeak_frac_:
+            secpeak_frac = self._fit_result_.params['secpeak_frac']['value']
+
+        if self._name_background_pdf_ != "nobkg":
             bkg_func = zfit.run(self._background_pdf_.pdf(x_plot, norm_range=obs))
-            plt.plot(x_plot, bkg_func * norm * (1-signal_frac), color='firebrick', ls="--",
-                     label='background')
-        else:
-            signal_frac = 1.
+            plt.plot(x_plot, bkg_func * norm * (1.-signal_frac-secpeak_frac), color='firebrick',
+                     ls="--", label='background')
+
+        if self._name_secpeak_pdf_ != "nosecpeak":
+            secpeak_func = zfit.run(self._secpeak_pdf_.pdf(x_plot, norm_range=obs))
+            plt.plot(x_plot, secpeak_func * norm * secpeak_frac, color='teal')
+            plt.fill_between(x_plot, secpeak_func * norm * secpeak_frac, color='teal',
+                            alpha=0.5, label='second signal')
 
         plt.plot(x_plot, signal_func * norm * signal_frac, color='seagreen')
         plt.fill_between(x_plot, signal_func * norm * signal_frac, color='seagreen',
@@ -238,6 +319,9 @@ class F2MassFitter:
         plt.xlim(limits[0], limits[1])
         plt.ylabel(rf'counts / {(limits[1]-limits[0])/bins*1000:0.1f} MeV/$c^2$')
         plt.legend(loc='best')
+        if logy:
+            plt.yscale('log')
+            plt.ylim(min(total_func) * norm / 5, max(total_func) * norm * 5)
 
         return fig
 
@@ -309,3 +393,18 @@ class F2MassFitter:
 
         """
         return self._fit_result_.params[parameter]['value'], self._fit_result_.params[parameter]['hesse']['error']
+
+    def set_secpeak(self, pdf, mass, width):
+        """
+        Enable second peak and set the second peak initial parameters
+        Parameters
+        -------------------------------------------------
+        pdf: str
+            pdf to be used for the second peak. The possible options are:
+            - 'gaussian'
+            - 'crystalball'
+        """
+
+        self._name_secpeak_pdf_ = pdf
+        self._init_mass_secpeak_ = mass
+        self._init_width_secpeak_ = width
