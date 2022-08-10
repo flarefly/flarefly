@@ -122,7 +122,7 @@ class F2MassFitter:
 
         if self._name_secpeak_pdf_ == 'noseckpeak':
             return
-        elif self._name_secpeak_pdf_ == 'gaussian':
+        if self._name_secpeak_pdf_ == 'gaussian':
             if self._mass_secpeak_ is None:
                 self._mass_secpeak_ = zfit.Parameter('mass_secpeak', self._init_mass_secpeak_)
             else:
