@@ -74,21 +74,21 @@ class F2MassFitter:
 
         if self._name_signal_pdf_ == 'gaussian':
             if self._mass_ is None:
-                self._mass_ = zfit.Parameter('mass', self._init_mass_)
+                self._mass_ = zfit.Parameter('mass_signal', self._init_mass_)
             else:
                 self._mass_.set_value(self._init_mass_)
             if self._width_ is None:
-                self._width_ = zfit.Parameter('width', self._init_width_)
+                self._width_ = zfit.Parameter('width_signal', self._init_width_)
             else:
                 self._width_.set_value(self._init_width_)
             self._signal_pdf_ = zfit.pdf.Gauss(obs=obs, mu=self._mass_, sigma=self._width_)
         elif self._name_signal_pdf_ == 'crystalball':
             if self._mass_ is None:
-                self._mass_ = zfit.Parameter('mass', self._init_mass_)
+                self._mass_ = zfit.Parameter('mass_signal', self._init_mass_)
             else:
                 self._mass_.set_value(self._init_mass_)
             if self._width_ is None:
-                self._width_ = zfit.Parameter('width', self._init_width_)
+                self._width_ = zfit.Parameter('width_signal', self._init_width_)
             else:
                 self._width_.set_value(self._init_width_)
             if self._alpha_ is None:
@@ -380,8 +380,8 @@ class F2MassFitter:
         mass_err: float
             The mass error obtained from the fit
         """
-        return self._fit_result_.params['mass']['value'], \
-            self._fit_result_.params['mass']['hesse']['error']
+        return self._fit_result_.params['mass_signal']['value'], \
+            self._fit_result_.params['mass_signal']['hesse']['error']
 
     def get_width(self):
         """
@@ -394,8 +394,8 @@ class F2MassFitter:
         width_err: float
             The width error obtained from the fit
         """
-        return self._fit_result_.params['width']['value'], \
-            self._fit_result_.params['width']['hesse']['error']
+        return self._fit_result_.params['width_signal']['value'], \
+            self._fit_result_.params['width_signal']['hesse']['error']
 
     def get_parameter(self, parameter):
         """
@@ -416,6 +416,159 @@ class F2MassFitter:
         """
         return self._fit_result_.params[parameter]['value'], \
             self._fit_result_.params[parameter]['hesse']['error']
+
+    def get_signal(self, nsigma=3, second_peak=False):
+        """
+        Get the signal and its error in mass +- nsigma * width
+        for main or second peak
+
+        Parameters
+        -------------------------------------------------
+        nsigma: float
+            nsigma window for signal computation
+        second_peak: bool
+            if True, compute signal for second peak
+            if False, compute signal for main peak
+
+        Returns
+        -------------------------------------------------
+        signal: float
+            The signal value obtained from the fit
+        signal_err: float
+            The signal error obtained from the fit
+        """
+
+        if second_peak and not self._secpeak_pdf_:
+            Logger('Second peak not fitted', 'ERROR')
+            return 0., 0.
+
+        suffix = '_secpeak' if second_peak else '_signal'
+        min_value = self._fit_result_.params[f'mass{suffix}']['value'] - \
+            nsigma * self._fit_result_.params[f'width{suffix}']['value']
+        max_value = self._fit_result_.params[f'mass{suffix}']['value'] + \
+            nsigma * self._fit_result_.params[f'width{suffix}']['value']
+
+        if not second_peak:
+            signal = self._signal_pdf_.integrate((min_value, max_value))
+        else:
+            signal = self._secpeak_pdf_.integrate((min_value, max_value))
+
+        norm = self._data_handler_.get_norm()
+        norm_err = norm * self._fit_result_.params[f'frac{suffix}']['hesse']['error']
+        norm *= self._fit_result_.params[f'frac{suffix}']['value']
+
+        return float(signal * norm), float(signal * norm_err)
+
+    def get_background(self, nsigma=3, second_peak=False):
+        """
+        Get the background and its error in mass +- nsigma * width
+        for main or second peak
+
+        Parameters
+        -------------------------------------------------
+        nsigma: float
+            nsigma window for background computation
+        second_peak: bool
+            if True, compute background for second peak
+            if False, compute background for main peak
+
+        Returns
+        -------------------------------------------------
+        background: float
+            The background value obtained from the fit
+        background_err: float
+            The background error obtained from the fit
+        """
+
+        if second_peak and not self._secpeak_pdf_:
+            Logger('Second peak not fitted', 'ERROR')
+            return 0., 0.
+
+        if not self._background_pdf_:
+            Logger('Background not fitted', 'ERROR')
+            return 0., 0.
+
+        suffix = '_secpeak' if second_peak else '_signal'
+        min_value = self._fit_result_.params[f'mass{suffix}']['value'] - \
+            nsigma * self._fit_result_.params[f'width{suffix}']['value']
+        max_value = self._fit_result_.params[f'mass{suffix}']['value'] + \
+            nsigma * self._fit_result_.params[f'width{suffix}']['value']
+
+        background = self._background_pdf_.integrate((min_value, max_value))
+
+        frac = 1. - self._fit_result_.params['frac_signal']['value']
+        frac_err = self._fit_result_.params['frac_signal']['hesse']['error']
+        if self._secpeak_pdf_:
+            frac -= self._fit_result_.params['frac_secpeak']['value']
+            frac_err = np.sqrt(
+                frac_err**2 + self._fit_result_.params['frac_secpeak']['hesse']['error']**2)
+
+        norm = self._data_handler_.get_norm()
+        norm_err = norm * frac_err
+        norm *= frac
+
+        return float(background * norm), float(background * norm_err)
+
+    def get_signal_over_background(self, nsigma=3, second_peak=False):
+        """
+        Get the S/B ratio and its error in mass +- nsigma * width
+        for main or second peak
+
+        Parameters
+        -------------------------------------------------
+        nsigma: float
+            nsigma window for background computation
+        second_peak: bool
+            if True, compute background for second peak
+            if False, compute background for main peak
+
+        Returns
+        -------------------------------------------------
+        signal_over_background: float
+            The S/B value obtained from the fit
+        signal_over_background_err: float
+            The S/B error obtained from the fit
+        """
+
+        signal = self.get_signal(nsigma, second_peak)
+        bkg = self.get_background(nsigma, second_peak)
+        signal_over_background = signal[0]/bkg[0]
+        signal_over_background_err = np.sqrt(signal[1]**2/signal[0]**2 + bkg[1]**2/bkg[0]**2)
+        signal_over_background_err *= signal_over_background
+
+        return signal_over_background, signal_over_background_err
+
+    def get_significance(self, nsigma, second_peak=False):
+        """
+        Get the significance and its error in mass +- nsigma * width
+        for main or second peak
+
+        Parameters
+        -------------------------------------------------
+        nsigma: float
+            nsigma window for background computation
+        second_peak: bool
+            if True, compute background for second peak
+            if False, compute background for main peak
+
+        Returns
+        -------------------------------------------------
+        significance: float
+            The significance value obtained from the fit
+        significance_err: float
+            The significance error obtained from the fit
+        """
+
+        signal = self.get_signal(nsigma, second_peak)
+        bkg = self.get_background(nsigma, second_peak)
+        significance = signal[0]/np.sqrt(signal[0]+bkg[0])
+        sig_plus_bkg = signal[0] + bkg[0]
+
+        significance_err = significance*np.sqrt(
+            (signal[1]**2 + bkg[1]**2) / (4. * sig_plus_bkg**2) + (
+                bkg[0]/sig_plus_bkg) * signal[1]**2 / signal[0]**2)
+
+        return significance, significance_err
 
     def set_secpeak(self, pdf, mass, width):
         """
