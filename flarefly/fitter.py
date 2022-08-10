@@ -448,6 +448,7 @@ class F2MassFitter:
         max_value = self._fit_result_.params[f'mass{suffix}']['value'] + \
             nsigma * self._fit_result_.params[f'width{suffix}']['value']
 
+        # pylint: disable=missing-kwoa
         if not second_peak:
             signal = self._signal_pdf_.integrate((min_value, max_value))
         else:
@@ -494,6 +495,7 @@ class F2MassFitter:
         max_value = self._fit_result_.params[f'mass{suffix}']['value'] + \
             nsigma * self._fit_result_.params[f'width{suffix}']['value']
 
+        # pylint: disable=missing-kwoa
         background = self._background_pdf_.integrate((min_value, max_value))
 
         frac = 1. - self._fit_result_.params['frac_signal']['value']
