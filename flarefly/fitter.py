@@ -44,7 +44,7 @@ class F2MassFitter:
         self._init_width_ = 0.01
         self._mass_ = None
         self._width_ = None
-        self._signal_frac_ = None
+        self._frac_signal_ = None
         self._alpha_ = None
         self._nsig_ = None
         self._bkg_pars_ = [None]
@@ -58,8 +58,10 @@ class F2MassFitter:
         self._width_secpeak_ = None
         self._alpha_secpeak_ = None
         self._nsig_secpeak_ = None
-        self._secpeak_frac_ = None
+        self._frac_secpeak_ = None
         self._secpeak_pdf_ = None
+        self._rawyield_secpeak_ = 0.
+        self._rawyield_err_secpeak_ = 0.
 
         zfit.settings.advanced_warnings.all = False
         zfit.settings.changed_warnings.all = False
@@ -167,19 +169,19 @@ class F2MassFitter:
         list_pdfs = [self._signal_pdf_]
         if self._secpeak_pdf_:
             list_pdfs.append(self._secpeak_pdf_)
-            if not self._secpeak_frac_:
-                self._secpeak_frac_ = zfit.Parameter('secpeak_frac', 0.1, 0., 1.)
+            if not self._frac_secpeak_:
+                self._frac_secpeak_ = zfit.Parameter('frac_secpeak', 0.1, 0., 1.)
         if self._background_pdf_:
             list_pdfs.append(self._background_pdf_)
 
         n_pdfs = len(list_pdfs)
         list_fracs = []
         if n_pdfs > 1:
-            if not self._signal_frac_:
-                self._signal_frac_ = zfit.Parameter('sig_frac', 0.1, 0., 1.)
-            list_fracs.append(self._signal_frac_)
+            if not self._frac_signal_:
+                self._frac_signal_ = zfit.Parameter('frac_signal', 0.1, 0., 1.)
+            list_fracs.append(self._frac_signal_)
             if n_pdfs > 2:
-                list_fracs.append(self._secpeak_frac_)
+                list_fracs.append(self._frac_secpeak_)
 
             self._total_pdf_ = zfit.pdf.SumPDF(list_pdfs, list_fracs)
         else:
@@ -242,13 +244,18 @@ class F2MassFitter:
         self._fit_result_.hesse()
         Logger(self._fit_result_, 'RESULT')
 
-        if self._background_pdf_:
-            norm = self._data_handler_.get_norm()
-            self._rawyield_ = self._fit_result_.params['sig_frac']['value'] * norm
-            self._rawyield_err_ = self._fit_result_.params['sig_frac']['hesse']['error'] * norm
+        norm = self._data_handler_.get_norm()
+        if self._frac_signal_:
+            self._rawyield_ = self._fit_result_.params['frac_signal']['value'] * norm
+            self._rawyield_err_ = self._fit_result_.params['frac_signal']['hesse']['error'] * norm
         else:
             self._rawyield_ = self._data_handler_.get_norm()
             self._rawyield_err_ = np.sqrt(self._rawyield_)
+
+        if self._frac_secpeak_:
+            self._rawyield_secpeak_ = self._fit_result_.params['frac_secpeak']['value'] * norm
+            self._rawyield_err_secpeak_ = self._fit_result_.params[
+                'frac_secpeak']['hesse']['error'] * norm
 
         return self._fit_result_
 
@@ -293,26 +300,26 @@ class F2MassFitter:
         total_func = zfit.run(self._total_pdf_.pdf(x_plot, norm_range=obs))
         signal_func = zfit.run(self._signal_pdf_.pdf(x_plot, norm_range=obs))
 
-        signal_frac = 1.
-        secpeak_frac = 0.
-        if self._signal_frac_:
-            signal_frac = self._fit_result_.params['sig_frac']['value']
-        if self._secpeak_frac_:
-            secpeak_frac = self._fit_result_.params['secpeak_frac']['value']
+        frac_signal = 1.
+        frac_secpeak = 0.
+        if self._frac_signal_:
+            frac_signal = self._fit_result_.params['frac_signal']['value']
+        if self._frac_secpeak_:
+            frac_secpeak = self._fit_result_.params['frac_secpeak']['value']
 
         if self._name_background_pdf_ != "nobkg":
             bkg_func = zfit.run(self._background_pdf_.pdf(x_plot, norm_range=obs))
-            plt.plot(x_plot, bkg_func * norm * (1.-signal_frac-secpeak_frac), color='firebrick',
+            plt.plot(x_plot, bkg_func * norm * (1.-frac_signal-frac_secpeak), color='firebrick',
                      ls="--", label='background')
 
         if self._name_secpeak_pdf_ != "nosecpeak":
             secpeak_func = zfit.run(self._secpeak_pdf_.pdf(x_plot, norm_range=obs))
-            plt.plot(x_plot, secpeak_func * norm * secpeak_frac, color='teal')
-            plt.fill_between(x_plot, secpeak_func * norm * secpeak_frac, color='teal',
+            plt.plot(x_plot, secpeak_func * norm * frac_secpeak, color='teal')
+            plt.fill_between(x_plot, secpeak_func * norm * frac_secpeak, color='teal',
                             alpha=0.5, label='second signal')
 
-        plt.plot(x_plot, signal_func * norm * signal_frac, color='seagreen')
-        plt.fill_between(x_plot, signal_func * norm * signal_frac, color='seagreen',
+        plt.plot(x_plot, signal_func * norm * frac_signal, color='seagreen')
+        plt.fill_between(x_plot, signal_func * norm * frac_signal, color='seagreen',
                          alpha=0.5, label='signal')
         plt.plot(x_plot, total_func * norm, color='xkcd:blue', label='total fit')
         plt.xlabel(self._data_handler_.get_var_name())
@@ -349,6 +356,19 @@ class F2MassFitter:
         """
         return self._rawyield_, self._rawyield_err_
 
+    def get_raw_yield_secpeak(self):
+        """
+        Get the second peak raw yield and its error
+
+        Returns
+        -------------------------------------------------
+        raw_yield: float
+            The raw yield obtained from the fit
+        raw_yield_err: float
+            The raw yield error obtained from the fit
+        """
+        return self._rawyield_secpeak_, self._rawyield_err_secpeak_
+
     def get_mass(self):
         """
         Get the mass and its error
@@ -360,7 +380,8 @@ class F2MassFitter:
         mass_err: float
             The mass error obtained from the fit
         """
-        return self._fit_result_.params['mass']['value'], self._fit_result_.params['mass']['hesse']['error']
+        return self._fit_result_.params['mass']['value'], \
+            self._fit_result_.params['mass']['hesse']['error']
 
     def get_width(self):
         """
@@ -373,7 +394,8 @@ class F2MassFitter:
         width_err: float
             The width error obtained from the fit
         """
-        return self._fit_result_.params['width']['value'], self._fit_result_.params['width']['hesse']['error']
+        return self._fit_result_.params['width']['value'], \
+            self._fit_result_.params['width']['hesse']['error']
 
     def get_parameter(self, parameter):
         """
@@ -392,7 +414,8 @@ class F2MassFitter:
             The parameter error obtained from the fit
 
         """
-        return self._fit_result_.params[parameter]['value'], self._fit_result_.params[parameter]['hesse']['error']
+        return self._fit_result_.params[parameter]['value'], \
+            self._fit_result_.params[parameter]['hesse']['error']
 
     def set_secpeak(self, pdf, mass, width):
         """
