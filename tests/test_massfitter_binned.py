@@ -21,7 +21,7 @@ FITRES = FITTERBINNED.mass_zfit()
 FIG = FITTERBINNED.plot_mass_fit('ATLAS')
 
 RAWYHIST = uproot.open(INFILE)["hRawYields"].to_numpy()
-RAWYIN = RAWYHIST[0][1]
+RAWYIN = RAWYHIST[0][4]
 
 def test_fitter():
     """
