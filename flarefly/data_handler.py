@@ -8,7 +8,7 @@ import pandas as pd
 import uproot
 from flarefly.utils import Logger
 
-# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-branches
 class DataHandler:
     """
     Class for storing and managing the data of (ROOT tree, TH1, numpy array, etc.)
@@ -35,44 +35,87 @@ class DataHandler:
         """
         self._input_ = data
         self._var_name_ = var_name
-        self._limits_ = limits if limits is not None else [0, 1]
+        self._limits_ = limits if limits is not None else [-1, -1]
         self._use_zfit_ = use_zfit
+        self._obs_ = None
+        self._data_ = None
+        self._binned_data_ = None
         self._isbinned_ = False
+        self._norm_ = 1.
 
         if use_zfit:
-            self._obs_ = zfit.Space(var_name, limits=(limits[0], limits[1]))
-
             if isinstance(data, str):
                 if data.endswith('.root'):
                     self.__format__ = 'root'
                     if 'histoname' in kwargs:
-                        histoname = kwargs['histoname']
-                        self._obs_ = zfit.Space(histoname, limits=(limits[0], limits[1]))
+                        hist = uproot.open(data)[kwargs['histoname']]
+                        hist_array = hist.to_numpy()
+                        if limits is None:
+                            self._binned_data_ = zfit.data.BinnedData.from_hist(hist.to_hist())
+                            nbins = len(hist_array[1]) - 1
+                            self._limits_[0] = hist_array[1][0]
+                            self._limits_[1] = hist_array[1][-1]
+                        else:
+                            idx_min = np.argmin(np.abs(hist_array[1]-self._limits_[0]))
+                            idx_max = np.argmin(np.abs(hist_array[1]-self._limits_[1]))
+                            nbins = len(hist_array[1][idx_min:idx_max+1])
+                            self._limits_[0] = hist_array[1][idx_min]
+                            self._limits_[1] = hist_array[1][idx_max]
+                        binning = zfit.binned.RegularBinning(
+                            nbins,
+                            self._limits_[0],
+                            self._limits_[1],
+                            name="xaxis"
+                        )
+                        self._obs_ = zfit.Space("xaxis", binning=binning)
+                        self._binned_data_ = zfit.data.BinnedData.from_tensor(
+                            self._obs_, hist_array[0][idx_min:idx_max+1],
+                            np.sqrt(hist_array[0][idx_min:idx_max+1]))
                         self._isbinned_ = True
+                    elif 'treename' in kwargs:
+                        input_df = uproot.open(data)[kwargs['treename']].arrays(library='pd')
+                        if limits is None:
+                            self._limits_[0] = min(input_df[self._var_name_])
+                            self._limits_[1] = max(input_df[self._var_name_])
+                        self._obs_ = zfit.Space(self._var_name_, limits=(self._limits_[0], self._limits_[1]))
+                        self._data_ = zfit.data.Data.from_pandas(obs=self._obs_, df=input_df)
                     else:
                         Logger('"histoname" not specified. Please specify the '
                                'name of the histogram to be used', 'FATAL')
-                    hist = uproot.open(data)[histoname].to_numpy()
-                    self._input_ = hist
-                    hist_conv = np.asarray(hist[0], dtype=np.float64)
-                    self._data_ = zfit.data.Data.from_numpy(obs=self._obs_, array=hist_conv)
-                    del hist_conv, hist
                 elif data.endswith('.parquet') or data.endswith('.parquet.gzip'):
                     self.__format__ = 'parquet'
-                    self._data_ = pd.read_parquet(data)
+                    input_df = pd.read_parquet(data)
+                    if limits is None:
+                        self._limits_[0] = min(input_df[self._var_name_])
+                        self._limits_[1] = max(input_df[self._var_name_])
+                    self._obs_ = zfit.Space(self._var_name_, limits=(self._limits_[0], self._limits_[1]))
+                    self._data_ = zfit.data.Data.from_pandas(obs=self._obs_, df=input_df)
                 else:
                     Logger('Data format not supported yet. Please use .root or .parquet', 'FATAL')
 
             elif isinstance(data, np.ndarray):
-                self.__format__ = 'ndarray'
+                self.__format__ = 'numpy'
+                if limits is None:
+                    self._limits_[0] = min(data)
+                    self._limits_[1] = max(data)
+                self._obs_ = zfit.Space(self._var_name_, limits=(self._limits_[0], self._limits_[1]))
                 self._data_ = zfit.data.Data.from_numpy(obs=self._obs_, array=data)
 
             elif isinstance(data, pd.DataFrame):
                 self.__format__ = 'pandas'
+                if limits is None:
+                    self._limits_[0] = min(data[self._var_name_])
+                    self._limits_[1] = max(data[self._var_name_])
+                self._obs_ = zfit.Space(self._var_name_, limits=(self._limits_[0], self._limits_[1]))
                 self._data_ = zfit.data.Data.from_pandas(obs=self._obs_, df=data)
 
             else:
                 Logger('Data format not supported', 'FATAL')
+
+            if self._isbinned_:
+                self._norm_ = float(sum(self._binned_data_.values()))
+            else:
+                self._norm_ = float(len(self._data_.to_pandas()))
         else:
             Logger('Non-zfit data not available', 'FATAL')
 
@@ -142,6 +185,18 @@ class DataHandler:
         Logger('Observable not available for non-zfit data', 'ERROR')
         return None
 
+    def get_norm(self):
+        """
+        Get the integral of the data
+
+        Returns
+        -------------------------------------------------
+        norm: float
+            The normalisation value
+        """
+
+        return self._norm_
+
     def get_is_binned(self):
         """
         Get the data type (binned or not)
@@ -152,6 +207,17 @@ class DataHandler:
             A flag that indicates if the data is binned
         """
         return self._isbinned_
+
+    def get_binned_data(self):
+        """
+        Get the binned data
+
+        Returns
+        -------------------------------------------------
+        binned_data: zfit.data.BinnedData
+            The binned data
+        """
+        return self._binned_data_
 
     def to_pandas(self):
         """
@@ -165,8 +231,7 @@ class DataHandler:
         if self.__format__ == 'pandas':
             Logger('Data already in pandas format.', 'WARNING')
             return self._input_
-        if isinstance(self._input_, np.ndarray):
-            self.__format__ = 'pandas'
+        if self.__format__ in ['numpy', 'parquet', 'root'] and not self._isbinned_:
             return self._data_.to_pandas()
 
         Logger('Data format not supported yet for pandas conversion.', 'ERROR')

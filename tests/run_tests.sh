@@ -34,7 +34,9 @@ test-pytest() {
     setup-flarefly
     pinfo "running test: pytest"
     type pytest
-    pytest tests
+    pytest tests/test_data_handler.py
+    pytest tests/test_massfitter_binned.py
+    pytest tests/test_massfitter_unbinned.py
 }
 
 test-all() {
