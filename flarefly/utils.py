@@ -45,143 +45,69 @@ class Logger:
         else:
             print(text)
 
-class MCparticle:
+pdg_dict = {'22': {'name': 'photon', 'mass': 0.0},
+            '-2112': {'name': 'anti-neutron', 'mass': 939.565},
+            '-11': {'name': 'e-', 'mass': 0.510998928},
+            '-3122': {'name': 'Lambda', 'mass': 1.115683},
+            '11': {'name': 'e+', 'mass': 0.510998928},
+            '-3222': {'name': 'Sigma', 'mass': 1.18937},
+            '12': {'name': 'e-neutrino', 'mass': 0.0},
+            '-3212': {'name': 'Sigma-', 'mass': 1.18937},
+            '-13': {'name': 'mu+', 'mass': 0.1056583715},
+            '-3112': {'name': 'Sigma-', 'mass': 1.18937},
+            '13': {'name': 'mu-', 'mass': 0.1056583715},
+            '-3322': {'name': 'Xi0', 'mass': 1.32132},
+            '111': {'name': 'pi0', 'mass': 0.1349766},
+            '-3312': {'name': 'Xi+', 'mass': 1.32132},
+            '211': {'name': 'pi+', 'mass': 0.13957018},
+            '-3334': {'name': 'Omega+', 'mass': 1.67245},
+            '-211': {'name': 'pi-', 'mass': 0.13957018},
+            '-15': {'name': 'tau+', 'mass': 1.77682},
+            '130': {'name': 'KL0', 'mass': 0.497614},
+            '15': {'name': 'tau-', 'mass': 1.77682},
+            '321': {'name': 'K+', 'mass': 0.493677},
+            '411': {'name': 'D+', 'mass': 1.86962},
+            '-321': {'name': 'K-', 'mass': 0.493677},
+            '-411': {'name': 'D-', 'mass': 1.86962},
+            '2112': {'name': 'neutron', 'mass': 939.565},
+            '421': {'name': 'D0', 'mass': 1.8646},
+            '2212': {'name': 'proton', 'mass': 938.272},
+            '-421': {'name': 'D0bar', 'mass': 1.8646},
+            '-2212': {'name': 'anti-proton', 'mass': 938.272},
+            '431': {'name': 'D_s+', 'mass': 1.96847},
+            '310': {'name': 'KS0', 'mass': 0.497614},
+            '-431': {'name': 'D_s^-', 'mass': 1.96847},
+            '4122': {'name': 'Lambda_c+', 'mass': 2.2849},
+            '3122': {'name': 'Lambda0', 'mass': 1.115683},
+            '2': {'name': 'W+', 'mass': 80.399},
+            '3222': {'name': 'Sigma+', 'mass': 1.18937},
+            '-24': {'name': 'W-', 'mass': 80.399},
+            '3212': {'name': 'Sigma0', 'mass': 1.18937},
+            '23': {'name': 'Z0', 'mass': 91.1876},
+            '3112': {'name': 'Sigma+', 'mass': 1.18937},
+            '3322': {'name': 'Xi0', 'mass': 1.32132},
+            '3312': {'name': 'Xi-', 'mass': 1.32132},
+            '3334': {'name': 'Omega-', 'mass': 1.67245}}
+
+def get_particle_mass(pdg_id=None, pdg_name=None): # pylint: disable=inconsistent-return-statements
     """
-    Class containg MC particle informations
+    Get particle mass from PDG dictionary
+
+    Parameters
+    -------------------------------------------------
+    pdg_name: str
+        Name of particle
+    pdg_id: int
+        PDG id of particle
+
+    Returns
+    -------------------------------------------------
+    mass: float
+        Mass of particle
     """
-    def __init__(self, pdg):
-        """
-        Initialize the class
-
-        Parameters
-        ------------------------------------------------
-        pdg:int
-            PDG code of the particle
-        """
-        self._pdg_ = pdg
-        self._name_ = self.get_name()
-        self._mass_ = self.get_mass()
-
-    def get_name(self):
-        """
-        Get particle name
-        """
-        return self.pdg_dict()['name']
-
-    def get_mass(self, unit='GeV'):
-        """
-        Get particle mass
-
-        Parameters
-        -------------------------------------------------
-        unit: str
-            Unit of the mass, possible values ['GeV', 'MeV']
-        """
-        if unit not in ['GeV', 'MeV']:
-            Logger(f'Unit {unit} not supported', 'FATAL')
-            mass = -999
-        elif unit == 'MeV':
-            mass= self.pdg_dict()['mass'] * 1000
-        else:
-            mass = self.pdg_dict()['mass']
-        return mass
-
-    def pdg_dict(self): # pylint: disable=too-many-statements, too-many-branches
-        """
-        Associate PDG code with particle name and mass
-
-        Returns
-        -------------------------------------------------
-        pdg_dict: dict
-            Dictionary with the particle name and mass
-        """
-        if self._pdg_ == 22:
-            pdg_dict = {'name': 'photon', 'mass': 0.0}
-        elif self._pdg_ == -2112:
-            pdg_dict = {'name': 'anti-neutron', 'mass': 939.565}
-        elif self._pdg_ == -11:
-            pdg_dict = {'name': 'e-', 'mass': 0.510998928}
-        elif self._pdg_ == -3122:
-            pdg_dict = {'name': 'Lambda', 'mass': 1.115683}
-        elif self._pdg_ == 11:
-            pdg_dict = {'name': 'e+', 'mass': 0.510998928}
-        elif self._pdg_ == -3222:
-            pdg_dict = {'name': 'Sigma', 'mass': 1.18937}
-        elif self._pdg_ == 12:
-            pdg_dict = {'name': 'e-neutrino', 'mass': 0.0}
-        elif self._pdg_ == -3212:
-            pdg_dict = {'name': 'Sigma-', 'mass': 1.18937}
-        elif self._pdg_ == -13:
-            pdg_dict = {'name': 'mu+', 'mass': 0.1056583715}
-        elif self._pdg_ == -3112:
-            pdg_dict = {'name': 'Sigma-', 'mass': 1.18937}
-        elif self._pdg_ == 13:
-            pdg_dict = {'name': 'mu-', 'mass': 0.1056583715}
-        elif self._pdg_ == -3322:
-            pdg_dict = {'name': 'Xi0', 'mass': 1.32132}
-        elif self._pdg_ == 111:
-            pdg_dict = {'name': 'pi0', 'mass': 0.1349766}
-        elif self._pdg_ == -3312:
-            pdg_dict = {'name': 'Xi+', 'mass': 1.32132}
-        elif self._pdg_ == 211:
-            pdg_dict = {'name': 'pi+', 'mass': 0.13957018}
-        elif self._pdg_ == -3334:
-            pdg_dict = {'name': 'Omega+', 'mass': 1.67245}
-        elif self._pdg_ == -211:
-            pdg_dict = {'name': 'pi-', 'mass': 0.13957018}
-        elif self._pdg_ == -15:
-            pdg_dict = {'name': 'tau+', 'mass': 1.77682}
-        elif self._pdg_ == 130:
-            pdg_dict = {'name': 'KL0', 'mass': 0.497614}
-        elif self._pdg_ == 15:
-            pdg_dict = {'name': 'tau-', 'mass': 1.77682}
-        elif self._pdg_ == 321:
-            pdg_dict = {'name': 'K+', 'mass': 0.493677}
-        elif self._pdg_ == 411:
-            pdg_dict = {'name': 'D+', 'mass': 1.86962}
-        elif self._pdg_ == -321:
-            pdg_dict = {'name': 'K-', 'mass': 0.493677}
-        elif self._pdg_ == -411:
-            pdg_dict = {'name': 'D-', 'mass': 1.86962}
-        elif self._pdg_ == 2112:
-            pdg_dict = {'name': 'neutron', 'mass': 939.565}
-        elif self._pdg_ == 421:
-            pdg_dict = {'name': 'D0', 'mass': 1.8646}
-        elif self._pdg_ == 2212:
-            pdg_dict = {'name': 'proton', 'mass': 938.272}
-        elif self._pdg_ == -421:
-            pdg_dict = {'name': 'D0bar', 'mass': 1.8646}
-        elif self._pdg_ == -2212:
-            pdg_dict = {'name': 'anti-proton', 'mass': 938.272}
-        elif self._pdg_ == 431:
-            pdg_dict = {'name': 'D_s^+', 'mass': 1.96847}
-        elif self._pdg_ == 310:
-            pdg_dict = {'name': 'KS0', 'mass': 0.497614}
-        elif self._pdg_ == -431:
-            pdg_dict = {'name': 'D_s^-', 'mass': 1.96847}
-        elif self._pdg_ == 4122:
-            pdg_dict = {'name': 'Lambda_c+', 'mass': 2.2849}
-        elif self._pdg_ == 3122:
-            pdg_dict = {'name': 'Lambda0', 'mass': 1.115683}
-        elif self._pdg_ == 24:
-            pdg_dict = {'name': 'W+', 'mass': 80.399}
-        elif self._pdg_ == 3222:
-            pdg_dict = {'name': 'Sigma+', 'mass': 1.18937}
-        elif self._pdg_ == -24:
-            pdg_dict = {'name': 'W-', 'mass': 80.399}
-        elif self._pdg_ == 3212:
-            pdg_dict = {'name': 'Sigma0', 'mass': 1.18937}
-        elif self._pdg_ == 23:
-            pdg_dict = {'name': 'Z0', 'mass': 91.1876}
-        elif self._pdg_ == 3112:
-            pdg_dict = {'name': 'Sigma+', 'mass': 1.18937}
-        elif self._pdg_ == 3322:
-            pdg_dict = {'name': 'Xi0', 'mass': 1.32132}
-        elif self._pdg_ == 3312:
-            pdg_dict = {'name': 'Xi-', 'mass': 1.32132}
-        elif self._pdg_ == 3334:
-            pdg_dict = {'name': 'Omega-', 'mass': 1.67245}
-        else:
-            pdg_dict = {'name': 'unknown', 'mass': 0.0}
-            Logger('Unknown particle', 'FATAL')
-        return pdg_dict
+    if pdg_id:
+        return pdg_dict[str(pdg_id)]['mass']
+    if pdg_name:
+        for key in pdg_dict:
+            if pdg_dict[key]['name'] == pdg_name:
+                return pdg_dict[key]['mass']
