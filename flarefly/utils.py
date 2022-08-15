@@ -108,6 +108,6 @@ def get_particle_mass(pdg_id=None, pdg_name=None): # pylint: disable=inconsisten
     if pdg_id:
         return pdg_dict[str(pdg_id)]['mass']
     if pdg_name:
-        for key in pdg_dict:
-            if pdg_dict[key]['name'] == pdg_name:
-                return pdg_dict[key]['mass']
+        for item in pdg_dict.items():
+            if pdg_name == item[1]['name']:
+                return item[1]['mass']
