@@ -459,7 +459,7 @@ class F2MassFitter:
                 frac_err = signal_err_fracs[idx]
             else:
                 frac = 1. - sum(signal_fracs)
-                frac_err = np.sqrt(sum([err**2 for err in signal_err_fracs]))
+                frac_err = np.sqrt(sum(list(err**2 for err in signal_err_fracs)))
 
         norm = self._data_handler_.get_norm()
         norm_err = norm * frac_err
@@ -501,7 +501,7 @@ class F2MassFitter:
         signal_fracs, _, signal_err_fracs, _ = self.__get_all_fracs()
 
         frac = 1. - len(signal_fracs)
-        frac_err = np.sqrt(sum([err**2 for err in signal_err_fracs]))
+        frac_err = np.sqrt(sum(list(err**2 for err in signal_err_fracs)))
 
         norm = self._data_handler_.get_norm()
         norm_err = norm * frac_err
