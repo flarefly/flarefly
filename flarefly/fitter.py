@@ -78,7 +78,7 @@ class F2MassFitter:
                     mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
                     sigma=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}']
                 )
-            elif self._name_signal_pdf_ == 'cauchy':
+            elif pdf_name == 'cauchy':
                 self._init_sgn_pars_[ipdf].setdefault("m", 1.865)
                 self._init_sgn_pars_[ipdf].setdefault("gamma", 0.010)
                 self._sgn_pars_[ipdf][f'{self._name_}_m_signal{ipdf}'] = zfit.Parameter(
@@ -90,7 +90,7 @@ class F2MassFitter:
                     m=self._sgn_pars_[ipdf][f'{self._name_}_m_signal{ipdf}'],
                     gamma=self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}']
                 )
-            elif self._name_signal_pdf_ == 'crystalball':
+            elif pdf_name == 'crystalball':
                 self._init_sgn_pars_[ipdf].setdefault("mu", 1.865)
                 self._init_sgn_pars_[ipdf].setdefault("sigma", 0.010)
                 self._init_sgn_pars_[ipdf].setdefault("alpha", 0.5)

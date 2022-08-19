@@ -55,10 +55,12 @@ class DataHandler:
                             nbins = len(hist_array[1]) - 1
                             self._limits_[0] = hist_array[1][0]
                             self._limits_[1] = hist_array[1][-1]
+                            idx_min = 0
+                            idx_max = len(hist_array[1])-1
                         else:
                             idx_min = np.argmin(np.abs(hist_array[1]-self._limits_[0]))
                             idx_max = np.argmin(np.abs(hist_array[1]-self._limits_[1]))
-                            nbins = len(hist_array[1][idx_min:idx_max+1])
+                            nbins = len(hist_array[1][idx_min:idx_max])
                             self._limits_[0] = hist_array[1][idx_min]
                             self._limits_[1] = hist_array[1][idx_max]
                         binning = zfit.binned.RegularBinning(
@@ -69,8 +71,8 @@ class DataHandler:
                         )
                         self._obs_ = zfit.Space("xaxis", binning=binning)
                         self._binned_data_ = zfit.data.BinnedData.from_tensor(
-                            self._obs_, hist_array[0][idx_min:idx_max+1],
-                            np.sqrt(hist_array[0][idx_min:idx_max+1]))
+                            self._obs_, hist_array[0][idx_min:idx_max],
+                            np.sqrt(hist_array[0][idx_min:idx_max]))
                         self._isbinned_ = True
                     elif 'treename' in kwargs:
                         input_df = uproot.open(data)[kwargs['treename']].arrays(library='pd')
