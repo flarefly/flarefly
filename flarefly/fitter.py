@@ -432,7 +432,7 @@ class F2MassFitter:
         """
 
         if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball']:
-            # FIXME: add possibility to compute signal not based on nsigma
+            # TODO: add possibility to compute signal not based on nsigma
             Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
             return 0., 0.
 

@@ -10,7 +10,7 @@ import matplotlib
 from flarefly.data_handler import DataHandler
 from flarefly.fitter import F2MassFitter
 
-INFILE = os.path.join(os.getcwd(), "histos.root")
+INFILE = os.path.join(os.getcwd(), "tests/histos.root")
 DATABINNED = DataHandler(INFILE, var_name=r'$M_\mathrm{K\pi\pi}$ (GeV/$c^{2}$)',
                          histoname='hMass_80_120', limits=[1.75, 2.06])
 
