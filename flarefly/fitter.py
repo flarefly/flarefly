@@ -301,7 +301,7 @@ class F2MassFitter:
                          ls="--", label=f'background {ibkg}')
             else:
                 plt.plot(x_plot, bkg_func * norm * (1-sum(bkg_fracs)-sum(signal_fracs)),
-                         color='firebrick', ls="--", label='background')
+                         color='firebrick', ls="--", label=f'background {ibkg}')
         # then draw signals
         base_sgn_cmap = plt.cm.get_cmap('viridis', len(signal_funcs) * 4)
         sgn_cmap = ListedColormap(base_sgn_cmap(np.linspace(0.4, 0.65, len(signal_funcs))))
@@ -371,7 +371,7 @@ class F2MassFitter:
         return self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['value'], \
             self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['hesse']['error']
 
-    def get_sigma(self, idx):
+    def get_sigma(self, idx=0):
         """
         Get the sigma and its error
 
@@ -390,16 +390,16 @@ class F2MassFitter:
         return self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['value'], \
             self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['hesse']['error']
 
-    def get_parameter(self, par, idx=0):
+    def get_parameter(self, idx=0, par):
         """
         Get the width and its error
 
         Parameters
         -------------------------------------------------
-        par: str
-            parameter to return
         idx: int
             Index of the sigma to be returned (default: 0)
+        par: str
+            parameter to return
 
         Returns
         -------------------------------------------------
@@ -412,16 +412,16 @@ class F2MassFitter:
         return self._fit_result_.params[f'{self._name_}_{par}_signal{idx}']['value'], \
             self._fit_result_.params[f'{self._name_}_{par}_signal{idx}']['hesse']['error']
 
-    def get_signal(self, nsigma=3, idx=0):
+    def get_signal(self, idx=0, nsigma=3):
         """
         Get the signal and its error in mass +- nsigma * width
 
         Parameters
         -------------------------------------------------
-        nsigma: float
-            nsigma window for signal computation
         idx: int
             Index of the signal to be returned
+        nsigma: float
+            nsigma window for signal computation
 
         Returns
         -------------------------------------------------
@@ -467,16 +467,16 @@ class F2MassFitter:
 
         return float(signal * norm), float(signal * norm_err)
 
-    def get_background(self, nsigma=3, idx=0):
+    def get_background(self, idx=0, nsigma=3):
         """
         Get the background and its error in mass +- nsigma * width
 
         Parameters
         -------------------------------------------------
-        nsigma: float
-            nsigma window for background computation
         idx: int
             Index of the signal to be used to compute nsigma window
+        nsigma: float
+            nsigma window for background computation
 
         Returns
         -------------------------------------------------
@@ -509,16 +509,16 @@ class F2MassFitter:
 
         return float(background * norm), float(background * norm_err)
 
-    def get_signal_over_background(self, nsigma=3, idx=0):
+    def get_signal_over_background(self, idx=0, nsigma=3):
         """
         Get the S/B ratio and its error in mass +- nsigma * width
 
         Parameters
         -------------------------------------------------
-        nsigma: float
-            nsigma window for background computation
         idx: int
             Index of the signal to be used to compute nsigma window
+        nsigma: float
+            nsigma window for background computation
 
         Returns
         -------------------------------------------------
@@ -542,10 +542,10 @@ class F2MassFitter:
 
         Parameters
         -------------------------------------------------
-        nsigma: float
-            nsigma window for background computation
         idx: int
             Index of the signal to be used to compute nsigma window
+        nsigma: float
+            nsigma window for background computation
 
         Returns
         -------------------------------------------------
