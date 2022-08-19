@@ -528,15 +528,15 @@ class F2MassFitter:
             The S/B error obtained from the fit
         """
 
-        signal = self.get_signal(nsigma, idx)
-        bkg = self.get_background(nsigma, idx)
+        signal = self.get_signal(idx, nsigma)
+        bkg = self.get_background(idx, nsigma)
         signal_over_background = signal[0]/bkg[0]
         signal_over_background_err = np.sqrt(signal[1]**2/signal[0]**2 + bkg[1]**2/bkg[0]**2)
         signal_over_background_err *= signal_over_background
 
         return signal_over_background, signal_over_background_err
 
-    def get_significance(self, nsigma, idx=0):
+    def get_significance(self, idx=0, nsigma=3):
         """
         Get the significance and its error in mass +- nsigma * width
 
@@ -555,8 +555,8 @@ class F2MassFitter:
             The significance error obtained from the fit
         """
 
-        signal = self.get_signal(nsigma, idx)
-        bkg = self.get_background(nsigma, idx)
+        signal = self.get_signal(idx, nsigma)
+        bkg = self.get_background(idx, nsigma)
         significance = signal[0]/np.sqrt(signal[0]+bkg[0])
         sig_plus_bkg = signal[0] + bkg[0]
 
