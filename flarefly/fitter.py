@@ -307,7 +307,6 @@ class F2MassFitter:
         # then draw signals
         base_sgn_cmap = plt.cm.get_cmap('viridis', len(signal_funcs) * 4)
         sgn_cmap = ListedColormap(base_sgn_cmap(np.linspace(0.4, 0.65, len(signal_funcs))))
-        print(sgn_cmap, base_sgn_cmap)
         for isgn, (frac, signal_func) in enumerate(zip(signal_funcs, signal_fracs)):
             plt.plot(x_plot, signal_func * norm * frac, color=sgn_cmap(isgn))
             plt.fill_between(x_plot, signal_func * norm * frac, color=sgn_cmap(isgn),
