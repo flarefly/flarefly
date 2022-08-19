@@ -166,6 +166,7 @@ class F2MassFitter:
         """
         Helper function to perform a prefit to the sidebands
         """
+        # pylint: disable=fixme
         #TODO: implement me
         Logger('Prefit step to be implemented', 'WARNING')
 
@@ -209,6 +210,7 @@ class F2MassFitter:
             Logger('Data handler not specified', 'FATAL')
 
         self.__build_total_pdf()
+        # pylint: disable=fixme
         self.__prefit() #TODO: implement me
 
         if self._data_handler_.get_is_binned():
@@ -432,6 +434,7 @@ class F2MassFitter:
         """
 
         if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball']:
+            # pylint: disable=fixme
             # TODO: add possibility to compute signal not based on nsigma
             Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
             return 0., 0.
