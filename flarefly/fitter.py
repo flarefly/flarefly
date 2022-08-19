@@ -390,7 +390,7 @@ class F2MassFitter:
         return self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['value'], \
             self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['hesse']['error']
 
-    def get_parameter(self, idx=0, par):
+    def get_parameter(self, idx, par):
         """
         Get the width and its error
 
