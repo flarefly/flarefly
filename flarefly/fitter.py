@@ -42,7 +42,10 @@ class F2MassFitter:
         self._name_signal_pdf_ = name_signal_pdf
         self._name_background_pdf_ = name_background_pdf
         self._signal_pdf_ = [None for _ in enumerate(name_signal_pdf)]
-        self._background_pdf_ = [None for _ in enumerate(name_background_pdf)]
+        if self._name_background_pdf_[0] == "nobkg":
+            self._background_pdf_ = []
+        else:
+            self._background_pdf_ = [None for _ in enumerate(name_background_pdf)]
         self._total_pdf_ = None
         self._total_pdf_binned_ = None
         self._fit_result_ = None
@@ -50,7 +53,10 @@ class F2MassFitter:
         self._init_bkg_pars_ = [{} for _ in enumerate(name_signal_pdf)]
         self._sgn_pars_ = [{} for _ in enumerate(name_signal_pdf)]
         self._bkg_pars_ = [{} for _ in enumerate(name_background_pdf)]
-        self._fracs_ = [None for _ in range(len(name_signal_pdf) + len(name_background_pdf) - 1)]
+        if self._name_background_pdf_[0] == "nobkg":
+            self._fracs_ = [None for _ in range(len(name_signal_pdf) - 1)]
+        else:
+            self._fracs_ = [None for _ in range(len(name_signal_pdf) + len(name_background_pdf) - 1)]
         self._rawyield_ = [0. for _ in enumerate(name_signal_pdf)]
         self._rawyield_err_ = [0. for _ in enumerate(name_signal_pdf)]
         self._minimizer_ = zfit.minimize.Minuit(verbosity=7)
@@ -121,7 +127,8 @@ class F2MassFitter:
         for ipdf, pdf_name in enumerate(self._name_background_pdf_):
             if pdf_name == 'nobkg':
                 Logger('Performing fit with no bkg pdf', 'WARNING')
-            elif pdf_name == 'expo':
+                break
+            if pdf_name == 'expo':
                 self._init_bkg_pars_[ipdf].setdefault("lam", 0.1)
                 self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_lam_bkg{ipdf}', self._init_bkg_pars_[ipdf]["lam"])
@@ -232,10 +239,20 @@ class F2MassFitter:
             self._rawyield_err_ = np.sqrt(self._rawyield_)
         else:
             for ipdf, _ in enumerate(self._signal_pdf_):
-                self._rawyield_[ipdf] = self._fit_result_.params[
-                    f'{self._name_}_signal_frac{ipdf}']['value'] * norm
-                self._rawyield_err_[ipdf] = self._fit_result_.params[
-                    f'{self._name_}_signal_frac{ipdf}']['hesse']['error'] * norm
+                if len(self._background_pdf_) > 0 or ipdf < len(self._signal_pdf_) - 1:
+                    self._rawyield_[ipdf] = self._fit_result_.params[
+                        f'{self._name_}_signal_frac{ipdf}']['value'] * norm
+                    self._rawyield_err_[ipdf] = self._fit_result_.params[
+                        f'{self._name_}_signal_frac{ipdf}']['hesse']['error'] * norm
+                else:
+                    frac, frac_err = 0., 0.
+                    for ipdf2 in range(len(self._signal_pdf_)-1):
+                        frac += self._fit_result_.params[
+                            f'{self._name_}_signal_frac{ipdf2}']['value']
+                        frac_err += np.sqrt(self._fit_result_.params[
+                            f'{self._name_}_signal_frac{ipdf2}']['hesse']['error'])
+                    self._rawyield_[ipdf] = frac * norm
+                    self._rawyield_err_[ipdf] = frac_err * norm
 
         return self._fit_result_
 
@@ -502,14 +519,14 @@ class F2MassFitter:
 
         # pylint: disable=missing-kwoa
         background, background_err = 0., 0.
-        for idx, bkg in enumerate(self._background_pdf_):
+        for idx2, bkg in enumerate(self._background_pdf_):
 
-            if idx == len(self._background_pdf_) - 1:
+            if idx2 == len(self._background_pdf_) - 1:
                 frac = 1. - sum(signal_fracs)
                 frac_err = np.sqrt(sum(list(err**2 for err in signal_err_fracs)))
             else:
-                frac = bkg_fracs[idx]
-                frac_err = bkg_err_fracs[idx]
+                frac = bkg_fracs[idx2]
+                frac_err = bkg_err_fracs[idx2]
 
             norm = self._data_handler_.get_norm()
             norm_err = norm * frac_err
