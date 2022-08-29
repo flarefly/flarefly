@@ -498,18 +498,30 @@ class F2MassFitter:
         min_value = mass - nsigma * sigma
         max_value = mass + nsigma * sigma
 
+        signal_fracs, bkg_fracs, signal_err_fracs, bkg_err_fracs = self.__get_all_fracs()
+
         # pylint: disable=missing-kwoa
-        background = self._background_pdf_.integrate((min_value, max_value))
-        signal_fracs, _, signal_err_fracs, _ = self.__get_all_fracs()
+        background, background_err = 0., 0.
+        for idx, bkg in enumerate(self._background_pdf_):
 
-        frac = 1. - len(signal_fracs)
-        frac_err = np.sqrt(sum(list(err**2 for err in signal_err_fracs)))
+            if idx == len(self._background_pdf_) - 1:
+                frac = 1. - sum(signal_fracs)
+                frac_err = np.sqrt(sum(list(err**2 for err in signal_err_fracs)))
+            else:
+                frac = bkg_fracs[idx]
+                frac_err = bkg_err_fracs[idx]
 
-        norm = self._data_handler_.get_norm()
-        norm_err = norm * frac_err
-        norm *= frac
+            norm = self._data_handler_.get_norm()
+            norm_err = norm * frac_err
+            norm *= frac
 
-        return float(background * norm), float(background * norm_err)
+            bkg_int = bkg.integrate((min_value, max_value))
+            background += bkg_int * norm
+            background_err += (bkg_int * norm_err)**2
+
+        background_err = np.sqrt(background_err)
+
+        return background, background_err
 
     def get_signal_over_background(self, idx=0, nsigma=3):
         """
