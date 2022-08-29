@@ -438,8 +438,8 @@ class F2MassFitter:
             Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
             return 0., 0.
 
-        mass = self.get_mass(idx)
-        sigma = self.get_sigma(idx)
+        mass, _ = self.get_mass(idx)
+        sigma, _ = self.get_sigma(idx)
 
         min_value = mass - nsigma * sigma
         max_value = mass + nsigma * sigma
@@ -492,8 +492,8 @@ class F2MassFitter:
             Logger('Background not fitted', 'ERROR')
             return 0., 0.
 
-        mass = self.get_mass(idx)
-        sigma = self.get_sigma(idx)
+        mass, _ = self.get_mass(idx)
+        sigma, _ = self.get_sigma(idx)
 
         min_value = mass - nsigma * sigma
         max_value = mass + nsigma * sigma
