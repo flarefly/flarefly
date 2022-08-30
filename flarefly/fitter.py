@@ -51,6 +51,10 @@ class F2MassFitter:
         self._fit_result_ = None
         self._init_sgn_pars_ = [{} for _ in enumerate(name_signal_pdf)]
         self._init_bkg_pars_ = [{} for _ in enumerate(name_signal_pdf)]
+        self._limits_sgn_pars_ = [{} for _ in enumerate(name_signal_pdf)]
+        self._limits_bkg_pars_ = [{} for _ in enumerate(name_signal_pdf)]
+        self._fix_sgn_pars_ = [{} for _ in enumerate(name_signal_pdf)]
+        self._fix_bkg_pars_ = [{} for _ in enumerate(name_signal_pdf)]
         self._sgn_pars_ = [{} for _ in enumerate(name_signal_pdf)]
         self._bkg_pars_ = [{} for _ in enumerate(name_background_pdf)]
         if self._name_background_pdf_[0] == "nobkg":
@@ -73,42 +77,74 @@ class F2MassFitter:
 
         for ipdf, pdf_name in enumerate(self._name_signal_pdf_):
             if pdf_name == 'gaussian':
-                self._init_sgn_pars_[ipdf].setdefault("mu", 1.865)
-                self._init_sgn_pars_[ipdf].setdefault("sigma", 0.010)
+                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
+                self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
+                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
+                self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
                 self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]["mu"], 0., 100.)
+                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
+                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
                 self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]["sigma"], 0., 100.)
+                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma'],
+                    self._limits_sgn_pars_[ipdf]['sigma'][0], self._limits_sgn_pars_[ipdf]['sigma'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['sigma'])
                 self._signal_pdf_[ipdf] = zfit.pdf.Gauss(
                     obs=obs,
                     mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
                     sigma=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}']
                 )
             elif pdf_name == 'cauchy':
-                self._init_sgn_pars_[ipdf].setdefault("m", 1.865)
-                self._init_sgn_pars_[ipdf].setdefault("gamma", 0.010)
+                self._init_sgn_pars_[ipdf].setdefault('m', 1.865)
+                self._init_sgn_pars_[ipdf].setdefault('gamma', 0.010)
+                self._fix_sgn_pars_[ipdf].setdefault('m', False)
+                self._fix_sgn_pars_[ipdf].setdefault('gamma', False)
+                self._limits_sgn_pars_[ipdf].setdefault('m', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('gamma', [0., 1.e6])
                 self._sgn_pars_[ipdf][f'{self._name_}_m_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_m_signal{ipdf}', self._init_sgn_pars_[ipdf]["m"], 0., 100.)
+                    f'{self._name_}_m_signal{ipdf}', self._init_sgn_pars_[ipdf]['m'],
+                    self._limits_sgn_pars_[ipdf]['m'][0], self._limits_sgn_pars_[ipdf]['m'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['m'])
                 self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_gamma_signal{ipdf}', self._init_sgn_pars_[ipdf]["gamma"], 0., 100.)
+                    f'{self._name_}_gamma_signal{ipdf}', self._init_sgn_pars_[ipdf]['gamma'],
+                    self._limits_sgn_pars_[ipdf]['gamma'][0], self._limits_sgn_pars_[ipdf]['gamma'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['gamma'])
                 self._signal_pdf_[ipdf] = zfit.pdf.Cauchy(
                     obs=obs,
                     m=self._sgn_pars_[ipdf][f'{self._name_}_m_signal{ipdf}'],
                     gamma=self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}']
                 )
             elif pdf_name == 'crystalball':
-                self._init_sgn_pars_[ipdf].setdefault("mu", 1.865)
-                self._init_sgn_pars_[ipdf].setdefault("sigma", 0.010)
-                self._init_sgn_pars_[ipdf].setdefault("alpha", 0.5)
-                self._init_sgn_pars_[ipdf].setdefault("n", 1.)
+                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
+                self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
+                self._init_sgn_pars_[ipdf].setdefault('alpha', 0.5)
+                self._init_sgn_pars_[ipdf].setdefault('n', 1.)
+                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
+                self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
+                self._fix_sgn_pars_[ipdf].setdefault('alpha', False)
+                self._fix_sgn_pars_[ipdf].setdefault('n', False)
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('alpha', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('n', [0., 1.e6])
                 self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]["mu"], 0., 100.)
+                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
+                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
                 self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]["sigma"], 0., 100.)
+                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma'],
+                    self._limits_sgn_pars_[ipdf]['sigma'][0], self._limits_sgn_pars_[ipdf]['sigma'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['sigma'])
                 self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_alpha_signal{ipdf}', self._init_sgn_pars_[ipdf]["alpha"])
+                    f'{self._name_}_alpha_signal{ipdf}', self._init_sgn_pars_[ipdf]['alpha'],
+                    self._limits_sgn_pars_[ipdf]['alpha'][0], self._limits_sgn_pars_[ipdf]['alpha'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['alpha'])
                 self._sgn_pars_[ipdf][f'{self._name_}_n_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_n_signal{ipdf}', self._init_sgn_pars_[ipdf]["n"])
+                    f'{self._name_}_n_signal{ipdf}', self._init_sgn_pars_[ipdf]['n'],
+                    self._limits_sgn_pars_[ipdf]['n'][0], self._limits_sgn_pars_[ipdf]['n'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['n'])
                 self._signal_pdf_[ipdf] = zfit.pdf.CrystalBall(
                     obs=obs,
                     mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
@@ -129,12 +165,16 @@ class F2MassFitter:
                 Logger('Performing fit with no bkg pdf', 'WARNING')
                 break
             if pdf_name == 'expo':
-                self._init_bkg_pars_[ipdf].setdefault("lam", 0.1)
+                self._init_bkg_pars_[ipdf].setdefault('lam', 0.1)
+                self._limits_bkg_pars_[ipdf].setdefault('lam', [-1.e6, 1.e6])
+                self._fix_bkg_pars_[ipdf].setdefault('lam', False)
                 self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_lam_bkg{ipdf}', self._init_bkg_pars_[ipdf]["lam"])
+                    f'{self._name_}_lam_bkg{ipdf}', self._init_bkg_pars_[ipdf]['lam'],
+                    self._limits_bkg_pars_[ipdf]['lam'][0], self._limits_bkg_pars_[ipdf]['lam'][1],
+                    floating=not self._fix_bkg_pars_[ipdf]['lam'])
                 self._background_pdf_[ipdf] = zfit.pdf.Exponential(
                     obs=obs,
-                    lam=self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}'],
+                    lam=self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}']
                 )
             else:
                 Logger(f'Background pdf {pdf_name} not supported', 'FATAL')
@@ -157,14 +197,28 @@ class F2MassFitter:
             return
 
         for ipdf, _ in enumerate(self._signal_pdf_):
+            self._init_sgn_pars_[ipdf].setdefault('frac', 0.1)
+            self._fix_sgn_pars_[ipdf].setdefault('frac', False)
+            self._limits_sgn_pars_[ipdf].setdefault('frac', [0, 1.])
             if len(self._background_pdf_) == 0 and ipdf == len(self._signal_pdf_) - 1:
                 continue
-            self._fracs_[ipdf] = zfit.Parameter(f'{self._name_}_signal_frac{ipdf}', 0.1, 0., 1.)
+            self._fracs_[ipdf] = zfit.Parameter(f'{self._name_}_frac_signal{ipdf}',
+                                                self._init_sgn_pars_[ipdf]['frac'],
+                                                self._limits_sgn_pars_[ipdf]['frac'][0],
+                                                self._limits_sgn_pars_[ipdf]['frac'][1],
+                                                floating=not self._fix_sgn_pars_[ipdf]['frac'])
 
         if len(self._background_pdf_) > 1:
             for ipdf, _ in enumerate(self._background_pdf_):
+                self._init_bkg_pars_[ipdf].setdefault('frac', 0.1)
+                self._fix_bkg_pars_[ipdf].setdefault('frac', False)
+                self._limits_bkg_pars_[ipdf].setdefault('frac', [0, 1.])
                 self._fracs_[ipdf + len(self._signal_pdf_)] = zfit.Parameter(
-                    f'{self._name_}_bkg_frac{ipdf}', 0.5)
+                    f'{self._name_}_frac_bkg{ipdf}',
+                    self._init_bkg_pars_[ipdf]['frac'],
+                    self._limits_bkg_pars_[ipdf]['frac'][0],
+                    self._limits_bkg_pars_[ipdf]['frac'][1],
+                    floating=not self._fix_bkg_pars_[ipdf]['frac'])
 
         self._total_pdf_ = zfit.pdf.SumPDF(
             self._signal_pdf_+self._background_pdf_, self._fracs_)
@@ -195,10 +249,10 @@ class F2MassFitter:
         signal_fracs, bkg_fracs, signal_err_fracs, bkg_err_fracs = ([] for _ in range(4))
         for frac_par in self._fracs_:
             par_name = frac_par.name
-            if f'{self._name_}_signal_frac' in par_name:
+            if f'{self._name_}_frac_signal' in par_name:
                 signal_fracs.append(self._fit_result_.params[par_name]['value'])
                 signal_err_fracs.append(self._fit_result_.params[par_name]['hesse']['error'])
-            elif f'{self._name_}_bkg_frac' in par_name:
+            elif f'{self._name_}_frac_bkg' in par_name:
                 bkg_fracs.append(self._fit_result_.params[par_name]['value'])
                 bkg_err_fracs.append(self._fit_result_.params[par_name]['hesse']['error'])
 
@@ -241,16 +295,16 @@ class F2MassFitter:
             for ipdf, _ in enumerate(self._signal_pdf_):
                 if len(self._background_pdf_) > 0 or ipdf < len(self._signal_pdf_) - 1:
                     self._rawyield_[ipdf] = self._fit_result_.params[
-                        f'{self._name_}_signal_frac{ipdf}']['value'] * norm
+                        f'{self._name_}_frac_signal{ipdf}']['value'] * norm
                     self._rawyield_err_[ipdf] = self._fit_result_.params[
-                        f'{self._name_}_signal_frac{ipdf}']['hesse']['error'] * norm
+                        f'{self._name_}_frac_signal{ipdf}']['hesse']['error'] * norm
                 else:
                     frac, frac_err = 0., 0.
                     for ipdf2 in range(len(self._signal_pdf_)-1):
                         frac += self._fit_result_.params[
-                            f'{self._name_}_signal_frac{ipdf2}']['value']
+                            f'{self._name_}_frac_signal{ipdf2}']['value']
                         frac_err += np.sqrt(self._fit_result_.params[
-                            f'{self._name_}_signal_frac{ipdf2}']['hesse']['error'])
+                            f'{self._name_}_frac_signal{ipdf2}']['hesse']['error'])
                     self._rawyield_[ipdf] = frac * norm
                     self._rawyield_err_[ipdf] = frac_err * norm
 
@@ -304,9 +358,9 @@ class F2MassFitter:
             bkg_funcs.append(zfit.run(bkg_pdf.pdf(x_plot, norm_range=obs)))
         for frac_par in self._fracs_:
             par_name = frac_par.name
-            if f'{self._name_}_signal_frac' in par_name:
+            if f'{self._name_}_frac_signal' in par_name:
                 signal_fracs.append(self._fit_result_.params[par_name]['value'])
-            elif f'{self._name_}_bkg_frac' in par_name:
+            elif f'{self._name_}_frac_bkg' in par_name:
                 bkg_fracs.append(self._fit_result_.params[par_name]['value'])
         if len(signal_fracs) == 0:
             signal_fracs.append(1.)
@@ -317,10 +371,10 @@ class F2MassFitter:
         for ibkg, bkg_func in enumerate(bkg_funcs):
             if ibkg < len(bkg_fracs) - 1:
                 plt.plot(x_plot, bkg_func * norm * bkg_fracs[ibkg], color=bkg_cmap(ibkg),
-                         ls="--", label=f'background {ibkg}')
+                         ls='--', label=f'background {ibkg}')
             else:
                 plt.plot(x_plot, bkg_func * norm * (1-sum(bkg_fracs)-sum(signal_fracs)),
-                         color='firebrick', ls="--", label=f'background {ibkg}')
+                         color='firebrick', ls='--', label=f'background {ibkg}')
         # then draw signals
         base_sgn_cmap = plt.cm.get_cmap('viridis', len(signal_funcs) * 4)
         sgn_cmap = ListedColormap(base_sgn_cmap(np.linspace(0.4, 0.65, len(signal_funcs))))
@@ -405,6 +459,10 @@ class F2MassFitter:
         sigma_err: float
             The sigma error obtained from the fit
         """
+        if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball']:
+            Logger(f'Sigma parameter not defined for {self._name_signal_pdf_[idx]} pdf!', 'ERROR')
+            return 0., 0.
+
         return self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['value'], \
             self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['hesse']['error']
 
@@ -597,7 +655,7 @@ class F2MassFitter:
 
         return significance, significance_err
 
-    def set_particle_mass(self, idx, mass):
+    def set_particle_mass(self, idx, mass, **kwargs):
         """
         Set the particle mass
 
@@ -607,13 +665,23 @@ class F2MassFitter:
             Index of the signal
         mass: float
             The mass to be set
+        **kwargs: dict
+            Additional optional arguments:
+            - limits: list
+                minimum and maximum limits for the mass parameter
+            - fix: bool
+                fix the mass parameter
         """
         mass_name = 'm' if self._name_signal_pdf_[idx] == 'cauchy' else 'mu'
         self._init_sgn_pars_[idx][mass_name] = mass
+        if 'limits' in kwargs:
+            self._limits_sgn_pars_[idx][mass_name] = kwargs['limits']
+        if 'fix' in kwargs:
+            self._fix_sgn_pars_[idx][mass_name] = kwargs['fix']
 
-    def set_signal_initpar(self, idx, par_name, init_value):
+    def set_signal_initpar(self, idx, par_name, init_value, **kwargs):
         """
-        Set the particle mass
+        Set a signal parameter
 
         Parameters
         -------------------------------------------------
@@ -623,12 +691,22 @@ class F2MassFitter:
             The name of the parameter to be set
         init_value: float
             The value of parameter to be set
+        **kwargs: dict
+            Additional optional arguments:
+            - limits: list
+                minimum and maximum limits for the parameter
+            - fix: bool
+                fix the parameter to init_value
         """
         self._init_sgn_pars_[idx][par_name] = init_value
+        if 'limits' in kwargs:
+                self._limits_sgn_pars_[idx][par_name] = kwargs['limits']
+        if 'fix' in kwargs:
+            self._fix_sgn_pars_[idx][par_name] = kwargs['fix']
 
-    def set_background_initpar(self, idx, par_name, init_value):
+    def set_background_initpar(self, idx, par_name, init_value, **kwargs):
         """
-        Set the particle mass
+        Set a background parameter
 
         Parameters
         -------------------------------------------------
@@ -638,5 +716,15 @@ class F2MassFitter:
             The name of the parameter to be set
         init_value: float
             The value of parameter to be set
+        **kwargs: dict
+            Additional optional arguments:
+            - limits: list
+                minimum and maximum limits for the parameter
+            - fix: bool
+                fix the mass parameter
         """
         self._init_bkg_pars_[idx][par_name] = init_value
+        if 'limits' in kwargs:
+                self._limits_bkg_pars_[idx][par_name] = kwargs['limits']
+        if 'fix' in kwargs:
+            self._fix_bkg_pars_[idx][par_name] = kwargs['fix']
