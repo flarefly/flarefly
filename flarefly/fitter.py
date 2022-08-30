@@ -700,7 +700,7 @@ class F2MassFitter:
         """
         self._init_sgn_pars_[idx][par_name] = init_value
         if 'limits' in kwargs:
-                self._limits_sgn_pars_[idx][par_name] = kwargs['limits']
+            self._limits_sgn_pars_[idx][par_name] = kwargs['limits']
         if 'fix' in kwargs:
             self._fix_sgn_pars_[idx][par_name] = kwargs['fix']
 
@@ -725,6 +725,6 @@ class F2MassFitter:
         """
         self._init_bkg_pars_[idx][par_name] = init_value
         if 'limits' in kwargs:
-                self._limits_bkg_pars_[idx][par_name] = kwargs['limits']
+            self._limits_bkg_pars_[idx][par_name] = kwargs['limits']
         if 'fix' in kwargs:
             self._fix_bkg_pars_[idx][par_name] = kwargs['fix']
