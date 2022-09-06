@@ -30,10 +30,18 @@ class F2MassFitter:
                 - 'gaussian'
                 - 'crystalball'
                 - 'cauchy'
+                - 'kde_exact' (requires to set the datasample and options)
+                - 'kde_grid' (requires to set the datasample and options)
+                - 'kde_fft' (requires to set the datasample and options)
+                - 'kde_isj' (requires to set the datasample and options)
         name_background_pdf: list
             The list of names of the background pdfs. The possible options are:
                 - 'nobkg'
                 - 'expo'
+                - 'kde_exact' (requires to set the datasample and options)
+                - 'kde_grid' (requires to set the datasample and options)
+                - 'kde_fft' (requires to set the datasample and options)
+                - 'kde_isj' (requires to set the datasample and options)
         name: str
             Optional name for the fitter,
             needed in case of multiple fitters defined in the same script
@@ -42,10 +50,16 @@ class F2MassFitter:
         self._name_signal_pdf_ = name_signal_pdf
         self._name_background_pdf_ = name_background_pdf
         self._signal_pdf_ = [None for _ in enumerate(name_signal_pdf)]
+        self._kde_signal_sample_ = [None for _ in enumerate(name_signal_pdf)]
+        self._kde_signal_option_ = [None for _ in enumerate(name_signal_pdf)]
         if self._name_background_pdf_[0] == "nobkg":
             self._background_pdf_ = []
+            self._kde_bkg_sample_ = []
+            self._kde_bkg_option_ = []
         else:
             self._background_pdf_ = [None for _ in enumerate(name_background_pdf)]
+            self._kde_bkg_sample_ = [None for _ in enumerate(name_background_pdf)]
+            self._kde_bkg_option_ = [None for _ in enumerate(name_background_pdf)]
         self._total_pdf_ = None
         self._total_pdf_binned_ = None
         self._fit_result_ = None
@@ -152,6 +166,30 @@ class F2MassFitter:
                     alpha=self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}'],
                     n=self._sgn_pars_[ipdf][f'{self._name_}_n_signal{ipdf}']
                 )
+            elif 'kde' in pdf_name:
+                if self._kde_signal_sample_[ipdf]:
+                    if pdf_name == 'kde_exact':
+                        self._signal_pdf_[ipdf] = zfit.pdf.KDE1DimExact(self._kde_signal_sample_[ipdf].get_data(),
+                                                                        obs=self._kde_signal_sample_[ipdf].get_obs(),
+                                                                        name=f'{self._name_}_kde_signal{ipdf}',
+                                                                        **self._kde_signal_option_[ipdf])
+                    elif pdf_name == 'kde_grid':
+                        self._signal_pdf_[ipdf] = zfit.pdf.KDE1DimGrid(self._kde_signal_sample_[ipdf].get_data(),
+                                                                       obs=self._kde_signal_sample_[ipdf].get_obs(),
+                                                                       name=f'{self._name_}_kde_signal{ipdf}',
+                                                                       **self._kde_signal_option_[ipdf])
+                    elif pdf_name == 'kde_fft':
+                        self._signal_pdf_[ipdf] = zfit.pdf.KDE1DimFFT(self._kde_signal_sample_[ipdf].get_data(),
+                                                                      obs=self._kde_signal_sample_[ipdf].get_obs(),
+                                                                      name=f'{self._name_}_kde_signal{ipdf}',
+                                                                      **self._kde_signal_option_[ipdf])
+                    elif pdf_name == 'kde_isj':
+                        self._signal_pdf_[ipdf] = zfit.pdf.KDE1DimISJ(self._kde_signal_sample_[ipdf].get_data(),
+                                                                      obs=self._kde_signal_sample_[ipdf].get_obs(),
+                                                                      name=f'{self._name_}_kde_signal{ipdf}',
+                                                                      **self._kde_signal_option_[ipdf])
+                else:
+                    Logger(f'Missing datasample for Kernel Density Estimation of signal {ipdf}!', 'FATAL')
             else:
                 Logger(f'Signal pdf {pdf_name} not supported', 'FATAL')
 
@@ -176,6 +214,31 @@ class F2MassFitter:
                     obs=obs,
                     lam=self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}']
                 )
+            elif 'kde' in pdf_name:
+                if self._kde_bkg_sample_[ipdf]:
+                    if pdf_name == 'kde_exact':
+                        self._background_pdf_[ipdf] = zfit.pdf.KDE1DimExact(self._kde_bkg_sample_[ipdf].get_data(),
+                                                                            obs=self._kde_bkg_sample_[ipdf].get_obs(),
+                                                                            name=f'{self._name_}_kde_bkg{ipdf}',
+                                                                            **self._kde_bkg_option_[ipdf])
+                    elif pdf_name == 'kde_grid':
+                        self._background_pdf_[ipdf] = zfit.pdf.KDE1DimGrid(self._kde_bkg_sample_[ipdf].get_data(),
+                                                                           obs=self._kde_bkg_sample_[ipdf].get_obs(),
+                                                                           name=f'{self._name_}_kde_bkg{ipdf}',
+                                                                           **self._kde_bkg_option_[ipdf])
+                    elif pdf_name == 'kde_fft':
+                        self._background_pdf_[ipdf] = zfit.pdf.KDE1DimFFT(self._kde_bkg_sample_[ipdf].get_data(),
+                                                                          obs=self._kde_bkg_sample_[ipdf].get_obs(),
+                                                                          name=f'{self._name_}_kde_bkg{ipdf}',
+                                                                          **self._kde_bkg_option_[ipdf])
+                    elif pdf_name == 'kde_isj':
+                        self._background_pdf_[ipdf] = zfit.pdf.KDE1DimISJ(self._kde_bkg_sample_[ipdf].get_data(),
+                                                                          obs=self._kde_bkg_sample_[ipdf].get_obs(),
+                                                                          name=f'{self._name_}_kde_bkg{ipdf}',
+                                                                          **self._kde_bkg_option_[ipdf])
+
+                else:
+                    Logger(f'Missing datasample for Kernel Density Estimation of background {ipdf}!', 'FATAL')
             else:
                 Logger(f'Background pdf {pdf_name} not supported', 'FATAL')
 
@@ -310,24 +373,36 @@ class F2MassFitter:
 
         return self._fit_result_
 
-    def plot_mass_fit(self, style='LHCb2', logy=False, figsize=(7, 7)):
+    def plot_mass_fit(self, **kwargs):
         """
         Plot the mass fit
 
         Parameters
         -------------------------------------------------
-        style: str
-            style to be used (see https://github.com/scikit-hep/mplhep for more details)
-        logy: bool
-            log scale in y axis
-        figsize: tuple
-            size of the figure
+        kwargs:
+            - style: str
+                style to be used (see https://github.com/scikit-hep/mplhep for more details)
+            - logy: bool
+                log scale in y axis
+            - figsize: tuple
+                size of the figure
+            - bins: int
+                number of bins in case of unbinned fit
+            - axis_title: str
+                x-axis title
 
         Returns
         -------------------------------------------------
         fig: matplotlib.figure.Figure
             figure containing the mass fit plot
         """
+
+        style = kwargs.get('style', 'LHCb2')
+        logy = kwargs.get('logy', False)
+        figsize = kwargs.get('figsize', (7, 7))
+        bins = kwargs.get('bins', 100)
+        axis_title = kwargs.get('axis_title', self._data_handler_.get_var_name())
+
         mplhep.style.use(style)
 
         obs = self._data_handler_.get_obs()
@@ -343,7 +418,6 @@ class F2MassFitter:
             norm = self._data_handler_.get_norm() * bin_sigma
         else:
             data_np = zfit.run(self._data_handler_.get_data()[:, 0])
-            bins = 100
             counts, bin_edges = np.histogram(data_np, bins, range=(limits[0], limits[1]))
             mplhep.histplot((counts, bin_edges), yerr=True, color='black', histtype='errorbar',
                             label='data')
@@ -384,8 +458,8 @@ class F2MassFitter:
                              alpha=0.5, label=f'signal {isgn}')
 
         plt.plot(x_plot, total_func * norm, color='xkcd:blue', label='total fit')
-        plt.xlabel(self._data_handler_.get_var_name())
         plt.xlim(limits[0], limits[1])
+        plt.xlabel(axis_title)
         plt.ylabel(rf'counts / {(limits[1]-limits[0])/bins*1000:0.1f} MeV/$c^2$')
         plt.legend(loc='best')
         if logy:
@@ -440,8 +514,14 @@ class F2MassFitter:
             The mass error obtained from the fit
         """
         mass_name = 'm' if self._name_signal_pdf_[idx] == 'cauchy' else 'mu'
-        return self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['value'], \
-            self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['hesse']['error']
+        if self._fix_sgn_pars_[idx][mass_name]:
+            mass = self._init_sgn_pars_[idx][mass_name]
+            mass_err = 0.
+        else:
+            mass = self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['value']
+            mass_err = self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['hesse']['error']
+                
+        return mass, mass_err
 
     def get_sigma(self, idx=0):
         """
@@ -463,17 +543,23 @@ class F2MassFitter:
             Logger(f'Sigma parameter not defined for {self._name_signal_pdf_[idx]} pdf!', 'ERROR')
             return 0., 0.
 
-        return self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['value'], \
-            self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['hesse']['error']
+        if self._fix_sgn_pars_[idx]['sigma']:
+            sigma = self._init_sgn_pars_[idx]['sigma']
+            sigma_err = 0.
+        else:
+            sigma = self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['value']
+            sigma_err = self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['hesse']['error']
 
-    def get_parameter(self, idx, par):
+        return sigma, sigma_err
+
+    def get_signal_parameter(self, idx, par):
         """
-        Get the width and its error
+        Get a signal parameter and its error
 
         Parameters
         -------------------------------------------------
         idx: int
-            Index of the sigma to be returned (default: 0)
+            Index of the parameter to be returned (default: 0)
         par: str
             parameter to return
 
@@ -485,8 +571,44 @@ class F2MassFitter:
             The parameter error obtained from the fit
 
         """
-        return self._fit_result_.params[f'{self._name_}_{par}_signal{idx}']['value'], \
-            self._fit_result_.params[f'{self._name_}_{par}_signal{idx}']['hesse']['error']
+
+        if self._fix_sgn_pars_[idx][par]:
+            parameter = self._init_sgn_pars_[idx][par]
+            parameter_err = 0.
+        else:
+            parameter = self._fit_result_.params[f'{self._name_}_{par}_signal{idx}']['value']
+            parameter_err = self._fit_result_.params[f'{self._name_}_{par}_signal{idx}']['hesse']['error']
+
+        return parameter, parameter_err
+
+    def get_background_parameter(self, idx, par):
+        """
+        Get a background parameter and its error
+
+        Parameters
+        -------------------------------------------------
+        idx: int
+            Index of the parameter to be returned (default: 0)
+        par: str
+            parameter to return
+
+        Returns
+        -------------------------------------------------
+        parameter: float
+            The parameter value obtained from the fit
+        parameter_err: float
+            The parameter error obtained from the fit
+
+        """
+
+        if self._fix_bkg_pars_[idx][par]:
+            parameter = self._init_bkg_pars_[idx][par]
+            parameter_err = 0.
+        else:
+            parameter = self._fit_result_.params[f'{self._name_}_{par}_bkg{idx}']['value']
+            parameter_err = self._fit_result_.params[f'{self._name_}_{par}_bkg{idx}']['hesse']['error']
+
+        return parameter, parameter_err
 
     def get_signal(self, idx=0, nsigma=3):
         """
@@ -728,3 +850,43 @@ class F2MassFitter:
             self._limits_bkg_pars_[idx][par_name] = kwargs['limits']
         if 'fix' in kwargs:
             self._fix_bkg_pars_[idx][par_name] = kwargs['fix']
+
+    def set_signal_kde(self, idx, sample, **kwargs):
+        """
+        Set sample and options for signal kde
+
+        Parameters
+        -------------------------------------------------
+        idx: int
+            Index of the signal
+        sample: flarefly.DataHandler
+            Data sample for Kernel Density Estimation
+        **kwargs: dict
+            Arguments for kde options. See 
+            https://zfit.readthedocs.io/en/latest/user_api/pdf/
+            _generated/kde_api/zfit.pdf.KDE1DimGrid.html#zfit.pdf.KDE1DimGrid
+            for more details
+        """
+
+        self._kde_signal_sample_[idx] = sample
+        self._kde_signal_option_[idx] = kwargs
+
+    def set_background_kde(self, idx, sample, **kwargs):
+        """
+        Set sample and options for background kde
+
+        Parameters
+        -------------------------------------------------
+        idx: int
+            Index of the background
+        sample: flarefly.DataHandler
+            Data sample for Kernel Density Estimation
+        **kwargs: dict
+            Arguments for kde options. See 
+            https://zfit.readthedocs.io/en/latest/user_api/pdf/
+            _generated/kde_api/zfit.pdf.KDE1DimGrid.html#zfit.pdf.KDE1DimGrid
+            for more details
+        """
+
+        self._kde_bkg_sample_[idx] = sample
+        self._kde_bkg_option_[idx] = kwargs
