@@ -83,7 +83,7 @@ class F2MassFitter:
         zfit.settings.advanced_warnings.all = False
         zfit.settings.changed_warnings.all = False
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches, too-many-statements
     def __build_signal_pdfs(self, obs):
         """
         Helper function to compose the signal pdfs
@@ -373,6 +373,7 @@ class F2MassFitter:
 
         return self._fit_result_
 
+    # pylint: disable=too-many-statements
     def plot_mass_fit(self, **kwargs):
         """
         Plot the mass fit
@@ -520,7 +521,7 @@ class F2MassFitter:
         else:
             mass = self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['value']
             mass_err = self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['hesse']['error']
-                
+
         return mass, mass_err
 
     def get_sigma(self, idx=0):
@@ -862,7 +863,7 @@ class F2MassFitter:
         sample: flarefly.DataHandler
             Data sample for Kernel Density Estimation
         **kwargs: dict
-            Arguments for kde options. See 
+            Arguments for kde options. See
             https://zfit.readthedocs.io/en/latest/user_api/pdf/
             _generated/kde_api/zfit.pdf.KDE1DimGrid.html#zfit.pdf.KDE1DimGrid
             for more details
@@ -882,7 +883,7 @@ class F2MassFitter:
         sample: flarefly.DataHandler
             Data sample for Kernel Density Estimation
         **kwargs: dict
-            Arguments for kde options. See 
+            Arguments for kde options. See
             https://zfit.readthedocs.io/en/latest/user_api/pdf/
             _generated/kde_api/zfit.pdf.KDE1DimGrid.html#zfit.pdf.KDE1DimGrid
             for more details
