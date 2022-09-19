@@ -8,6 +8,7 @@ from matplotlib.colors import ListedColormap
 
 import zfit
 import mplhep
+from particle import Particle
 from flarefly.utils import Logger
 
 
@@ -778,7 +779,7 @@ class F2MassFitter:
 
         return significance, significance_err
 
-    def set_particle_mass(self, idx, mass, **kwargs):
+    def set_particle_mass(self, idx, pdg_id=-999, pdg_name='', **kwargs):
         """
         Set the particle mass
 
@@ -786,16 +787,28 @@ class F2MassFitter:
         -------------------------------------------------
         idx: int
             Index of the signal
-        mass: float
-            The mass to be set
+        pdg_id: int
+            PDG ID of the particle
+        pdg_name: str
+            Name of the particle
         **kwargs: dict
             Additional optional arguments:
+            - mass: float
+                The mass of the particle
+            - mass_name: str
+                name of the mass variable
             - limits: list
                 minimum and maximum limits for the mass parameter
             - fix: bool
                 fix the mass parameter
         """
         mass_name = 'm' if self._name_signal_pdf_[idx] == 'cauchy' else 'mu'
+        if 'mass' in kwargs:
+            mass = kwargs['mass']
+        elif pdg_id != -999:
+            mass = Particle.from_pdgid(pdg_id).mass*1e-3
+        elif pdg_name:
+            mass = Particle.from_name(pdg_name).mass*1e-3
         self._init_sgn_pars_[idx][mass_name] = mass
         if 'limits' in kwargs:
             self._limits_sgn_pars_[idx][mass_name] = kwargs['limits']

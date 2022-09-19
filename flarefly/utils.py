@@ -3,7 +3,6 @@ Simple module with a class to manage the data used in the analysis
 """
 
 import sys
-from particle import Particle
 
 # pylint: disable=too-few-public-methods
 class Logger:
@@ -45,41 +44,3 @@ class Logger:
             print(f'\n\n{text}\n\n')
         else:
             print(text)
-
-def get_particle_mass(pdg_id=-999, pdg_name=''):
-    """
-    Get particle mass from PDG dictionary
-
-    Parameters
-    -------------------------------------------------
-    pdg_name: str
-        Name of particle
-    pdg_id: int
-        PDG id of particle
-
-    Returns
-    -------------------------------------------------
-    mass: float
-        Mass of particle
-    """
-    if pdg_id:
-        return Particle.from_pdgid(pdg_id).mass
-    if pdg_name:
-        return Particle.from_name(pdg_name).mass
-
-def get_particle_names(pdg_name):
-    """
-    Look for particle names containg pdg_name
-
-    Parameters
-    -------------------------------------------------
-    pdg_name: str
-        Name of particle to look for
-
-    Returns
-    -------------------------------------------------
-    """
-
-    print(f'All available particle containng "{pdg_name}" are:\n')
-    for _, particle in enumerate(Particle.findall(pdg_name)):
-        print(f'Name: {particle}, Mass: {particle.mass}, {particle.pdgid}')
