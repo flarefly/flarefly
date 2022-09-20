@@ -791,8 +791,10 @@ class F2MassFitter:
             Additional optional arguments:
             - mass: float
                 The mass of the particle
-            - mass_name: str
-                name of the mass variable
+            - pdg_id: int
+                PDG ID of the particle (alternative to mass)
+            - pdg_name: str
+                Name of the particle (alternative to mass)
             - limits: list
                 minimum and maximum limits for the mass parameter
             - fix: bool
