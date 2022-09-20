@@ -787,10 +787,6 @@ class F2MassFitter:
         -------------------------------------------------
         idx: int
             Index of the signal
-        pdg_id: int
-            PDG ID of the particle
-        pdg_name: str
-            Name of the particle
         **kwargs: dict
             Additional optional arguments:
             - mass: float
