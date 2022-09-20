@@ -8,6 +8,7 @@ from matplotlib.colors import ListedColormap
 
 import zfit
 import mplhep
+from particle import Particle
 from flarefly.utils import Logger
 
 
@@ -778,7 +779,7 @@ class F2MassFitter:
 
         return significance, significance_err
 
-    def set_particle_mass(self, idx, mass, **kwargs):
+    def set_particle_mass(self, idx, **kwargs):
         """
         Set the particle mass
 
@@ -786,16 +787,29 @@ class F2MassFitter:
         -------------------------------------------------
         idx: int
             Index of the signal
-        mass: float
-            The mass to be set
         **kwargs: dict
             Additional optional arguments:
+            - mass: float
+                The mass of the particle
+            - pdg_id: int
+                PDG ID of the particle (alternative to mass)
+            - pdg_name: str
+                Name of the particle (alternative to mass)
             - limits: list
                 minimum and maximum limits for the mass parameter
             - fix: bool
                 fix the mass parameter
         """
         mass_name = 'm' if self._name_signal_pdf_[idx] == 'cauchy' else 'mu'
+        if 'mass' in kwargs:
+            mass = kwargs['mass']
+        elif 'pdg_id' in kwargs:
+            mass = Particle.from_pdgid(kwargs['pdg_id']).mass*1e-3
+        elif 'pdg_name' in kwargs:
+            mass = Particle.from_name(kwargs['pdg_name']).mass*1e-3
+        else:
+            Logger(f'"mass", "pdg_id", and "pdg_name" not provided, mass value for signal {idx} will not be set',
+                         'ERROR')
         self._init_sgn_pars_[idx][mass_name] = mass
         if 'limits' in kwargs:
             self._limits_sgn_pars_[idx][mass_name] = kwargs['limits']

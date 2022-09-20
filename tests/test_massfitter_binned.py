@@ -17,10 +17,10 @@ DATABINNED = DataHandler(INFILE, var_name=r'$M_\mathrm{K\pi\pi}$ (GeV/$c^{2}$)',
 FITTERBINNED = F2MassFitter(DATABINNED,
                             name_signal_pdf=['gaussian', 'gaussian'],
                             name_background_pdf=['expo'])
-FITTERBINNED.set_particle_mass(0, 1.872, fix=True)
-FITTERBINNED.set_particle_mass(1, 2.010, limits=[2.000, 2.020])
+FITTERBINNED.set_particle_mass(0, mass=1.872, fix=True)
+FITTERBINNED.set_particle_mass(1, pdg_id=413, limits=[2.000, 2.020])
 FITTERBINNED.set_signal_initpar(0, 'sigma', 0.010)
-FITTERBINNED.set_signal_initpar(1, 'sigma', 0.015)
+FITTERBINNED.set_signal_initpar(1, 'sigma', 0.015, limits=[0.01, 0.03])
 FITRES = FITTERBINNED.mass_zfit()
 FIG = FITTERBINNED.plot_mass_fit(style='ATLAS')
 
