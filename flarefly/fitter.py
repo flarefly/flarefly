@@ -779,7 +779,7 @@ class F2MassFitter:
 
         return significance, significance_err
 
-    def set_particle_mass(self, idx, pdg_id=-999, pdg_name='', **kwargs):
+    def set_particle_mass(self, idx, **kwargs):
         """
         Set the particle mass
 
