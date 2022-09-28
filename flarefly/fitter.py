@@ -231,6 +231,20 @@ class F2MassFitter:
                     obs=obs,
                     lam=self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}']
                 )
+            elif 'chebpol' in pdf_name:
+                pol_degree = int(pdf_name.split('chebpol')[1])
+                for deg in range(pol_degree + 1):
+                    self._init_bkg_pars_[ipdf].setdefault(f'c{deg}', 0.1)
+                    self._limits_bkg_pars_[ipdf].setdefault(f'c{deg}', [-1.e6, 1.e6])
+                    self._fix_bkg_pars_[ipdf].setdefault(f'c{deg}', False)
+                    self._bkg_pars_[ipdf][f'{self._name_}_c{deg}_bkg{ipdf}'] = zfit.Parameter(
+                        f'{self._name_}_c{deg}_bkg{ipdf}', self._init_bkg_pars_[ipdf][f'c{deg}'],
+                        self._limits_bkg_pars_[ipdf][f'c{deg}'][0], self._limits_bkg_pars_[ipdf][f'c{deg}'][1],
+                        floating=not self._fix_bkg_pars_[ipdf][f'c{deg}'])
+                coeff0 = self._bkg_pars_[ipdf][f'{self._name_}_c0_bkg{ipdf}']
+                bkg_coeffs = [self._bkg_pars_[ipdf][f'{self._name_}_c{deg}_bkg{ipdf}']
+                              for deg in range(1, pol_degree + 1)]
+                self._background_pdf_[ipdf] = zfit.pdf.Chebyshev(obs=obs, coeffs=bkg_coeffs, coeff0=coeff0)
             elif 'kde' in pdf_name:
                 if self._kde_bkg_sample_[ipdf]:
                     if pdf_name == 'kde_exact':
@@ -256,20 +270,6 @@ class F2MassFitter:
 
                 else:
                     Logger(f'Missing datasample for Kernel Density Estimation of background {ipdf}!', 'FATAL')
-            elif 'pol' in pdf_name:
-                pol_degree = int(pdf_name.split('pol')[1])
-                for deg in range(pol_degree + 1):
-                    self._init_bkg_pars_[ipdf].setdefault(f'c{deg}', 0.1)
-                    self._limits_bkg_pars_[ipdf].setdefault(f'c{deg}', [-1.e6, 1.e6])
-                    self._fix_bkg_pars_[ipdf].setdefault(f'c{deg}', False)
-                    self._bkg_pars_[ipdf][f'{self._name_}_c{deg}_bkg{ipdf}'] = zfit.Parameter(
-                        f'{self._name_}_c{deg}_bkg{ipdf}', self._init_bkg_pars_[ipdf][f'c{deg}'],
-                        self._limits_bkg_pars_[ipdf][f'c{deg}'][0], self._limits_bkg_pars_[ipdf][f'c{deg}'][1],
-                        floating=not self._fix_bkg_pars_[ipdf][f'c{deg}'])
-                coeff0 = self._bkg_pars_[ipdf][f'{self._name_}_c0_bkg{ipdf}']
-                bkg_coeffs = [self._bkg_pars_[ipdf][f'{self._name_}_c{deg}_bkg{ipdf}']
-                              for deg in range(1, pol_degree + 1)]
-                self._background_pdf_[ipdf] = zfit.pdf.Chebyshev(obs=obs, coeffs=bkg_coeffs, coeff0=coeff0)
             else:
                 Logger(f'Background pdf {pdf_name} not supported', 'FATAL')
 
