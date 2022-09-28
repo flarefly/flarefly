@@ -6,6 +6,7 @@ import numpy as np
 import zfit
 import pandas as pd
 import uproot
+from hist import Hist
 from flarefly.utils import Logger
 
 # pylint: disable=too-many-instance-attributes,too-many-statements,too-many-branches
@@ -30,8 +31,8 @@ class DataHandler:
             If True, zfit package is used to fit the data
         **kwargs: dict
             Additional optional arguments:
-            - histoname: str
-                Name of the histogram to be used in the fit in case of ROOT file
+                - histoname: str
+                    Name of the histogram to be used in the fit in case of ROOT file
         """
         self._input_ = data
         self._var_name_ = var_name
@@ -238,3 +239,45 @@ class DataHandler:
 
         Logger('Data format not supported yet for pandas conversion.', 'ERROR')
         return None
+
+    def to_hist(self, **kwargs):
+        """
+        returns data in NamedHist
+
+        Returns
+        -------------------------------------------------
+        hist: Hist
+            The data in a hist.Hist
+        **kwargs: dict
+            Additional optional arguments:
+                - lower_edge: float
+                    lower edge (only used in case of originally unbinned data)
+                - upper_edge: float
+                    upper edge (only used in case of originally unbinned data)
+                - nbins: int
+                    number of bins (only used in case of originally unbinned data)
+                - axis_title: str
+                    label of x-axis (only used in case of originally unbinned data)
+                - varname: str
+                    name of variable (needed in case of originally unbinned data)
+        """
+
+        if self._isbinned_:
+            return self._binned_data_.to_hist()
+
+        if 'varname' not in kwargs:
+            Logger('Name of variable needed in case of unbinned data.', 'FATAL')
+
+        varname = kwargs['varname']
+        df_unbinned = self._data_.to_pandas()
+        data = df_unbinned[varname].to_numpy()
+
+        nbins = kwargs.get('nbins', 100)
+        lower_edge = kwargs.get('lower_edge', min(data))
+        upper_edge = kwargs.get('upper_edge', max(data))
+        axis_title = kwargs.get('axis_title', varname)
+
+        hist = Hist.new.Reg(nbins, lower_edge, upper_edge, name="x", label=axis_title).Double()
+        hist.fill(x=data)
+
+        return hist
