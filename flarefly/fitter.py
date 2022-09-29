@@ -51,6 +51,8 @@ class F2MassFitter:
 
             - 'expo'
 
+            - 'chebpolN' (N is the order of the polynomial)
+
             - 'kde_exact' (requires to set the datasample and options)
 
             - 'kde_grid' (requires to set the datasample and options)
