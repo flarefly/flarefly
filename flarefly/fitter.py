@@ -26,23 +26,39 @@ class F2MassFitter:
         -------------------------------------------------
         data_handler: flarefly.DataHandler
             The data handler containing the data to fit
+
         name_signal_pdf: list
             The list of names for the signal pdfs. The possible options are:
-                - 'gaussian'
-                - 'crystalball'
-                - 'cauchy'
-                - 'kde_exact' (requires to set the datasample and options)
-                - 'kde_grid' (requires to set the datasample and options)
-                - 'kde_fft' (requires to set the datasample and options)
-                - 'kde_isj' (requires to set the datasample and options)
+
+            - 'gaussian'
+
+            - 'crystalball'
+
+            - 'cauchy'
+
+            - 'kde_exact' (requires to set the datasample and options)
+
+            - 'kde_grid' (requires to set the datasample and options)
+
+            - 'kde_fft' (requires to set the datasample and options)
+
+            - 'kde_isj' (requires to set the datasample and options)
+
         name_background_pdf: list
             The list of names of the background pdfs. The possible options are:
-                - 'nobkg'
-                - 'expo'
-                - 'kde_exact' (requires to set the datasample and options)
-                - 'kde_grid' (requires to set the datasample and options)
-                - 'kde_fft' (requires to set the datasample and options)
-                - 'kde_isj' (requires to set the datasample and options)
+
+            - 'nobkg'
+
+            - 'expo'
+
+            - 'kde_exact' (requires to set the datasample and options)
+
+            - 'kde_grid' (requires to set the datasample and options)
+
+            - 'kde_fft' (requires to set the datasample and options)
+
+            - 'kde_isj' (requires to set the datasample and options)
+
         name: str
             Optional name for the fitter,
             needed in case of multiple fitters defined in the same script
@@ -381,15 +397,21 @@ class F2MassFitter:
 
         Parameters
         -------------------------------------------------
-        kwargs:
+        **kwargs: dict
+            Additional optional arguments:
+
             - style: str
                 style to be used (see https://github.com/scikit-hep/mplhep for more details)
+
             - logy: bool
                 log scale in y axis
+
             - figsize: tuple
                 size of the figure
+
             - bins: int
                 number of bins in case of unbinned fit
+
             - axis_title: str
                 x-axis title
 
@@ -789,14 +811,19 @@ class F2MassFitter:
             Index of the signal
         **kwargs: dict
             Additional optional arguments:
+
             - mass: float
                 The mass of the particle
+
             - pdg_id: int
                 PDG ID of the particle (alternative to mass)
+
             - pdg_name: str
                 Name of the particle (alternative to mass)
+
             - limits: list
                 minimum and maximum limits for the mass parameter
+
             - fix: bool
                 fix the mass parameter
         """
@@ -830,8 +857,10 @@ class F2MassFitter:
             The value of parameter to be set
         **kwargs: dict
             Additional optional arguments:
+
             - limits: list
                 minimum and maximum limits for the parameter
+
             - fix: bool
                 fix the parameter to init_value
         """
@@ -855,8 +884,10 @@ class F2MassFitter:
             The value of parameter to be set
         **kwargs: dict
             Additional optional arguments:
+
             - limits: list
                 minimum and maximum limits for the parameter
+
             - fix: bool
                 fix the mass parameter
         """
@@ -866,6 +897,7 @@ class F2MassFitter:
         if 'fix' in kwargs:
             self._fix_bkg_pars_[idx][par_name] = kwargs['fix']
 
+    # pylint: disable=line-too-long
     def set_signal_kde(self, idx, sample, **kwargs):
         """
         Set sample and options for signal kde
@@ -878,14 +910,14 @@ class F2MassFitter:
             Data sample for Kernel Density Estimation
         **kwargs: dict
             Arguments for kde options. See
-            https://zfit.readthedocs.io/en/latest/user_api/pdf/
-            _generated/kde_api/zfit.pdf.KDE1DimGrid.html#zfit.pdf.KDE1DimGrid
+            https://zfit.readthedocs.io/en/latest/user_api/pdf/_generated/kde_api/zfit.pdf.KDE1DimGrid.html#zfit.pdf.KDE1DimGrid
             for more details
         """
 
         self._kde_signal_sample_[idx] = sample
         self._kde_signal_option_[idx] = kwargs
 
+    # pylint: disable=line-too-long
     def set_background_kde(self, idx, sample, **kwargs):
         """
         Set sample and options for background kde
@@ -898,8 +930,7 @@ class F2MassFitter:
             Data sample for Kernel Density Estimation
         **kwargs: dict
             Arguments for kde options. See
-            https://zfit.readthedocs.io/en/latest/user_api/pdf/
-            _generated/kde_api/zfit.pdf.KDE1DimGrid.html#zfit.pdf.KDE1DimGrid
+            https://zfit.readthedocs.io/en/latest/user_api/pdf/_generated/kde_api/zfit.pdf.KDE1DimGrid.html#zfit.pdf.KDE1DimGrid
             for more details
         """
 
