@@ -31,8 +31,9 @@ class DataHandler:
             If True, zfit package is used to fit the data
         **kwargs: dict
             Additional optional arguments:
-                - histoname: str
-                    Name of the histogram to be used in the fit in case of ROOT file
+
+            - histoname: str
+                Name of the histogram to be used in the fit in case of ROOT file
         """
         self._input_ = data
         self._var_name_ = var_name
@@ -250,16 +251,21 @@ class DataHandler:
             The data in a hist.Hist
         **kwargs: dict
             Additional optional arguments:
-                - lower_edge: float
-                    lower edge (only used in case of originally unbinned data)
-                - upper_edge: float
-                    upper edge (only used in case of originally unbinned data)
-                - nbins: int
-                    number of bins (only used in case of originally unbinned data)
-                - axis_title: str
-                    label of x-axis (only used in case of originally unbinned data)
-                - varname: str
-                    name of variable (needed in case of originally unbinned data)
+
+            - lower_edge: float
+                lower edge (only used in case of originally unbinned data)
+
+            - upper_edge: float
+                upper edge (only used in case of originally unbinned data)
+
+            - nbins: int
+                number of bins (only used in case of originally unbinned data)
+
+            - axis_title: str
+                label of x-axis (only used in case of originally unbinned data)
+
+            - varname: str
+                name of variable (needed in case of originally unbinned data)
         """
 
         if self._isbinned_:
