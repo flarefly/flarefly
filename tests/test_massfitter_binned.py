@@ -28,8 +28,6 @@ for ibkg, bkg_pdf in enumerate(bkg_pdfs):
     if bkg_pdf == 'chebpol1':
         FITTERBINNED[ibkg].set_background_initpar(0, 'c0', 850)
         FITTERBINNED[ibkg].set_background_initpar(0, 'c1', -0.4)
-    elif 'chebpol' in bkg_pdf:
-        print("WARNING: Chebyshev polynomials require intial parameters to be set.")
     FITRES.append(FITTERBINNED[ibkg].mass_zfit())
     FIG.append(FITTERBINNED[ibkg].plot_mass_fit(style='ATLAS'))
     RAWYHIST.append(uproot.open(INFILE)["hRawYields"].to_numpy())
