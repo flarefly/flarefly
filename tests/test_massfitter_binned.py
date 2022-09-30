@@ -14,7 +14,6 @@ INFILE = os.path.join(os.getcwd(), 'tests/histos.root')
 DATABINNED = DataHandler(INFILE, var_name=r'$M_\mathrm{K\pi\pi}$ (GeV/$c^{2}$)',
                          histoname='hMass_80_120', limits=[1.75, 2.06])
 
-
 bkg_pdfs = ['chebpol1', 'expo']
 FITTERBINNED, FITRES, FIG, RAWYHIST, RAWYIN = ([] for _ in range(5))
 for ibkg, bkg_pdf in enumerate(bkg_pdfs):
@@ -40,17 +39,20 @@ def test_fitter():
     """
     Test the mass fitter
     """
-    assert isinstance(FITRES, zfit.minimizers.fitresult.FitResult)
+    for fitres in FITRES:
+        assert isinstance(fitres, zfit.minimizers.fitresult.FitResult)
 
 def test_fitter_result():
     """
     Test the fitter output
     """
-    rawy, rawy_err = FITTERBINNED.get_raw_yield()
-    assert np.isclose(RAWYIN, rawy, atol=5*rawy_err)
+    for _, (fitterbinned, raw_in) in enumerate(zip(FITTERBINNED, RAWYIN)):
+        rawy, rawy_err = fitterbinned.get_raw_yield()
+        assert np.isclose(raw_in, rawy, atol=5*rawy_err)
 
 def test_plot():
     """
     Test the mass fitter plot
     """
-    assert isinstance(FIG, matplotlib.figure.Figure)
+    for fig in FIG:
+        assert isinstance(fig, matplotlib.figure.Figure)
