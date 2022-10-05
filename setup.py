@@ -56,7 +56,7 @@ SETUP = Setup(
     name="flarefly",
 
     # LAST-TAG is a placeholder. Automatically replaced at deploy time with the right tag
-    version="0.0.4",
+    version="0.0.5",
     description="FLexible And REliable Fitting LibrarY for particle physics analysis",
     url="https://github.com/flarefly/flarefly",
     author="flarefly-developers",
