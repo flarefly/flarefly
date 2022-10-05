@@ -4,154 +4,420 @@ Module containing the class used to perform mass fits
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 
 import zfit
 import mplhep
+from particle import Particle
 from flarefly.utils import Logger
+import flarefly.custom_pdfs as cpdf
 
 
-# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-instance-attributes, too-many-lines
 class F2MassFitter:
     """
     Class used to perform mass fits with the zfit library
     https://github.com/zfit/zfit
     """
 
-    def __init__(self, data_handler=None, name_signal_pdf=None, name_background_pdf=None):
+    def __init__(self, data_handler, name_signal_pdf, name_background_pdf, name=""):
         """
         Initialize the F2MassFitter class
         Parameters
         -------------------------------------------------
         data_handler: flarefly.DataHandler
             The data handler containing the data to fit
-        name_signal_pdf: str
-            The name of the signal pdf. The possible options are:
+
+        name_signal_pdf: list
+            The list of names for the signal pdfs. The possible options are:
+
             - 'gaussian'
+
+            - 'doublegaus'
+
             - 'crystalball'
-        name_background_pdf: str
-            The name of the background pdf. The possible options are:
+
+            - 'doublecb'
+
+            - 'cauchy'
+
+            - 'kde_exact' (requires to set the datasample and options)
+
+            - 'kde_grid' (requires to set the datasample and options)
+
+            - 'kde_fft' (requires to set the datasample and options)
+
+            - 'kde_isj' (requires to set the datasample and options)
+
+        name_background_pdf: list
+            The list of names of the background pdfs. The possible options are:
+
+            - 'nobkg'
+
             - 'expo'
+
+            - 'powlaw'
+
+            - 'expopow'
+
+            - 'chebpolN' (N is the order of the polynomial)
+
+            - 'kde_exact' (requires to set the datasample and options)
+
+            - 'kde_grid' (requires to set the datasample and options)
+
+            - 'kde_fft' (requires to set the datasample and options)
+
+            - 'kde_isj' (requires to set the datasample and options)
+
+        name: str
+            Optional name for the fitter,
+            needed in case of multiple fitters defined in the same script
         """
         self._data_handler_ = data_handler
         self._name_signal_pdf_ = name_signal_pdf
         self._name_background_pdf_ = name_background_pdf
-        self._signal_pdf_ = None
-        self._background_pdf_ = None
+        self._signal_pdf_ = [None for _ in enumerate(name_signal_pdf)]
+        self._kde_signal_sample_ = [None for _ in enumerate(name_signal_pdf)]
+        self._kde_signal_option_ = [None for _ in enumerate(name_signal_pdf)]
+        if self._name_background_pdf_[0] == "nobkg":
+            self._background_pdf_ = []
+            self._kde_bkg_sample_ = []
+            self._kde_bkg_option_ = []
+        else:
+            self._background_pdf_ = [None for _ in enumerate(name_background_pdf)]
+            self._kde_bkg_sample_ = [None for _ in enumerate(name_background_pdf)]
+            self._kde_bkg_option_ = [None for _ in enumerate(name_background_pdf)]
         self._total_pdf_ = None
         self._total_pdf_binned_ = None
         self._fit_result_ = None
-        self._init_mass_ = 1.865
-        self._init_width_ = 0.01
-        self._mass_ = None
-        self._width_ = None
-        self._frac_signal_ = None
-        self._alpha_ = None
-        self._nsig_ = None
-        self._bkg_pars_ = [None]
+        self._init_sgn_pars_ = [{} for _ in enumerate(name_signal_pdf)]
+        self._init_bkg_pars_ = [{} for _ in enumerate(name_signal_pdf)]
+        self._limits_sgn_pars_ = [{} for _ in enumerate(name_signal_pdf)]
+        self._limits_bkg_pars_ = [{} for _ in enumerate(name_signal_pdf)]
+        self._fix_sgn_pars_ = [{} for _ in enumerate(name_signal_pdf)]
+        self._fix_bkg_pars_ = [{} for _ in enumerate(name_signal_pdf)]
+        self._sgn_pars_ = [{} for _ in enumerate(name_signal_pdf)]
+        self._bkg_pars_ = [{} for _ in enumerate(name_background_pdf)]
+        if self._name_background_pdf_[0] == "nobkg":
+            self._fracs_ = [None for _ in range(len(name_signal_pdf) - 1)]
+        else:
+            self._fracs_ = [None for _ in range(len(name_signal_pdf) + len(name_background_pdf) - 1)]
+        self._rawyield_ = [0. for _ in enumerate(name_signal_pdf)]
+        self._rawyield_err_ = [0. for _ in enumerate(name_signal_pdf)]
         self._minimizer_ = zfit.minimize.Minuit(verbosity=7)
-        self._rawyield_ = 0.
-        self._rawyield_err_ = 0.
-        self._name_secpeak_pdf_ = 'nosecpeak'
-        self._init_mass_secpeak_ = 1.870
-        self._init_width_secpeak_ = 0.01
-        self._mass_secpeak_ = None
-        self._width_secpeak_ = None
-        self._alpha_secpeak_ = None
-        self._nsig_secpeak_ = None
-        self._frac_secpeak_ = None
-        self._secpeak_pdf_ = None
-        self._rawyield_secpeak_ = 0.
-        self._rawyield_err_secpeak_ = 0.
+        self._name_ = name
 
         zfit.settings.advanced_warnings.all = False
         zfit.settings.changed_warnings.all = False
 
-    # pylint: disable=too-many-branches
-    def __build_signal_pdf(self, obs):
+    # pylint: disable=too-many-branches, too-many-statements
+    def __build_signal_pdfs(self, obs):
         """
-        Helper function to compose the signal pdf
-        """
-
-        if self._name_signal_pdf_ == 'gaussian':
-            if self._mass_ is None:
-                self._mass_ = zfit.Parameter('mass_signal', self._init_mass_)
-            else:
-                self._mass_.set_value(self._init_mass_)
-            if self._width_ is None:
-                self._width_ = zfit.Parameter('width_signal', self._init_width_)
-            else:
-                self._width_.set_value(self._init_width_)
-            self._signal_pdf_ = zfit.pdf.Gauss(obs=obs, mu=self._mass_, sigma=self._width_)
-        elif self._name_signal_pdf_ == 'crystalball':
-            if self._mass_ is None:
-                self._mass_ = zfit.Parameter('mass_signal', self._init_mass_)
-            else:
-                self._mass_.set_value(self._init_mass_)
-            if self._width_ is None:
-                self._width_ = zfit.Parameter('width_signal', self._init_width_)
-            else:
-                self._width_.set_value(self._init_width_)
-            if self._alpha_ is None:
-                self._alpha_ = zfit.Parameter('alpha', 0.5)
-            if self._nsig_ is None:
-                self._nsig_ = zfit.Parameter('nsig', 1.)
-            self._signal_pdf_ = zfit.pdf.CrystalBall(obs=obs, mu=self._mass_, sigma=self._width_,
-                                                     alpha=self._alpha_, n=self._nsig_)
-        else:
-            Logger('Signal pdf not supported', 'FATAL')
-
-    def __build_background_pdf(self, obs):
-        """
-        Helper function to compose the background pdf
+        Helper function to compose the signal pdfs
         """
 
-        if self._name_background_pdf_ == 'nobkg':
-            Logger('Performing fit with no bkg pdf', 'WARNING')
-        elif self._name_background_pdf_ == 'expo':
-            if self._bkg_pars_[0] is None:
-                self._bkg_pars_[0] = zfit.Parameter('bkg_p0', 0.1)
-            self._background_pdf_ = zfit.pdf.Exponential(self._bkg_pars_[0], obs=obs)
-        else:
-            Logger('Background pdf not supported', 'FATAL')
+        for ipdf, pdf_name in enumerate(self._name_signal_pdf_):
+            if pdf_name == 'gaussian':
+                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
+                self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
+                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
+                self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
+                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
+                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
+                self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma'],
+                    self._limits_sgn_pars_[ipdf]['sigma'][0], self._limits_sgn_pars_[ipdf]['sigma'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['sigma'])
+                self._signal_pdf_[ipdf] = zfit.pdf.Gauss(
+                    obs=obs,
+                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
+                    sigma=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}']
+                )
+            elif pdf_name == 'doublegaus':
+                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
+                self._init_sgn_pars_[ipdf].setdefault('sigma1', 0.010)
+                self._init_sgn_pars_[ipdf].setdefault('sigma2', 0.100)
+                self._init_sgn_pars_[ipdf].setdefault('frac1', 0.9)
+                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
+                self._fix_sgn_pars_[ipdf].setdefault('sigma1', False)
+                self._fix_sgn_pars_[ipdf].setdefault('sigma2', False)
+                self._fix_sgn_pars_[ipdf].setdefault('frac1', False)
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma1', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma2', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('frac1', [0., 1.])
+                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
+                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
+                self._sgn_pars_[ipdf][f'{self._name_}_sigma1_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_sigma1_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma1'],
+                    self._limits_sgn_pars_[ipdf]['sigma1'][0], self._limits_sgn_pars_[ipdf]['sigma1'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['sigma1'])
+                self._sgn_pars_[ipdf][f'{self._name_}_sigma2_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_sigma2_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma2'],
+                    self._limits_sgn_pars_[ipdf]['sigma2'][0], self._limits_sgn_pars_[ipdf]['sigma2'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['sigma1'])
+                self._sgn_pars_[ipdf][f'{self._name_}_frac1_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_frac1_signal{ipdf}', self._init_sgn_pars_[ipdf]['frac1'],
+                    self._limits_sgn_pars_[ipdf]['frac1'][0], self._limits_sgn_pars_[ipdf]['frac1'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['frac1'])
+                self._signal_pdf_[ipdf] = cpdf.DoubleGauss(
+                    obs=obs,
+                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
+                    sigma1=self._sgn_pars_[ipdf][f'{self._name_}_sigma1_signal{ipdf}'],
+                    sigma2=self._sgn_pars_[ipdf][f'{self._name_}_sigma2_signal{ipdf}'],
+                    frac1=self._sgn_pars_[ipdf][f'{self._name_}_frac1_signal{ipdf}'],
+                )
+            elif pdf_name == 'crystalball':
+                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
+                self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
+                self._init_sgn_pars_[ipdf].setdefault('alpha', 0.5)
+                self._init_sgn_pars_[ipdf].setdefault('n', 1.)
+                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
+                self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
+                self._fix_sgn_pars_[ipdf].setdefault('alpha', False)
+                self._fix_sgn_pars_[ipdf].setdefault('n', False)
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('alpha', [0, 1.e10])
+                self._limits_sgn_pars_[ipdf].setdefault('n', [0., 1.e10])
+                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
+                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
+                self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma'],
+                    self._limits_sgn_pars_[ipdf]['sigma'][0], self._limits_sgn_pars_[ipdf]['sigma'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['sigma'])
+                self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_alpha_signal{ipdf}', self._init_sgn_pars_[ipdf]['alpha'],
+                    self._limits_sgn_pars_[ipdf]['alpha'][0], self._limits_sgn_pars_[ipdf]['alpha'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['alpha'])
+                self._sgn_pars_[ipdf][f'{self._name_}_n_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_n_signal{ipdf}', self._init_sgn_pars_[ipdf]['n'],
+                    self._limits_sgn_pars_[ipdf]['n'][0], self._limits_sgn_pars_[ipdf]['n'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['n'])
+                self._signal_pdf_[ipdf] = zfit.pdf.CrystalBall(
+                    obs=obs,
+                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
+                    sigma=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'],
+                    alpha=self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}'],
+                    n=self._sgn_pars_[ipdf][f'{self._name_}_n_signal{ipdf}']
+                )
+            elif pdf_name == 'doublecb':
+                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
+                self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
+                self._init_sgn_pars_[ipdf].setdefault('alphal', 0.5)
+                self._init_sgn_pars_[ipdf].setdefault('nl', 1.)
+                self._init_sgn_pars_[ipdf].setdefault('alphar', 0.5)
+                self._init_sgn_pars_[ipdf].setdefault('nr', 1.)
+                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
+                self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
+                self._fix_sgn_pars_[ipdf].setdefault('alphal', False)
+                self._fix_sgn_pars_[ipdf].setdefault('nl', False)
+                self._fix_sgn_pars_[ipdf].setdefault('alphar', False)
+                self._fix_sgn_pars_[ipdf].setdefault('nr', False)
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('alphal', [0, 1.e10])
+                self._limits_sgn_pars_[ipdf].setdefault('nl', [0., 1.e10])
+                self._limits_sgn_pars_[ipdf].setdefault('alphar', [0, 1.e10])
+                self._limits_sgn_pars_[ipdf].setdefault('nr', [0., 1.e10])
+                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
+                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
+                self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma'],
+                    self._limits_sgn_pars_[ipdf]['sigma'][0], self._limits_sgn_pars_[ipdf]['sigma'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['sigma'])
+                self._sgn_pars_[ipdf][f'{self._name_}_alphal_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_alphal_signal{ipdf}', self._init_sgn_pars_[ipdf]['alphal'],
+                    self._limits_sgn_pars_[ipdf]['alphal'][0], self._limits_sgn_pars_[ipdf]['alphal'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['alphal'])
+                self._sgn_pars_[ipdf][f'{self._name_}_nl_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_nl_signal{ipdf}', self._init_sgn_pars_[ipdf]['nl'],
+                    self._limits_sgn_pars_[ipdf]['nl'][0], self._limits_sgn_pars_[ipdf]['nl'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['nl'])
+                self._sgn_pars_[ipdf][f'{self._name_}_alphar_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_alphar_signal{ipdf}', self._init_sgn_pars_[ipdf]['alphar'],
+                    self._limits_sgn_pars_[ipdf]['alphar'][0], self._limits_sgn_pars_[ipdf]['alphar'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['alphar'])
+                self._sgn_pars_[ipdf][f'{self._name_}_nr_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_nr_signal{ipdf}', self._init_sgn_pars_[ipdf]['nr'],
+                    self._limits_sgn_pars_[ipdf]['nr'][0], self._limits_sgn_pars_[ipdf]['nr'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['nr'])
+                self._signal_pdf_[ipdf] = zfit.pdf.DoubleCB(
+                    obs=obs,
+                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
+                    sigma=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'],
+                    alphal=self._sgn_pars_[ipdf][f'{self._name_}_alphal_signal{ipdf}'],
+                    nl=self._sgn_pars_[ipdf][f'{self._name_}_nl_signal{ipdf}'],
+                    alphar=self._sgn_pars_[ipdf][f'{self._name_}_alphar_signal{ipdf}'],
+                    nr=self._sgn_pars_[ipdf][f'{self._name_}_nr_signal{ipdf}']
+                )
+            elif pdf_name == 'cauchy':
+                self._init_sgn_pars_[ipdf].setdefault('m', 1.865)
+                self._init_sgn_pars_[ipdf].setdefault('gamma', 0.010)
+                self._fix_sgn_pars_[ipdf].setdefault('m', False)
+                self._fix_sgn_pars_[ipdf].setdefault('gamma', False)
+                self._limits_sgn_pars_[ipdf].setdefault('m', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('gamma', [0., 1.e6])
+                self._sgn_pars_[ipdf][f'{self._name_}_m_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_m_signal{ipdf}', self._init_sgn_pars_[ipdf]['m'],
+                    self._limits_sgn_pars_[ipdf]['m'][0], self._limits_sgn_pars_[ipdf]['m'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['m'])
+                self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_gamma_signal{ipdf}', self._init_sgn_pars_[ipdf]['gamma'],
+                    self._limits_sgn_pars_[ipdf]['gamma'][0], self._limits_sgn_pars_[ipdf]['gamma'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['gamma'])
+                self._signal_pdf_[ipdf] = zfit.pdf.Cauchy(
+                    obs=obs,
+                    m=self._sgn_pars_[ipdf][f'{self._name_}_m_signal{ipdf}'],
+                    gamma=self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}']
+                )
+            elif 'kde' in pdf_name:
+                if self._kde_signal_sample_[ipdf]:
+                    if pdf_name == 'kde_exact':
+                        self._signal_pdf_[ipdf] = zfit.pdf.KDE1DimExact(self._kde_signal_sample_[ipdf].get_data(),
+                                                                        obs=self._kde_signal_sample_[ipdf].get_obs(),
+                                                                        name=f'{self._name_}_kde_signal{ipdf}',
+                                                                        **self._kde_signal_option_[ipdf])
+                    elif pdf_name == 'kde_grid':
+                        self._signal_pdf_[ipdf] = zfit.pdf.KDE1DimGrid(self._kde_signal_sample_[ipdf].get_data(),
+                                                                       obs=self._kde_signal_sample_[ipdf].get_obs(),
+                                                                       name=f'{self._name_}_kde_signal{ipdf}',
+                                                                       **self._kde_signal_option_[ipdf])
+                    elif pdf_name == 'kde_fft':
+                        self._signal_pdf_[ipdf] = zfit.pdf.KDE1DimFFT(self._kde_signal_sample_[ipdf].get_data(),
+                                                                      obs=self._kde_signal_sample_[ipdf].get_obs(),
+                                                                      name=f'{self._name_}_kde_signal{ipdf}',
+                                                                      **self._kde_signal_option_[ipdf])
+                    elif pdf_name == 'kde_isj':
+                        self._signal_pdf_[ipdf] = zfit.pdf.KDE1DimISJ(self._kde_signal_sample_[ipdf].get_data(),
+                                                                      obs=self._kde_signal_sample_[ipdf].get_obs(),
+                                                                      name=f'{self._name_}_kde_signal{ipdf}',
+                                                                      **self._kde_signal_option_[ipdf])
+                else:
+                    Logger(f'Missing datasample for Kernel Density Estimation of signal {ipdf}!', 'FATAL')
+            else:
+                Logger(f'Signal pdf {pdf_name} not supported', 'FATAL')
 
-    # pylint: disable=too-many-branches
-    def __build_secpeak_pdf(self, obs):
+    def __build_background_pdfs(self, obs):
         """
-        Helper function to compose the second peak pdf
+        Helper function to compose the background pdfs
         """
 
-        if self._name_secpeak_pdf_ == 'noseckpeak':
-            return
-        if self._name_secpeak_pdf_ == 'gaussian':
-            if self._mass_secpeak_ is None:
-                self._mass_secpeak_ = zfit.Parameter('mass_secpeak', self._init_mass_secpeak_)
+        for ipdf, pdf_name in enumerate(self._name_background_pdf_):
+            if pdf_name == 'nobkg':
+                Logger('Performing fit with no bkg pdf', 'WARNING')
+                break
+            if pdf_name == 'expo':
+                self._init_bkg_pars_[ipdf].setdefault('lam', 0.1)
+                self._limits_bkg_pars_[ipdf].setdefault('lam', [-1.e6, 1.e6])
+                self._fix_bkg_pars_[ipdf].setdefault('lam', False)
+                self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_lam_bkg{ipdf}', self._init_bkg_pars_[ipdf]['lam'],
+                    self._limits_bkg_pars_[ipdf]['lam'][0], self._limits_bkg_pars_[ipdf]['lam'][1],
+                    floating=not self._fix_bkg_pars_[ipdf]['lam'])
+                self._background_pdf_[ipdf] = zfit.pdf.Exponential(
+                    obs=obs,
+                    lam=self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}']
+                )
+            elif 'chebpol' in pdf_name:
+                pol_degree = int(pdf_name.split('chebpol')[1])
+                for deg in range(pol_degree + 1):
+                    self._init_bkg_pars_[ipdf].setdefault(f'c{deg}', 0.1)
+                    self._limits_bkg_pars_[ipdf].setdefault(f'c{deg}', [-1.e6, 1.e6])
+                    self._fix_bkg_pars_[ipdf].setdefault(f'c{deg}', False)
+                    self._bkg_pars_[ipdf][f'{self._name_}_c{deg}_bkg{ipdf}'] = zfit.Parameter(
+                        f'{self._name_}_c{deg}_bkg{ipdf}', self._init_bkg_pars_[ipdf][f'c{deg}'],
+                        self._limits_bkg_pars_[ipdf][f'c{deg}'][0], self._limits_bkg_pars_[ipdf][f'c{deg}'][1],
+                        floating=not self._fix_bkg_pars_[ipdf][f'c{deg}'])
+                coeff0 = self._bkg_pars_[ipdf][f'{self._name_}_c0_bkg{ipdf}']
+                bkg_coeffs = [self._bkg_pars_[ipdf][f'{self._name_}_c{deg}_bkg{ipdf}']
+                              for deg in range(1, pol_degree + 1)]
+                self._background_pdf_[ipdf] = zfit.pdf.Chebyshev(obs=obs, coeffs=bkg_coeffs, coeff0=coeff0)
+            elif 'powlaw' in pdf_name:
+                self._init_bkg_pars_[ipdf].setdefault('mass', Particle.from_pdgid(211).mass*1e-3) # pion mass as default
+                self._init_bkg_pars_[ipdf].setdefault('power', 1.)
+                self._limits_bkg_pars_[ipdf].setdefault('mass', [0., 1.e6])
+                self._limits_bkg_pars_[ipdf].setdefault('power', [-1.e6, 1.e6])
+                self._fix_bkg_pars_[ipdf].setdefault('mass', True)
+                self._fix_bkg_pars_[ipdf].setdefault('power', False)
+                if self._data_handler_.get_limits()[0] < self._init_bkg_pars_[ipdf]["mass"]:
+                    Logger('The mass parameter in powlaw cannot be smaller than the lower fit limit, please fix it.',
+                           'FATAL')
+                self._bkg_pars_[ipdf][f'{self._name_}_mass_bkg{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_mass_bkg{ipdf}', self._init_bkg_pars_[ipdf]['mass'],
+                    self._limits_bkg_pars_[ipdf]['mass'][0], self._limits_bkg_pars_[ipdf]['mass'][1],
+                    floating=not self._fix_bkg_pars_[ipdf]['mass'])
+                self._bkg_pars_[ipdf][f'{self._name_}_power_bkg{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_power_bkg{ipdf}', self._init_bkg_pars_[ipdf]['power'],
+                    self._limits_bkg_pars_[ipdf]['power'][0], self._limits_bkg_pars_[ipdf]['power'][1],
+                    floating=not self._fix_bkg_pars_[ipdf]['power'])
+                self._background_pdf_[ipdf] = cpdf.Pow(
+                    obs=obs,
+                    mass=self._bkg_pars_[ipdf][f'{self._name_}_mass_bkg{ipdf}'],
+                    power=self._bkg_pars_[ipdf][f'{self._name_}_power_bkg{ipdf}']
+                )
+            elif 'expopow' in pdf_name:
+                self._init_bkg_pars_[ipdf].setdefault('mass', Particle.from_pdgid(211).mass*1e-3) # pion mass as default
+                self._init_bkg_pars_[ipdf].setdefault('lam', 0.1)
+                self._limits_bkg_pars_[ipdf].setdefault('mass', [0., 1.e6])
+                self._limits_bkg_pars_[ipdf].setdefault('lam', [-1.e6, 1.e6])
+                self._fix_bkg_pars_[ipdf].setdefault('mass', True)
+                self._fix_bkg_pars_[ipdf].setdefault('lam', False)
+                if self._data_handler_.get_limits()[0] < self._init_bkg_pars_[ipdf]["mass"]:
+                    Logger('The mass parameter in expopow cannot be smaller than the lower fit limit, please fix it.',
+                           'FATAL')
+                self._bkg_pars_[ipdf][f'{self._name_}_mass_bkg{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_mass_bkg{ipdf}', self._init_bkg_pars_[ipdf]['mass'],
+                    self._limits_bkg_pars_[ipdf]['mass'][0], self._limits_bkg_pars_[ipdf]['mass'][1],
+                    floating=not self._fix_bkg_pars_[ipdf]['mass'])
+                self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_lam_bkg{ipdf}', self._init_bkg_pars_[ipdf]['lam'],
+                    self._limits_bkg_pars_[ipdf]['lam'][0], self._limits_bkg_pars_[ipdf]['lam'][1],
+                    floating=not self._fix_bkg_pars_[ipdf]['lam'])
+                self._background_pdf_[ipdf] = cpdf.ExpoPow(
+                    obs=obs,
+                    mass=self._bkg_pars_[ipdf][f'{self._name_}_mass_bkg{ipdf}'],
+                    lam=self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}']
+                )
+            elif 'kde' in pdf_name:
+                if self._kde_bkg_sample_[ipdf]:
+                    if pdf_name == 'kde_exact':
+                        self._background_pdf_[ipdf] = zfit.pdf.KDE1DimExact(self._kde_bkg_sample_[ipdf].get_data(),
+                                                                            obs=self._kde_bkg_sample_[ipdf].get_obs(),
+                                                                            name=f'{self._name_}_kde_bkg{ipdf}',
+                                                                            **self._kde_bkg_option_[ipdf])
+                    elif pdf_name == 'kde_grid':
+                        self._background_pdf_[ipdf] = zfit.pdf.KDE1DimGrid(self._kde_bkg_sample_[ipdf].get_data(),
+                                                                           obs=self._kde_bkg_sample_[ipdf].get_obs(),
+                                                                           name=f'{self._name_}_kde_bkg{ipdf}',
+                                                                           **self._kde_bkg_option_[ipdf])
+                    elif pdf_name == 'kde_fft':
+                        self._background_pdf_[ipdf] = zfit.pdf.KDE1DimFFT(self._kde_bkg_sample_[ipdf].get_data(),
+                                                                          obs=self._kde_bkg_sample_[ipdf].get_obs(),
+                                                                          name=f'{self._name_}_kde_bkg{ipdf}',
+                                                                          **self._kde_bkg_option_[ipdf])
+                    elif pdf_name == 'kde_isj':
+                        self._background_pdf_[ipdf] = zfit.pdf.KDE1DimISJ(self._kde_bkg_sample_[ipdf].get_data(),
+                                                                          obs=self._kde_bkg_sample_[ipdf].get_obs(),
+                                                                          name=f'{self._name_}_kde_bkg{ipdf}',
+                                                                          **self._kde_bkg_option_[ipdf])
+
+                else:
+                    Logger(f'Missing datasample for Kernel Density Estimation of background {ipdf}!', 'FATAL')
             else:
-                self._mass_secpeak_.set_value(self._init_mass_secpeak_)
-            if self._width_secpeak_ is None:
-                self._width_secpeak_ = zfit.Parameter('width_secpeak', self._init_width_secpeak_)
-            else:
-                self._width_secpeak_.set_value(self._init_width_secpeak_)
-            self._secpeak_pdf_ = zfit.pdf.Gauss(obs=obs, mu=self._mass_secpeak_,
-                                                sigma=self._width_secpeak_)
-        elif self._name_secpeak_pdf_ == 'crystalball':
-            if self._mass_secpeak_ is None:
-                self._mass_secpeak_ = zfit.Parameter('mass_secpeak', self._init_mass_secpeak_)
-            else:
-                self._mass_secpeak_.set_value(self._init_mass_secpeak_)
-            if self._width_secpeak_ is None:
-                self._width_secpeak_ = zfit.Parameter('width_secpeak', self._init_width_secpeak_)
-            else:
-                self._width_secpeak_.set_value(self._init_width_secpeak_)
-            if self._alpha_secpeak_ is None:
-                self._alpha_secpeak_ = zfit.Parameter('alpha_secpeak', 0.5)
-            if self._nsig_secpeak_ is None:
-                self._nsig_secpeak_ = zfit.Parameter('nsig_secpeak', 1.)
-            self._secpeak_pdf_ = zfit.pdf.CrystalBall(obs=obs, mu=self._mass_secpeak_,
-                                                      sigma=self._width_secpeak_,
-                                                      alpha=self._alpha_secpeak_,
-                                                      n=self._nsig_secpeak_)
-        else:
-            Logger('Second peak pdf not supported, the second peak will not be included.', 'ERORR')
+                Logger(f'Background pdf {pdf_name} not supported', 'FATAL')
+
 
     def __build_total_pdf(self):
         """
@@ -160,61 +426,76 @@ class F2MassFitter:
 
         obs = self._data_handler_.get_obs()
 
-        # order of the pdfs is signal, second peak, background
+        # order of the pdfs is signal, background
 
-        self.__build_signal_pdf(obs)
-        self.__build_secpeak_pdf(obs)
-        self.__build_background_pdf(obs)
+        self.__build_signal_pdfs(obs)
+        self.__build_background_pdfs(obs)
 
-        list_pdfs = [self._signal_pdf_]
-        if self._secpeak_pdf_:
-            list_pdfs.append(self._secpeak_pdf_)
-            if not self._frac_secpeak_:
-                self._frac_secpeak_ = zfit.Parameter('frac_secpeak', 0.1, 0., 1.)
-        if self._background_pdf_:
-            list_pdfs.append(self._background_pdf_)
+        if len(self._signal_pdf_) + len(self._background_pdf_) == 1:
+            self._total_pdf_ = self._signal_pdf_[0]
+            return
 
-        n_pdfs = len(list_pdfs)
-        list_fracs = []
-        if n_pdfs > 1:
-            if not self._frac_signal_:
-                self._frac_signal_ = zfit.Parameter('frac_signal', 0.1, 0., 1.)
-            list_fracs.append(self._frac_signal_)
-            if n_pdfs > 2:
-                list_fracs.append(self._frac_secpeak_)
+        for ipdf, _ in enumerate(self._signal_pdf_):
+            self._init_sgn_pars_[ipdf].setdefault('frac', 0.1)
+            self._fix_sgn_pars_[ipdf].setdefault('frac', False)
+            self._limits_sgn_pars_[ipdf].setdefault('frac', [0, 1.])
+            if len(self._background_pdf_) == 0 and ipdf == len(self._signal_pdf_) - 1:
+                continue
+            self._fracs_[ipdf] = zfit.Parameter(f'{self._name_}_frac_signal{ipdf}',
+                                                self._init_sgn_pars_[ipdf]['frac'],
+                                                self._limits_sgn_pars_[ipdf]['frac'][0],
+                                                self._limits_sgn_pars_[ipdf]['frac'][1],
+                                                floating=not self._fix_sgn_pars_[ipdf]['frac'])
 
-            self._total_pdf_ = zfit.pdf.SumPDF(list_pdfs, list_fracs)
-        else:
-            self._total_pdf_ = self._signal_pdf_
+        if len(self._background_pdf_) > 1:
+            for ipdf, _ in enumerate(self._background_pdf_):
+                self._init_bkg_pars_[ipdf].setdefault('frac', 0.1)
+                self._fix_bkg_pars_[ipdf].setdefault('frac', False)
+                self._limits_bkg_pars_[ipdf].setdefault('frac', [0, 1.])
+                self._fracs_[ipdf + len(self._signal_pdf_)] = zfit.Parameter(
+                    f'{self._name_}_frac_bkg{ipdf}',
+                    self._init_bkg_pars_[ipdf]['frac'],
+                    self._limits_bkg_pars_[ipdf]['frac'][0],
+                    self._limits_bkg_pars_[ipdf]['frac'][1],
+                    floating=not self._fix_bkg_pars_[ipdf]['frac'])
+
+        self._total_pdf_ = zfit.pdf.SumPDF(
+            self._signal_pdf_+self._background_pdf_, self._fracs_)
 
     def __prefit(self):
         """
         Helper function to perform a prefit to the sidebands
         """
-
+        # pylint: disable=fixme
+        #TODO: implement me
         Logger('Prefit step to be implemented', 'WARNING')
 
-    def set_particle_mass(self, mass):
+    def __get_all_fracs(self):
         """
-        Set the particle mass
+        Helper function to get all fractions
 
-        Parameters
+        Returns
         -------------------------------------------------
-        mass: float
-            The mass to be set
+        signal_fracs: list
+            fractions of the signal pdfs
+        background_fracs: list
+            fractions of the background pdfs
+        signal_err_fracs: list
+            errors of fractions of the signal pdfs
+        bkg_err_fracs: list
+            errors of fractions of the background pdfs
         """
-        self._init_mass_ = mass
+        signal_fracs, bkg_fracs, signal_err_fracs, bkg_err_fracs = ([] for _ in range(4))
+        for frac_par in self._fracs_:
+            par_name = frac_par.name
+            if f'{self._name_}_frac_signal' in par_name:
+                signal_fracs.append(self._fit_result_.params[par_name]['value'])
+                signal_err_fracs.append(self._fit_result_.params[par_name]['hesse']['error'])
+            elif f'{self._name_}_frac_bkg' in par_name:
+                bkg_fracs.append(self._fit_result_.params[par_name]['value'])
+                bkg_err_fracs.append(self._fit_result_.params[par_name]['hesse']['error'])
 
-    def set_peak_width(self, width):
-        """
-        Set the expected particle peak width
-
-        Parameters
-        -------------------------------------------------
-        width: float
-            The width to be set
-        """
-        self._init_width_ = width
+        return signal_fracs, bkg_fracs, signal_err_fracs, bkg_err_fracs
 
     def mass_zfit(self):
         """
@@ -229,7 +510,8 @@ class F2MassFitter:
             Logger('Data handler not specified', 'FATAL')
 
         self.__build_total_pdf()
-        self.__prefit()
+        # pylint: disable=fixme
+        self.__prefit() #TODO: implement me
 
         if self._data_handler_.get_is_binned():
             self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._total_pdf_,
@@ -245,52 +527,80 @@ class F2MassFitter:
         Logger(self._fit_result_, 'RESULT')
 
         norm = self._data_handler_.get_norm()
-        if self._frac_signal_:
-            self._rawyield_ = self._fit_result_.params['frac_signal']['value'] * norm
-            self._rawyield_err_ = self._fit_result_.params['frac_signal']['hesse']['error'] * norm
-        else:
+        if len(self._fracs_) == 0:
             self._rawyield_ = self._data_handler_.get_norm()
             self._rawyield_err_ = np.sqrt(self._rawyield_)
-
-        if self._frac_secpeak_:
-            self._rawyield_secpeak_ = self._fit_result_.params['frac_secpeak']['value'] * norm
-            self._rawyield_err_secpeak_ = self._fit_result_.params[
-                'frac_secpeak']['hesse']['error'] * norm
+        else:
+            for ipdf, _ in enumerate(self._signal_pdf_):
+                if len(self._background_pdf_) > 0 or ipdf < len(self._signal_pdf_) - 1:
+                    self._rawyield_[ipdf] = self._fit_result_.params[
+                        f'{self._name_}_frac_signal{ipdf}']['value'] * norm
+                    self._rawyield_err_[ipdf] = self._fit_result_.params[
+                        f'{self._name_}_frac_signal{ipdf}']['hesse']['error'] * norm
+                else:
+                    frac, frac_err = 0., 0.
+                    for ipdf2 in range(len(self._signal_pdf_)-1):
+                        frac += self._fit_result_.params[
+                            f'{self._name_}_frac_signal{ipdf2}']['value']
+                        frac_err += np.sqrt(self._fit_result_.params[
+                            f'{self._name_}_frac_signal{ipdf2}']['hesse']['error'])
+                    self._rawyield_[ipdf] = frac * norm
+                    self._rawyield_err_[ipdf] = frac_err * norm
 
         return self._fit_result_
 
-    def plot_mass_fit(self, style='LHCb2', logy=False):
+    # pylint: disable=too-many-statements
+    def plot_mass_fit(self, **kwargs):
         """
         Plot the mass fit
 
         Parameters
         -------------------------------------------------
-        style: str
-            style to be used (see https://github.com/scikit-hep/mplhep for more details)
-        logy: bool
-            log scale in y axis
+        **kwargs: dict
+            Additional optional arguments:
+
+            - style: str
+                style to be used (see https://github.com/scikit-hep/mplhep for more details)
+
+            - logy: bool
+                log scale in y axis
+
+            - figsize: tuple
+                size of the figure
+
+            - bins: int
+                number of bins in case of unbinned fit
+
+            - axis_title: str
+                x-axis title
 
         Returns
         -------------------------------------------------
         fig: matplotlib.figure.Figure
             figure containing the mass fit plot
         """
+
+        style = kwargs.get('style', 'LHCb2')
+        logy = kwargs.get('logy', False)
+        figsize = kwargs.get('figsize', (7, 7))
+        bins = kwargs.get('bins', 100)
+        axis_title = kwargs.get('axis_title', self._data_handler_.get_var_name())
+
         mplhep.style.use(style)
 
         obs = self._data_handler_.get_obs()
         limits = self._data_handler_.get_limits()
 
-        fig = plt.figure(figsize=(7, 7))
+        fig = plt.figure(figsize=figsize)
         if self._data_handler_.get_is_binned():
             hist = self._data_handler_.get_binned_data().to_hist()
             hist.plot(yerr=True, color='black', histtype='errorbar',
                       label='data')
             bins = len(self._data_handler_.get_binned_data().values())
-            bin_width = (limits[1] - limits[0]) / bins
-            norm = self._data_handler_.get_norm() * bin_width
+            bin_sigma = (limits[1] - limits[0]) / bins
+            norm = self._data_handler_.get_norm() * bin_sigma
         else:
             data_np = zfit.run(self._data_handler_.get_data()[:, 0])
-            bins = 100
             counts, bin_edges = np.histogram(data_np, bins, range=(limits[0], limits[1]))
             mplhep.histplot((counts, bin_edges), yerr=True, color='black', histtype='errorbar',
                             label='data')
@@ -298,32 +608,41 @@ class F2MassFitter:
 
         x_plot = np.linspace(limits[0], limits[1], num=1000)
         total_func = zfit.run(self._total_pdf_.pdf(x_plot, norm_range=obs))
-        signal_func = zfit.run(self._signal_pdf_.pdf(x_plot, norm_range=obs))
+        signal_funcs, signal_fracs, bkg_funcs, bkg_fracs = ([] for _ in range(4))
+        for signal_pdf in self._signal_pdf_:
+            signal_funcs.append(zfit.run(signal_pdf.pdf(x_plot, norm_range=obs)))
+        for bkg_pdf in self._background_pdf_:
+            bkg_funcs.append(zfit.run(bkg_pdf.pdf(x_plot, norm_range=obs)))
+        for frac_par in self._fracs_:
+            par_name = frac_par.name
+            if f'{self._name_}_frac_signal' in par_name:
+                signal_fracs.append(self._fit_result_.params[par_name]['value'])
+            elif f'{self._name_}_frac_bkg' in par_name:
+                bkg_fracs.append(self._fit_result_.params[par_name]['value'])
+        if len(signal_fracs) == 0:
+            signal_fracs.append(1.)
 
-        frac_signal = 1.
-        frac_secpeak = 0.
-        if self._frac_signal_:
-            frac_signal = self._fit_result_.params['frac_signal']['value']
-        if self._frac_secpeak_:
-            frac_secpeak = self._fit_result_.params['frac_secpeak']['value']
+        # first draw backgrounds
+        base_bkg_cmap = plt.cm.get_cmap('gist_heat', len(bkg_funcs) * 2)
+        bkg_cmap = ListedColormap(base_bkg_cmap(np.linspace(0.3, 0.8, len(bkg_funcs))))
+        for ibkg, bkg_func in enumerate(bkg_funcs):
+            if ibkg < len(bkg_fracs) - 1:
+                plt.plot(x_plot, bkg_func * norm * bkg_fracs[ibkg], color=bkg_cmap(ibkg),
+                         ls='--', label=f'background {ibkg}')
+            else:
+                plt.plot(x_plot, bkg_func * norm * (1-sum(bkg_fracs)-sum(signal_fracs)),
+                         color='firebrick', ls='--', label=f'background {ibkg}')
+        # then draw signals
+        base_sgn_cmap = plt.cm.get_cmap('viridis', len(signal_funcs) * 4)
+        sgn_cmap = ListedColormap(base_sgn_cmap(np.linspace(0.4, 0.65, len(signal_funcs))))
+        for isgn, (frac, signal_func) in enumerate(zip(signal_funcs, signal_fracs)):
+            plt.plot(x_plot, signal_func * norm * frac, color=sgn_cmap(isgn))
+            plt.fill_between(x_plot, signal_func * norm * frac, color=sgn_cmap(isgn),
+                             alpha=0.5, label=f'signal {isgn}')
 
-        if self._name_background_pdf_ != "nobkg":
-            bkg_func = zfit.run(self._background_pdf_.pdf(x_plot, norm_range=obs))
-            plt.plot(x_plot, bkg_func * norm * (1.-frac_signal-frac_secpeak), color='firebrick',
-                     ls="--", label='background')
-
-        if self._name_secpeak_pdf_ != "nosecpeak":
-            secpeak_func = zfit.run(self._secpeak_pdf_.pdf(x_plot, norm_range=obs))
-            plt.plot(x_plot, secpeak_func * norm * frac_secpeak, color='teal')
-            plt.fill_between(x_plot, secpeak_func * norm * frac_secpeak, color='teal',
-                            alpha=0.5, label='second signal')
-
-        plt.plot(x_plot, signal_func * norm * frac_signal, color='seagreen')
-        plt.fill_between(x_plot, signal_func * norm * frac_signal, color='seagreen',
-                         alpha=0.5, label='signal')
         plt.plot(x_plot, total_func * norm, color='xkcd:blue', label='total fit')
-        plt.xlabel(self._data_handler_.get_var_name())
         plt.xlim(limits[0], limits[1])
+        plt.xlabel(axis_title)
         plt.ylabel(rf'counts / {(limits[1]-limits[0])/bins*1000:0.1f} MeV/$c^2$')
         plt.legend(loc='best')
         if logy:
@@ -343,22 +662,14 @@ class F2MassFitter:
         """
         return self._fit_result_
 
-    def get_raw_yield(self):
+    def get_raw_yield(self, idx=0):
         """
         Get the raw yield and its error
 
-        Returns
+        Parameters
         -------------------------------------------------
-        raw_yield: float
-            The raw yield obtained from the fit
-        raw_yield_err: float
-            The raw yield error obtained from the fit
-        """
-        return self._rawyield_, self._rawyield_err_
-
-    def get_raw_yield_secpeak(self):
-        """
-        Get the second peak raw yield and its error
+        idx: int
+            Index of the raw yield to be returned (default: 0)
 
         Returns
         -------------------------------------------------
@@ -367,11 +678,16 @@ class F2MassFitter:
         raw_yield_err: float
             The raw yield error obtained from the fit
         """
-        return self._rawyield_secpeak_, self._rawyield_err_secpeak_
+        return self._rawyield_[idx], self._rawyield_err_[idx]
 
-    def get_mass(self):
+    def get_mass(self, idx=0):
         """
         Get the mass and its error
+
+        Parameters
+        -------------------------------------------------
+        idx: int
+            Index of the mass to be returned (default: 0)
 
         Returns
         -------------------------------------------------
@@ -380,30 +696,54 @@ class F2MassFitter:
         mass_err: float
             The mass error obtained from the fit
         """
-        return self._fit_result_.params['mass_signal']['value'], \
-            self._fit_result_.params['mass_signal']['hesse']['error']
+        mass_name = 'm' if self._name_signal_pdf_[idx] == 'cauchy' else 'mu'
+        if self._fix_sgn_pars_[idx][mass_name]:
+            mass = self._init_sgn_pars_[idx][mass_name]
+            mass_err = 0.
+        else:
+            mass = self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['value']
+            mass_err = self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['hesse']['error']
 
-    def get_width(self):
-        """
-        Get the width and its error
+        return mass, mass_err
 
-        Returns
-        -------------------------------------------------
-        width: float
-            The width value obtained from the fit
-        width_err: float
-            The width error obtained from the fit
+    def get_sigma(self, idx=0):
         """
-        return self._fit_result_.params['width_signal']['value'], \
-            self._fit_result_.params['width_signal']['hesse']['error']
-
-    def get_parameter(self, parameter):
-        """
-        Get the width and its error
+        Get the sigma and its error
 
         Parameters
         -------------------------------------------------
-        parameter: str
+        idx: int
+            Index of the sigma to be returned (default: 0)
+
+        Returns
+        -------------------------------------------------
+        sigma: float
+            The sigma value obtained from the fit
+        sigma_err: float
+            The sigma error obtained from the fit
+        """
+        if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball']:
+            Logger(f'Sigma parameter not defined for {self._name_signal_pdf_[idx]} pdf!', 'ERROR')
+            return 0., 0.
+
+        if self._fix_sgn_pars_[idx]['sigma']:
+            sigma = self._init_sgn_pars_[idx]['sigma']
+            sigma_err = 0.
+        else:
+            sigma = self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['value']
+            sigma_err = self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['hesse']['error']
+
+        return sigma, sigma_err
+
+    def get_signal_parameter(self, idx, par):
+        """
+        Get a signal parameter and its error
+
+        Parameters
+        -------------------------------------------------
+        idx: int
+            Index of the parameter to be returned (default: 0)
+        par: str
             parameter to return
 
         Returns
@@ -414,21 +754,55 @@ class F2MassFitter:
             The parameter error obtained from the fit
 
         """
-        return self._fit_result_.params[parameter]['value'], \
-            self._fit_result_.params[parameter]['hesse']['error']
 
-    def get_signal(self, nsigma=3, second_peak=False):
+        if self._fix_sgn_pars_[idx][par]:
+            parameter = self._init_sgn_pars_[idx][par]
+            parameter_err = 0.
+        else:
+            parameter = self._fit_result_.params[f'{self._name_}_{par}_signal{idx}']['value']
+            parameter_err = self._fit_result_.params[f'{self._name_}_{par}_signal{idx}']['hesse']['error']
+
+        return parameter, parameter_err
+
+    def get_background_parameter(self, idx, par):
         """
-        Get the signal and its error in mass +- nsigma * width
-        for main or second peak
+        Get a background parameter and its error
 
         Parameters
         -------------------------------------------------
+        idx: int
+            Index of the parameter to be returned (default: 0)
+        par: str
+            parameter to return
+
+        Returns
+        -------------------------------------------------
+        parameter: float
+            The parameter value obtained from the fit
+        parameter_err: float
+            The parameter error obtained from the fit
+
+        """
+
+        if self._fix_bkg_pars_[idx][par]:
+            parameter = self._init_bkg_pars_[idx][par]
+            parameter_err = 0.
+        else:
+            parameter = self._fit_result_.params[f'{self._name_}_{par}_bkg{idx}']['value']
+            parameter_err = self._fit_result_.params[f'{self._name_}_{par}_bkg{idx}']['hesse']['error']
+
+        return parameter, parameter_err
+
+    def get_signal(self, idx=0, nsigma=3):
+        """
+        Get the signal and its error in mass +- nsigma * width
+
+        Parameters
+        -------------------------------------------------
+        idx: int
+            Index of the signal to be returned
         nsigma: float
             nsigma window for signal computation
-        second_peak: bool
-            if True, compute signal for second peak
-            if False, compute signal for main peak
 
         Returns
         -------------------------------------------------
@@ -438,40 +812,53 @@ class F2MassFitter:
             The signal error obtained from the fit
         """
 
-        if second_peak and not self._secpeak_pdf_:
-            Logger('Second peak not fitted', 'ERROR')
+        if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball']:
+            # pylint: disable=fixme
+            # TODO: add possibility to compute signal not based on nsigma
+            Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
             return 0., 0.
 
-        suffix = '_secpeak' if second_peak else '_signal'
-        min_value = self._fit_result_.params[f'mass{suffix}']['value'] - \
-            nsigma * self._fit_result_.params[f'width{suffix}']['value']
-        max_value = self._fit_result_.params[f'mass{suffix}']['value'] + \
-            nsigma * self._fit_result_.params[f'width{suffix}']['value']
+        mass, _ = self.get_mass(idx)
+        sigma, _ = self.get_sigma(idx)
+
+        min_value = mass - nsigma * sigma
+        max_value = mass + nsigma * sigma
 
         # pylint: disable=missing-kwoa
-        if not second_peak:
-            signal = self._signal_pdf_.integrate((min_value, max_value))
+        signal = self._signal_pdf_[idx].integrate((min_value, max_value))
+
+        signal_fracs, _, signal_err_fracs, _ = self.__get_all_fracs()
+
+        if len(self._background_pdf_) > 0:
+            frac = signal_fracs[idx]
+            frac_err = signal_err_fracs[idx]
         else:
-            signal = self._secpeak_pdf_.integrate((min_value, max_value))
+            if len(self._signal_pdf_) == 1:
+                frac = 1.
+                frac_err = 0.
+            if idx < len(signal_fracs):
+                frac = signal_fracs[idx]
+                frac_err = signal_err_fracs[idx]
+            else:
+                frac = 1. - sum(signal_fracs)
+                frac_err = np.sqrt(sum(list(err**2 for err in signal_err_fracs)))
 
         norm = self._data_handler_.get_norm()
-        norm_err = norm * self._fit_result_.params[f'frac{suffix}']['hesse']['error']
-        norm *= self._fit_result_.params[f'frac{suffix}']['value']
+        norm_err = norm * frac_err
+        norm *= frac
 
         return float(signal * norm), float(signal * norm_err)
 
-    def get_background(self, nsigma=3, second_peak=False):
+    def get_background(self, idx=0, nsigma=3):
         """
         Get the background and its error in mass +- nsigma * width
-        for main or second peak
 
         Parameters
         -------------------------------------------------
+        idx: int
+            Index of the signal to be used to compute nsigma window
         nsigma: float
             nsigma window for background computation
-        second_peak: bool
-            if True, compute background for second peak
-            if False, compute background for main peak
 
         Returns
         -------------------------------------------------
@@ -481,48 +868,51 @@ class F2MassFitter:
             The background error obtained from the fit
         """
 
-        if second_peak and not self._secpeak_pdf_:
-            Logger('Second peak not fitted', 'ERROR')
-            return 0., 0.
-
         if not self._background_pdf_:
             Logger('Background not fitted', 'ERROR')
             return 0., 0.
 
-        suffix = '_secpeak' if second_peak else '_signal'
-        min_value = self._fit_result_.params[f'mass{suffix}']['value'] - \
-            nsigma * self._fit_result_.params[f'width{suffix}']['value']
-        max_value = self._fit_result_.params[f'mass{suffix}']['value'] + \
-            nsigma * self._fit_result_.params[f'width{suffix}']['value']
+        mass, _ = self.get_mass(idx)
+        sigma, _ = self.get_sigma(idx)
+
+        min_value = mass - nsigma * sigma
+        max_value = mass + nsigma * sigma
+
+        signal_fracs, bkg_fracs, signal_err_fracs, bkg_err_fracs = self.__get_all_fracs()
 
         # pylint: disable=missing-kwoa
-        background = self._background_pdf_.integrate((min_value, max_value))
+        background, background_err = 0., 0.
+        for idx2, bkg in enumerate(self._background_pdf_):
 
-        frac = 1. - self._fit_result_.params['frac_signal']['value']
-        frac_err = self._fit_result_.params['frac_signal']['hesse']['error']
-        if self._secpeak_pdf_:
-            frac -= self._fit_result_.params['frac_secpeak']['value']
-            frac_err = np.sqrt(
-                frac_err**2 + self._fit_result_.params['frac_secpeak']['hesse']['error']**2)
+            if idx2 == len(self._background_pdf_) - 1:
+                frac = 1. - sum(signal_fracs)
+                frac_err = np.sqrt(sum(list(err**2 for err in signal_err_fracs)))
+            else:
+                frac = bkg_fracs[idx2]
+                frac_err = bkg_err_fracs[idx2]
 
-        norm = self._data_handler_.get_norm()
-        norm_err = norm * frac_err
-        norm *= frac
+            norm = self._data_handler_.get_norm()
+            norm_err = norm * frac_err
+            norm *= frac
 
-        return float(background * norm), float(background * norm_err)
+            bkg_int = bkg.integrate((min_value, max_value))
+            background += bkg_int * norm
+            background_err += (bkg_int * norm_err)**2
 
-    def get_signal_over_background(self, nsigma=3, second_peak=False):
+        background_err = np.sqrt(background_err)
+
+        return background, background_err
+
+    def get_signal_over_background(self, idx=0, nsigma=3):
         """
         Get the S/B ratio and its error in mass +- nsigma * width
-        for main or second peak
 
         Parameters
         -------------------------------------------------
+        idx: int
+            Index of the signal to be used to compute nsigma window
         nsigma: float
             nsigma window for background computation
-        second_peak: bool
-            if True, compute background for second peak
-            if False, compute background for main peak
 
         Returns
         -------------------------------------------------
@@ -532,26 +922,24 @@ class F2MassFitter:
             The S/B error obtained from the fit
         """
 
-        signal = self.get_signal(nsigma, second_peak)
-        bkg = self.get_background(nsigma, second_peak)
+        signal = self.get_signal(idx, nsigma)
+        bkg = self.get_background(idx, nsigma)
         signal_over_background = signal[0]/bkg[0]
         signal_over_background_err = np.sqrt(signal[1]**2/signal[0]**2 + bkg[1]**2/bkg[0]**2)
         signal_over_background_err *= signal_over_background
 
         return signal_over_background, signal_over_background_err
 
-    def get_significance(self, nsigma, second_peak=False):
+    def get_significance(self, idx=0, nsigma=3):
         """
         Get the significance and its error in mass +- nsigma * width
-        for main or second peak
 
         Parameters
         -------------------------------------------------
+        idx: int
+            Index of the signal to be used to compute nsigma window
         nsigma: float
             nsigma window for background computation
-        second_peak: bool
-            if True, compute background for second peak
-            if False, compute background for main peak
 
         Returns
         -------------------------------------------------
@@ -561,8 +949,8 @@ class F2MassFitter:
             The significance error obtained from the fit
         """
 
-        signal = self.get_signal(nsigma, second_peak)
-        bkg = self.get_background(nsigma, second_peak)
+        signal = self.get_signal(idx, nsigma)
+        bkg = self.get_background(idx, nsigma)
         significance = signal[0]/np.sqrt(signal[0]+bkg[0])
         sig_plus_bkg = signal[0] + bkg[0]
 
@@ -572,17 +960,138 @@ class F2MassFitter:
 
         return significance, significance_err
 
-    def set_secpeak(self, pdf, mass, width):
+    def set_particle_mass(self, idx, **kwargs):
         """
-        Enable second peak and set the second peak initial parameters
+        Set the particle mass
+
         Parameters
         -------------------------------------------------
-        pdf: str
-            pdf to be used for the second peak. The possible options are:
-            - 'gaussian'
-            - 'crystalball'
+        idx: int
+            Index of the signal
+        **kwargs: dict
+            Additional optional arguments:
+
+            - mass: float
+                The mass of the particle
+
+            - pdg_id: int
+                PDG ID of the particle (alternative to mass)
+
+            - pdg_name: str
+                Name of the particle (alternative to mass)
+
+            - limits: list
+                minimum and maximum limits for the mass parameter
+
+            - fix: bool
+                fix the mass parameter
+        """
+        mass_name = 'm' if self._name_signal_pdf_[idx] == 'cauchy' else 'mu'
+        if 'mass' in kwargs:
+            mass = kwargs['mass']
+        elif 'pdg_id' in kwargs:
+            mass = Particle.from_pdgid(kwargs['pdg_id']).mass*1e-3
+        elif 'pdg_name' in kwargs:
+            mass = Particle.from_name(kwargs['pdg_name']).mass*1e-3
+        else:
+            Logger(f'"mass", "pdg_id", and "pdg_name" not provided, mass value for signal {idx} will not be set',
+                         'ERROR')
+        self._init_sgn_pars_[idx][mass_name] = mass
+        if 'limits' in kwargs:
+            self._limits_sgn_pars_[idx][mass_name] = kwargs['limits']
+        if 'fix' in kwargs:
+            self._fix_sgn_pars_[idx][mass_name] = kwargs['fix']
+
+    def set_signal_initpar(self, idx, par_name, init_value, **kwargs):
+        """
+        Set a signal parameter
+
+        Parameters
+        -------------------------------------------------
+        idx: int
+            Index of the signal
+        par_name: str
+            The name of the parameter to be set
+        init_value: float
+            The value of parameter to be set
+        **kwargs: dict
+            Additional optional arguments:
+
+            - limits: list
+                minimum and maximum limits for the parameter
+
+            - fix: bool
+                fix the parameter to init_value
+        """
+        self._init_sgn_pars_[idx][par_name] = init_value
+        if 'limits' in kwargs:
+            self._limits_sgn_pars_[idx][par_name] = kwargs['limits']
+        if 'fix' in kwargs:
+            self._fix_sgn_pars_[idx][par_name] = kwargs['fix']
+
+    def set_background_initpar(self, idx, par_name, init_value, **kwargs):
+        """
+        Set a background parameter
+
+        Parameters
+        -------------------------------------------------
+        idx: int
+            Index of the background
+        par_name: str
+            The name of the parameter to be set
+        init_value: float
+            The value of parameter to be set
+        **kwargs: dict
+            Additional optional arguments:
+
+            - limits: list
+                minimum and maximum limits for the parameter
+
+            - fix: bool
+                fix the mass parameter
+        """
+        self._init_bkg_pars_[idx][par_name] = init_value
+        if 'limits' in kwargs:
+            self._limits_bkg_pars_[idx][par_name] = kwargs['limits']
+        if 'fix' in kwargs:
+            self._fix_bkg_pars_[idx][par_name] = kwargs['fix']
+
+    # pylint: disable=line-too-long
+    def set_signal_kde(self, idx, sample, **kwargs):
+        """
+        Set sample and options for signal kde
+
+        Parameters
+        -------------------------------------------------
+        idx: int
+            Index of the signal
+        sample: flarefly.DataHandler
+            Data sample for Kernel Density Estimation
+        **kwargs: dict
+            Arguments for kde options. See
+            https://zfit.readthedocs.io/en/latest/user_api/pdf/_generated/kde_api/zfit.pdf.KDE1DimGrid.html#zfit.pdf.KDE1DimGrid
+            for more details
         """
 
-        self._name_secpeak_pdf_ = pdf
-        self._init_mass_secpeak_ = mass
-        self._init_width_secpeak_ = width
+        self._kde_signal_sample_[idx] = sample
+        self._kde_signal_option_[idx] = kwargs
+
+    # pylint: disable=line-too-long
+    def set_background_kde(self, idx, sample, **kwargs):
+        """
+        Set sample and options for background kde
+
+        Parameters
+        -------------------------------------------------
+        idx: int
+            Index of the background
+        sample: flarefly.DataHandler
+            Data sample for Kernel Density Estimation
+        **kwargs: dict
+            Arguments for kde options. See
+            https://zfit.readthedocs.io/en/latest/user_api/pdf/_generated/kde_api/zfit.pdf.KDE1DimGrid.html#zfit.pdf.KDE1DimGrid
+            for more details
+        """
+
+        self._kde_bkg_sample_[idx] = sample
+        self._kde_bkg_option_[idx] = kwargs

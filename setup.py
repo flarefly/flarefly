@@ -56,7 +56,7 @@ SETUP = Setup(
     name="flarefly",
 
     # LAST-TAG is a placeholder. Automatically replaced at deploy time with the right tag
-    version="0.0.4",
+    version="0.0.5",
     description="FLexible And REliable Fitting LibrarY for particle physics analysis",
     url="https://github.com/flarefly/flarefly",
     author="flarefly-developers",
@@ -85,8 +85,9 @@ SETUP = Setup(
     # installed. For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        "psutil", "dutil", "prophet==1.0.1", "numpy>=1.15", "pandas>=1.1.5", "uproot>=4.3.4",
-        "ipython>=7.16.1", "jedi==0.17.2", "zfit==0.9.0a3", "mplhep>=0.3.25", "matplotlib>=3.1.3"
+        "psutil", "dutil", "prophet==1.0.1", "numpy>=1.20", "pandas>=1.1.5", "uproot>=4.3.4",
+        "ipython>=7.16.1", "jedi==0.17.2", "zfit>=0.10", "mplhep>=0.3.25", "matplotlib>=3.1.3",
+        "particle>=0.20.1"
     ],
     python_requires=">=3.7",
 
