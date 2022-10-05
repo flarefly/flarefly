@@ -18,7 +18,7 @@ SGNPDFSDPLUS = ["gaussian", "doublegaus", "crystalball", "doublecb"]
 BKGPDFSDSTAR = ["gaussian", "doublegaus"]
 
 # test all possible functions with D+
-INFILEDPLUS = os.path.join(os.getcwd(), "histos_dplus.root")
+INFILEDPLUS = os.path.join(os.getcwd(), "tests/histos_dplus.root")
 DATABINNEDDPLUS = DataHandler(INFILEDPLUS, var_name=r"$M_\mathrm{K\pi\pi}$ (GeV/$c^{2}$)",
                               histoname="hMass_80_120", limits=[1.75, 2.06])
 for bkg_pdf in BKGPDFSDPLUS:
@@ -45,7 +45,7 @@ for bkg_pdf in BKGPDFSDPLUS:
         RAWYIN.append(RAWYHIST[-1][0][4])
 
 # test also bkg functions for D*
-INFILEDSTAR = os.path.join(os.getcwd(), "histos_dstar.root")
+INFILEDSTAR = os.path.join(os.getcwd(), "tests/histos_dstar.root")
 DATABINNEDDSTAR = DataHandler(INFILEDSTAR, var_name=r"$M_\mathrm{K\pi\pi}-M_\mathrm{K\pi}$ (GeV/$c^{2}$)",
                               histoname="hMass_40_60", limits=[Particle.from_pdgid(211).mass*1e-3, 0.155])
 for bkg_pdf in BKGPDFSDSTAR:
