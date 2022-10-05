@@ -13,7 +13,7 @@ class DoubleGauss(zfit.pdf.ZPDF):
     Pdf composed by the sum of two gaussians sharing the same mean parameter
     Parameters:
 
-        - mean: shared mean parameter
+        - mu: shared mean parameter
 
         - sigma1: sigma of first Gaussian function
 
@@ -23,7 +23,7 @@ class DoubleGauss(zfit.pdf.ZPDF):
     """
 
     # override the name of the parameters
-    _PARAMS = ['mean', 'sigma1', 'sigma2', 'frac1']
+    _PARAMS = ['mu', 'sigma1', 'sigma2', 'frac1']
 
     def _unnormalized_pdf(self, x):
         """
@@ -32,7 +32,7 @@ class DoubleGauss(zfit.pdf.ZPDF):
         for more details
         """
         x = zfit.z.unstack_x(x)
-        mean = self.params['mean']
+        mean = self.params['mu']
         sigma1 = self.params['sigma1']
         sigma2 = self.params['sigma2']
         frac1 = self.params['frac1']
@@ -48,13 +48,13 @@ class Pow(zfit.pdf.ZPDF):
 
     Parameters:
 
-        - m: mass parameter
+        - mass: mass parameter
 
         - power: exponential power
     """
 
     # override the name of the parameters
-    _PARAMS = ['m', 'power']
+    _PARAMS = ['mass', 'power']
 
     def _unnormalized_pdf(self, x):
         """
@@ -63,7 +63,7 @@ class Pow(zfit.pdf.ZPDF):
         for more details
         """
         x = zfit.z.unstack_x(x)
-        mass = self.params['m']
+        mass = self.params['mass']
         power = self.params['power']
         return tf.pow(x - mass, power)
 
@@ -75,14 +75,15 @@ class ExpoPow(zfit.pdf.ZPDF):
 
     Parameters:
 
-        - m: mass parameter
+        - mass: mass parameter
 
         - lam: slope of exponential
     """
 
     # override the name of the parameters
-    _PARAMS = ['m', 'lam']
+    _PARAMS = ['mass', 'lam']
 
+    @tf.function
     def _unnormalized_pdf(self, x):
         """
         PDF 'unnormalized'.
@@ -90,6 +91,6 @@ class ExpoPow(zfit.pdf.ZPDF):
         for more details
         """
         x = zfit.z.unstack_x(x)
-        mass = self.params['m']
+        mass = self.params['mass']
         lam = self.params['lam']
         return tf.sqrt(x - mass) * tf.exp(-lam * (x - mass))
