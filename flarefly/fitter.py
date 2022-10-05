@@ -13,7 +13,7 @@ from flarefly.utils import Logger
 import flarefly.custom_pdfs as cpdf
 
 
-# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-instance-attributes, too-many-lines
 class F2MassFitter:
     """
     Class used to perform mass fits with the zfit library
