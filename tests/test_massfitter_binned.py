@@ -66,8 +66,6 @@ for bkg_pdf in BKGPDFSDSTAR:
         RAWYHIST.append(uproot.open(INFILEDSTAR)["hRawYields"].to_numpy())
         RAWYIN.append(RAWYHIST[-1][0][1])
 
-matplotlib.pyplot.show()
-
 def test_fitter():
     """
     Test the mass fitter
