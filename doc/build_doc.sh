@@ -33,7 +33,7 @@ function run-push-doc() {
     git config user.email 'flarefly@googlegroups.com'
     git add -A
     git commit -m "Update documentation $DATE"
-    git push -f https://$BOT_TOKEN@github.com/flarefly/flarefly.github.io HEAD:master
+    git push -f https://$BOT_TOKEN@github.com/flarefly/flarefly.github.io HEAD:main
 }
 
 function run-clean() {

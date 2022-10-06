@@ -185,8 +185,8 @@ class F2MassFitter:
                 self._fix_sgn_pars_[ipdf].setdefault('n', False)
                 self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
                 self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('alpha', [0, 1.e10])
-                self._limits_sgn_pars_[ipdf].setdefault('n', [0., 1.e10])
+                self._limits_sgn_pars_[ipdf].setdefault('alpha', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('n', [0., 1.e6])
                 self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
                     self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
@@ -225,10 +225,10 @@ class F2MassFitter:
                 self._fix_sgn_pars_[ipdf].setdefault('nr', False)
                 self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
                 self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('alphal', [0, 1.e10])
-                self._limits_sgn_pars_[ipdf].setdefault('nl', [0., 1.e10])
-                self._limits_sgn_pars_[ipdf].setdefault('alphar', [0, 1.e10])
-                self._limits_sgn_pars_[ipdf].setdefault('nr', [0., 1.e10])
+                self._limits_sgn_pars_[ipdf].setdefault('alphal', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('nl', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('alphar', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('nr', [0., 1.e6])
                 self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
                     self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
@@ -523,7 +523,10 @@ class F2MassFitter:
                 model=self._total_pdf_, data=self._data_handler_.get_data())
 
         self._fit_result_ = self._minimizer_.minimize(loss=nll)
-        self._fit_result_.hesse()
+        if self._fit_result_.hesse() == {}:
+            if self._fit_result_.hesse(method='hesse_np') == {}:
+                Logger('Impossible to compute hesse error', 'FATAL')
+
         Logger(self._fit_result_, 'RESULT')
 
         norm = self._data_handler_.get_norm()
