@@ -31,8 +31,14 @@ for bkg_pdf in BKGPDFSDPLUS:
         FITTERBINNEDDPLUS[-1].set_particle_mass(1, pdg_id=413, limits=[2.000, 2.020])
         FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "frac", 0.3, limits=[0.2, 0.4])
         FITTERBINNEDDPLUS[-1].set_signal_initpar(1, "frac", 0.05, limits=[0.01, 0.1])
-        if sgn_pdf in ["gaussian", "crystalball", "doublecb"]:
+        if sgn_pdf in ["gaussian", "crystalball"]:
             FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "sigma", 0.010)
+        elif sgn_pdf == "doublecb":
+            FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "sigma", 0.010)
+            FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "alphal", 2.)
+            FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "nl", 1.)
+            FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "alphar", 2.)
+            FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "nr", 1.)
         elif sgn_pdf == "doublegaus":
             FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "sigma1", 0.010)
             FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "sigma2", 0.100)
