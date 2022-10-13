@@ -991,7 +991,7 @@ class F2MassFitter:
         signal_over_background_err = np.sqrt(signal[1]**2/signal[0]**2 + bkg[1]**2/bkg[0]**2)
         signal_over_background_err *= signal_over_background
 
-        return float(signal_over_background), float(signal_over_background_err)
+        return signal_over_background, signal_over_background_err
 
     def get_significance(self, idx=0, nsigma=3):
         """
@@ -1021,7 +1021,7 @@ class F2MassFitter:
             (signal[1]**2 + bkg[1]**2) / (4. * sig_plus_bkg**2) + (
                 bkg[0]/sig_plus_bkg) * signal[1]**2 / signal[0]**2)
 
-        return float(significance), float(significance_err)
+        return significance, significance_err
 
     def set_particle_mass(self, idx, **kwargs):
         """
