@@ -529,7 +529,7 @@ class F2MassFitter:
             # nll loss
             else:
                 loss = zfit.loss.BinnedNLL(self._total_pdf_binned_,
-                                            self._data_handler_.get_binned_data())      
+                                            self._data_handler_.get_binned_data())
         else:
             loss = zfit.loss.UnbinnedNLL(
                 model=self._total_pdf_, data=self._data_handler_.get_data())
@@ -563,7 +563,7 @@ class F2MassFitter:
                     self._rawyield_err_[ipdf] = frac_err * norm
 
         return self._fit_result_
-    
+
     # pylint: disable=too-many-statements
     def plot_mass_fit(self, **kwargs):
         """
