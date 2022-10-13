@@ -20,7 +20,7 @@ class F2MassFitter:
     https://github.com/zfit/zfit
     """
 
-    def __init__(self, data_handler, name_signal_pdf, name_background_pdf, name=""):
+    def __init__(self, data_handler, name_signal_pdf, name_background_pdf, name="", chi2_loss=False):
         """
         Initialize the F2MassFitter class
         Parameters
@@ -73,6 +73,10 @@ class F2MassFitter:
         name: str
             Optional name for the fitter,
             needed in case of multiple fitters defined in the same script
+
+        chi2_loss: bool
+            chi2 minimization if True, nll minmization else
+            Default value to False
         """
         self._data_handler_ = data_handler
         self._name_signal_pdf_ = name_signal_pdf
@@ -107,6 +111,8 @@ class F2MassFitter:
         self._rawyield_err_ = [0. for _ in enumerate(name_signal_pdf)]
         self._minimizer_ = zfit.minimize.Minuit(verbosity=7)
         self._name_ = name
+        self._ndf_ = None
+        self._chi2_loss_ = chi2_loss
 
         zfit.settings.advanced_warnings.all = False
         zfit.settings.changed_warnings.all = False
@@ -516,13 +522,19 @@ class F2MassFitter:
         if self._data_handler_.get_is_binned():
             self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._total_pdf_,
                                                                      self._data_handler_.get_obs())
-            nll = zfit.loss.BinnedNLL(self._total_pdf_binned_,
-                                      self._data_handler_.get_binned_data())
+            # chi2 loss
+            if self._chi2_loss_:
+                loss = zfit.loss.BinnedChi2(self._total_pdf_binned_,
+                                            self._data_handler_.get_binned_data())
+            # nll loss
+            else:
+                loss = zfit.loss.BinnedNLL(self._total_pdf_binned_,
+                                            self._data_handler_.get_binned_data())      
         else:
-            nll = zfit.loss.UnbinnedNLL(
+            loss = zfit.loss.UnbinnedNLL(
                 model=self._total_pdf_, data=self._data_handler_.get_data())
 
-        self._fit_result_ = self._minimizer_.minimize(loss=nll)
+        self._fit_result_ = self._minimizer_.minimize(loss=loss)
         if self._fit_result_.hesse() == {}:
             if self._fit_result_.hesse(method='hesse_np') == {}:
                 Logger('Impossible to compute hesse error', 'FATAL')
@@ -551,7 +563,7 @@ class F2MassFitter:
                     self._rawyield_err_[ipdf] = frac_err * norm
 
         return self._fit_result_
-
+    
     # pylint: disable=too-many-statements
     def plot_mass_fit(self, **kwargs):
         """
@@ -664,6 +676,54 @@ class F2MassFitter:
             The fit result
         """
         return self._fit_result_
+
+    def get_ndf(self):
+        """
+        Get the number of degrees of freedom for chi2 fit
+        ndf = nbins - nfreeparams - 1
+        -1 because the data sample size is fixed
+
+        Returns
+        -------------------------------------------------
+        ndf: int
+            The number of degrees of freedom
+        """
+        nbins = self._data_handler_.get_nbins()
+        nfreeparams =  len(self._fit_result_.params)
+        self._ndf_ = nbins - nfreeparams - 1
+        return self._ndf_
+
+    def get_chi2_ndf(self):
+        """
+        Get the reduced chi2 (chi2 divided by number of degrees of freedom)
+        for binned data
+
+        Returns
+        -------------------------------------------------
+        chi2_ndf: float
+            The reduced chi2
+        """
+        # for chi2 loss, just retrieve loss value in fit result
+        if self._chi2_loss_:
+            chi2 = float(self._fit_result_.loss.value())
+        # for nll loss, compute chi2 "by hand"
+        else:
+            chi2 = 0
+            # access normalized data values and errors for all bins
+            binned_data = self._data_handler_.get_binned_data()
+            norm = self._data_handler_.get_norm()
+            data_values = binned_data.values()/norm
+            data_variances = binned_data.variances()/norm/norm
+            # access model predicted values
+            model_values = self._total_pdf_binned_.values()
+            # compute chi2
+            bins = len(data_values)
+            for ibin in range(bins):
+                residual = data_values[ibin] - model_values[ibin]
+                denom = data_variances[ibin]
+                chi2 += residual*residual/denom
+
+        return chi2/self._ndf_
 
     def get_raw_yield(self, idx=0):
         """
