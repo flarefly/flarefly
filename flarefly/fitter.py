@@ -693,15 +693,14 @@ class F2MassFitter:
         self._ndf_ = nbins - nfreeparams - 1
         return self._ndf_
 
-    def get_chi2_ndf(self):
+    def get_chi2(self):
         """
-        Get the reduced chi2 (chi2 divided by number of degrees of freedom)
-        for binned data
+        Get chi2 for binned data
 
         Returns
         -------------------------------------------------
-        chi2_ndf: float
-            The reduced chi2
+        chi2: float
+            chi2
         """
         # for chi2 loss, just retrieve loss value in fit result
         if self._chi2_loss_:
@@ -723,7 +722,19 @@ class F2MassFitter:
                 denom = data_variances[ibin]
                 chi2 += residual*residual/denom
 
-        return chi2/self._ndf_
+        return chi2
+
+    def get_chi2_ndf(self):
+        """
+        Get the reduced chi2 (chi2 divided by number of degrees of freedom)
+        for binned data
+
+        Returns
+        -------------------------------------------------
+        chi2_ndf: float
+            The reduced chi2
+        """
+        return self.get_chi2()/self.get_ndf()
 
     def get_raw_yield(self, idx=0):
         """
