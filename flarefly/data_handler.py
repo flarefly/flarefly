@@ -42,6 +42,7 @@ class DataHandler:
         self._obs_ = None
         self._data_ = None
         self._binned_data_ = None
+        self._binning_ = None
         self._nbins_ = None
         self._isbinned_ = False
         self._norm_ = 1.
@@ -66,13 +67,13 @@ class DataHandler:
                             self._nbins_ = len(hist_array[1][idx_min:idx_max])
                             self._limits_[0] = hist_array[1][idx_min]
                             self._limits_[1] = hist_array[1][idx_max]
-                        binning = zfit.binned.RegularBinning(
+                        self._binning_ = zfit.binned.RegularBinning(
                             self._nbins_,
                             self._limits_[0],
                             self._limits_[1],
                             name="xaxis"
                         )
-                        self._obs_ = zfit.Space("xaxis", binning=binning)
+                        self._obs_ = zfit.Space("xaxis", binning=self._binning_)
                         self._binned_data_ = zfit.data.BinnedData.from_tensor(
                             self._obs_, hist.values()[idx_min:idx_max],
                             [err**2 for err in hist.errors()[idx_min:idx_max]])
@@ -201,6 +202,36 @@ class DataHandler:
         """
 
         return self._norm_
+
+    def get_binning(self):
+        """
+        Get the binning
+
+        Returns
+        -------------------------------------------------
+        binning: zfit.binned.RegularBinning
+            The binning
+        """
+        return self._binning_
+
+    def get_bin_center(self):
+        """
+        Get the center of the bins
+
+        Returns
+        -------------------------------------------------
+        binning: array
+            The bin center
+        """
+        binning = self.get_binning()
+        bin_center = []
+        for ibin in range(len(binning)):
+            left_edge = binning[ibin][0]
+            right_edge = binning[ibin][1]
+            center = (left_edge + right_edge)/2
+            bin_center.append(center)
+
+        return bin_center
 
     def get_nbins(self):
         """
