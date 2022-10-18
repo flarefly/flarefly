@@ -42,6 +42,7 @@ class DataHandler:
         self._obs_ = None
         self._data_ = None
         self._binned_data_ = None
+        self._nbins_ = None
         self._isbinned_ = False
         self._norm_ = 1.
 
@@ -54,7 +55,7 @@ class DataHandler:
                         hist_array = hist.to_numpy()
                         if limits is None:
                             self._binned_data_ = zfit.data.BinnedData.from_hist(hist.to_hist())
-                            nbins = len(hist_array[1]) - 1
+                            self._nbins_ = len(hist_array[1]) - 1
                             self._limits_[0] = hist_array[1][0]
                             self._limits_[1] = hist_array[1][-1]
                             idx_min = 0
@@ -62,11 +63,11 @@ class DataHandler:
                         else:
                             idx_min = np.argmin(np.abs(hist_array[1]-self._limits_[0]))
                             idx_max = np.argmin(np.abs(hist_array[1]-self._limits_[1]))
-                            nbins = len(hist_array[1][idx_min:idx_max])
+                            self._nbins_ = len(hist_array[1][idx_min:idx_max])
                             self._limits_[0] = hist_array[1][idx_min]
                             self._limits_[1] = hist_array[1][idx_max]
                         binning = zfit.binned.RegularBinning(
-                            nbins,
+                            self._nbins_,
                             self._limits_[0],
                             self._limits_[1],
                             name="xaxis"
@@ -200,6 +201,17 @@ class DataHandler:
         """
 
         return self._norm_
+
+    def get_nbins(self):
+        """
+        Get the number of bins
+
+        Returns
+        -------------------------------------------------
+        nbins: int
+            The number of bins
+        """
+        return self._nbins_
 
     def get_is_binned(self):
         """
