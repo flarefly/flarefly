@@ -113,6 +113,8 @@ class F2MassFitter:
         self._name_ = name
         self._ndf_ = None
         self._chi2_loss_ = chi2_loss
+        self._base_sgn_cmap_ = plt.cm.get_cmap('viridis', len(self._signal_pdf_) * 4)
+        self._sgn_cmap_ = ListedColormap(self._base_sgn_cmap_(np.linspace(0.4, 0.65, len(self._signal_pdf_))))
 
         zfit.settings.advanced_warnings.all = False
         zfit.settings.changed_warnings.all = False
@@ -648,11 +650,9 @@ class F2MassFitter:
                 plt.plot(x_plot, bkg_func * norm * (1-sum(bkg_fracs)-sum(signal_fracs)),
                          color='firebrick', ls='--', label=f'background {ibkg}')
         # then draw signals
-        base_sgn_cmap = plt.cm.get_cmap('viridis', len(signal_funcs) * 4)
-        sgn_cmap = ListedColormap(base_sgn_cmap(np.linspace(0.4, 0.65, len(signal_funcs))))
         for isgn, (frac, signal_func) in enumerate(zip(signal_funcs, signal_fracs)):
-            plt.plot(x_plot, signal_func * norm * frac, color=sgn_cmap(isgn))
-            plt.fill_between(x_plot, signal_func * norm * frac, color=sgn_cmap(isgn),
+            plt.plot(x_plot, signal_func * norm * frac, color=self._sgn_cmap_(isgn))
+            plt.fill_between(x_plot, signal_func * norm * frac, color=self._sgn_cmap_(isgn),
                              alpha=0.5, label=f'signal {isgn}')
 
         plt.plot(x_plot, total_func * norm, color='xkcd:blue', label='total fit')
@@ -736,7 +736,7 @@ class F2MassFitter:
         """
         return self.get_chi2()/self.get_ndf()
 
-    def get_raw_residuals(self, idx2=0):
+    def get_raw_residuals(self):
         """
         Get the raw residuals (data_value - bkg_model_value) for all bins
 
@@ -745,27 +745,50 @@ class F2MassFitter:
         residuals: array[float]
             The residuals
         """
-        residuals = []
-        chi2 = self.get_chi2_ndf()*self._ndf_
+        bins = self._data_handler_.get_nbins()
+        residuals = [None]*bins
+        background_pdf_binned_ = [None for _ in enumerate(self._name_background_pdf_)]
+        model_bkg_values = [None for _ in enumerate(self._name_background_pdf_)]
         # access normalized data values and errors for all bins
         binned_data = self._data_handler_.get_binned_data()
         norm = self._data_handler_.get_norm()
-        data_values = binned_data.values()/norm
+        data_values = binned_data.values()
+        # get background fractions
+        if len(self._background_pdf_) == 1:
+            signal_fracs, _, _, _ = self.__get_all_fracs()
+            bkg_fracs = [1 - sum(signal_fracs)]
+        else:
+            _, bkg_fracs, _, _ = self.__get_all_fracs()
         # access model predicted values for background
-        background_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[idx2],
-                                                                self._data_handler_.get_obs())
-        signal_fracs, _, _, _ = self.__get_all_fracs()
-        bkg_frac = 1 - signal_fracs[idx2]
-        model_bkg_values = background_pdf_binned_.values()*bkg_frac
-        bins = self._data_handler_.get_nbins()
+        for ipdf, _ in enumerate(self._name_background_pdf_):
+            background_pdf_binned_[ipdf] = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[ipdf],
+                                                                          self._data_handler_.get_obs())
+            model_bkg_values[ipdf] = background_pdf_binned_[ipdf].values()*bkg_fracs[ipdf]*norm
+        # compute residuals
         for ibin in range(bins):
-            residuals.append(float(data_values[ibin] - model_bkg_values[ibin])*norm)
+            residuals[ibin] = float(data_values[ibin])
+            for ipdf, _ in enumerate(self._name_background_pdf_):
+                residuals[ibin] -= model_bkg_values[ipdf][ibin]
 
         return residuals, binned_data.variances()
 
     def plot_raw_residuals(self, **kwargs):
         """
         Plot the raw residuals
+
+        Parameters
+        -------------------------------------------------
+        **kwargs: dict
+            Additional optional arguments:
+
+            - style: str
+                style to be used (see https://github.com/scikit-hep/mplhep for more details)
+
+            - figsize: tuple
+                size of the figure
+
+            - axis_title: str
+                x-axis title
 
         Returns
         -------------------------------------------------
@@ -774,9 +797,7 @@ class F2MassFitter:
         """
 
         style = kwargs.get('style', 'LHCb2')
-        logy = kwargs.get('logy', False)
         figsize = kwargs.get('figsize', (7, 7))
-        bins = kwargs.get('bins', 100)
         axis_title = kwargs.get('axis_title', self._data_handler_.get_var_name())
 
         mplhep.style.use(style)
@@ -789,8 +810,8 @@ class F2MassFitter:
         residuals, variances = self.get_raw_residuals()
         # residuals into binned data
         residuals_binned_data = zfit.data.BinnedData.from_tensor(space=obs,
-                                                                values=residuals,
-                                                                variances=variances)
+                                                                 values=residuals,
+                                                                 variances=variances)
         # draw residuals
         if self._data_handler_.get_is_binned():
             hist = residuals_binned_data.to_hist()
@@ -823,11 +844,9 @@ class F2MassFitter:
             signal_fracs.append(1.)
 
         # draw signals
-        base_sgn_cmap = plt.cm.get_cmap('viridis', len(signal_funcs) * 4)
-        sgn_cmap = ListedColormap(base_sgn_cmap(np.linspace(0.4, 0.65, len(signal_funcs))))
         for isgn, (signal_func, frac) in enumerate(zip(signal_funcs, signal_fracs)):
-            plt.plot(x_plot, signal_func * norm * frac, color=sgn_cmap(isgn))
-            plt.fill_between(x_plot, signal_func * norm * frac, color=sgn_cmap(isgn),
+            plt.plot(x_plot, signal_func * norm * frac, color=self._sgn_cmap_(isgn))
+            plt.fill_between(x_plot, signal_func * norm * frac, color=self._sgn_cmap_(isgn),
                              alpha=0.5, label=f'signal {isgn}')
 
         plt.xlim(limits[0], limits[1])
@@ -839,15 +858,16 @@ class F2MassFitter:
 
     def get_std_residuals(self):
         """
-        Get the standardized residuals (data_value - bkg_model_value)/ sigma_data for all bins
+        Get the standardized residuals
+        (data_value - bkg_model_value)/ sigma_data for all bins
 
         Returns
         -------------------------------------------------
         residuals: array[float]
             The standardized residuals
         """
-        residuals, variances = [], []
-        chi2 = self.get_chi2_ndf()*self._ndf_
+        bins = self._data_handler_.get_nbins()
+        residuals, variances = [None]*bins, [None]*bins
         # access normalized data values and errors for all bins
         binned_data = self._data_handler_.get_binned_data()
         norm = self._data_handler_.get_norm()
@@ -855,18 +875,31 @@ class F2MassFitter:
         data_variances = binned_data.variances()/norm/norm
         # access model predicted values for background
         total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._total_pdf_,
-                                                            self._data_handler_.get_obs())
+                                                           self._data_handler_.get_obs())
         model_values = total_pdf_binned_.values()
-        bins = self._data_handler_.get_nbins()
         for ibin in range(bins):
-            residuals.append(float(data_values[ibin] - model_values[ibin])/float(np.sqrt(data_variances[ibin])))
-            variances.append(float(data_variances[ibin])/float(np.sqrt(data_variances[ibin])))
+            residuals[ibin] = float(data_values[ibin] - model_values[ibin])/float(np.sqrt(data_variances[ibin]))
+            variances[ibin] = float(data_variances[ibin])/float(np.sqrt(data_variances[ibin]))
 
         return residuals, variances
 
     def plot_std_residuals(self, **kwargs):
         """
         Plot the raw residuals
+
+        Parameters
+        -------------------------------------------------
+        **kwargs: dict
+            Additional optional arguments:
+
+            - style: str
+                style to be used (see https://github.com/scikit-hep/mplhep for more details)
+
+            - figsize: tuple
+                size of the figure
+
+            - axis_title: str
+                x-axis title
 
         Returns
         -------------------------------------------------
@@ -875,9 +908,7 @@ class F2MassFitter:
         """
 
         style = kwargs.get('style', 'LHCb2')
-        logy = kwargs.get('logy', False)
         figsize = kwargs.get('figsize', (7, 7))
-        bins = kwargs.get('bins', 100)
         axis_title = kwargs.get('axis_title', self._data_handler_.get_var_name())
 
         mplhep.style.use(style)
@@ -890,32 +921,32 @@ class F2MassFitter:
         residuals, variances = self.get_std_residuals()
         # residuals into binned data
         residuals_binned_data = zfit.data.BinnedData.from_tensor(space=obs,
-                                                                values=residuals,
-                                                                variances=variances)
+                                                                 values=residuals,
+                                                                 variances=variances)
         # draw residuals
         if self._data_handler_.get_is_binned():
             hist = residuals_binned_data.to_hist()
             bin_center = self._data_handler_.get_bin_center()
             plt.errorbar(bin_center,
-                        residuals,
-                        xerr = None,
-                        yerr = np.sqrt(variances),
-                        linestyle = "None",
-                        elinewidth = 1,
-                        capsize = 0,
-                        color = "black",
-                        marker = "o",
-                        markersize = 5,
-                        label = None)
+                         residuals,
+                         xerr = None,
+                         yerr = np.sqrt(variances),
+                         linestyle = "None",
+                         elinewidth = 1,
+                         capsize = 0,
+                         color = "black",
+                         marker = "o",
+                         markersize = 5,
+                         label = None)
             bins = self._data_handler_.get_nbins()
             bin_sigma = (limits[1] - limits[0]) / bins
 
         # line at 0
-        plt.scatter(bin_center, [0]*bins, marker="_", s=1, color='xkcd:blue')
+        plt.plot([bin_center[0], bin_center[-1]], [0., 0.], lw=2, color='xkcd:blue')
         # line at -3 sigma
-        plt.scatter(bin_center, [-3]*bins, marker="_", s=1, color='xkcd:red')
+        plt.plot([bin_center[0], bin_center[-1]], [-3., -3.], lw=2, color='xkcd:red')
         # line at 3 sigma
-        plt.scatter(bin_center, [3]*bins, marker="_", s=1, color='xkcd:red')
+        plt.plot([bin_center[0], bin_center[-1]], [3., 3.], lw=2, color='xkcd:red')
 
         plt.xlim(limits[0], limits[1])
         plt.xlabel(axis_title)
