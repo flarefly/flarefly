@@ -745,6 +745,9 @@ class F2MassFitter:
         residuals: array[float]
             The residuals
         """
+        if not self._data_handler_.get_is_binned():
+            Logger('Raw residuals not available in case of unbinned data.', 'FATAL')
+
         bins = self._data_handler_.get_nbins()
         residuals = [None]*bins
         background_pdf_binned_ = [None for _ in enumerate(self._name_background_pdf_)]
@@ -808,13 +811,8 @@ class F2MassFitter:
         fig = plt.figure(figsize=figsize)
 
         residuals, variances = self.get_raw_residuals()
-        # residuals into binned data
-        residuals_binned_data = zfit.data.BinnedData.from_tensor(space=obs,
-                                                                 values=residuals,
-                                                                 variances=variances)
         # draw residuals
         if self._data_handler_.get_is_binned():
-            hist = residuals_binned_data.to_hist()
             plt.errorbar(
                 self._data_handler_.get_bin_center(),
                 residuals,
@@ -833,7 +831,7 @@ class F2MassFitter:
             norm = self._data_handler_.get_norm() * bin_sigma
 
         x_plot = np.linspace(limits[0], limits[1], num=1000)
-        signal_funcs, signal_fracs, bkg_funcs, bkg_fracs = ([] for _ in range(4))
+        signal_funcs, signal_fracs, _, _ = ([] for _ in range(4))
         for signal_pdf in self._signal_pdf_:
             signal_funcs.append(zfit.run(signal_pdf.pdf(x_plot, norm_range=obs)))
         for frac_par in self._fracs_:
@@ -866,6 +864,9 @@ class F2MassFitter:
         residuals: array[float]
             The standardized residuals
         """
+        if not self._data_handler_.get_is_binned():
+            Logger('Standardized residuals not available in case of unbinned data.', 'FATAL')
+
         bins = self._data_handler_.get_nbins()
         residuals, variances = [None]*bins, [None]*bins
         # access normalized data values and errors for all bins
@@ -913,19 +914,13 @@ class F2MassFitter:
 
         mplhep.style.use(style)
 
-        obs = self._data_handler_.get_obs()
         limits = self._data_handler_.get_limits()
 
         fig = plt.figure(figsize=figsize)
 
         residuals, variances = self.get_std_residuals()
-        # residuals into binned data
-        residuals_binned_data = zfit.data.BinnedData.from_tensor(space=obs,
-                                                                 values=residuals,
-                                                                 variances=variances)
         # draw residuals
         if self._data_handler_.get_is_binned():
-            hist = residuals_binned_data.to_hist()
             bin_center = self._data_handler_.get_bin_center()
             plt.errorbar(bin_center,
                          residuals,
@@ -939,7 +934,6 @@ class F2MassFitter:
                          markersize = 5,
                          label = None)
             bins = self._data_handler_.get_nbins()
-            bin_sigma = (limits[1] - limits[0]) / bins
 
         # line at 0
         plt.plot([bin_center[0], bin_center[-1]], [0., 0.], lw=2, color='xkcd:blue')
@@ -950,7 +944,8 @@ class F2MassFitter:
 
         plt.xlim(limits[0], limits[1])
         plt.xlabel(axis_title)
-        plt.ylabel(fr"$\dfrac{{ \mathrm{{data}} - \mathrm{{total \ fit}} }}{{ \sigma_{{ \mathrm{{data}} }} }}$ / {(limits[1]-limits[0])/bins*1000:0.1f} MeV/$c^2$")
+        plt.ylabel(fr"$\dfrac{{ \mathrm{{data}} - \mathrm{{total \ fit}} }}{{ \sigma_{{ \mathrm{{data}} }} }}$"
+                   fr"/ {(limits[1]-limits[0])/bins*1000:0.1f} MeV/$c^2$")
 
         return fig
 

@@ -213,11 +213,8 @@ class DataHandler:
         """
         binning = self.get_obs().binning[0]
         bin_center = []
-        for ibin in range(len(binning)):
-            left_edge = binning[ibin][0]
-            right_edge = binning[ibin][1]
-            center = (left_edge + right_edge)/2
-            bin_center.append(center)
+        for bin_ in binning:
+            bin_center.append((bin_[0] + bin_[1])/2)
 
         return bin_center
 
