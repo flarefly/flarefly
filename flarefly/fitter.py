@@ -5,6 +5,7 @@ Module containing the class used to perform mass fits
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+from matplotlib.offsetbox import AnchoredText
 
 import zfit
 import mplhep
@@ -566,7 +567,7 @@ class F2MassFitter:
 
         return self._fit_result_
 
-    # pylint: disable=too-many-statements
+    # pylint: disable=too-many-statements, too-many-locals
     def plot_mass_fit(self, **kwargs):
         """
         Plot the mass fit
@@ -591,6 +592,9 @@ class F2MassFitter:
             - axis_title: str
                 x-axis title
 
+            - show_extra_info
+                show chi2/ndf, signal, bkg, signal/bkg, significance
+
         Returns
         -------------------------------------------------
         fig: matplotlib.figure.Figure
@@ -602,13 +606,14 @@ class F2MassFitter:
         figsize = kwargs.get('figsize', (7, 7))
         bins = kwargs.get('bins', 100)
         axis_title = kwargs.get('axis_title', self._data_handler_.get_var_name())
+        show_extra_info = kwargs.get('show_extra_info', True)
 
         mplhep.style.use(style)
 
         obs = self._data_handler_.get_obs()
         limits = self._data_handler_.get_limits()
 
-        fig = plt.figure(figsize=figsize)
+        fig, axs = plt.subplots(figsize=figsize)
         if self._data_handler_.get_is_binned():
             hist = self._data_handler_.get_binned_data().to_hist()
             hist.plot(yerr=True, color='black', histtype='errorbar',
@@ -663,6 +668,22 @@ class F2MassFitter:
         if logy:
             plt.yscale('log')
             plt.ylim(min(total_func) * norm / 5, max(total_func) * norm * 5)
+
+        if show_extra_info:
+            chi2 = self.get_chi2()
+            ndf = self.get_ndf()
+            signal, signal_err = self.get_signal()
+            bkg, bkg_err = self.get_background()
+            s_over_b, s_over_b_err = self.get_signal_over_background()
+            significance, significance_err = self.get_significance()
+            text = AnchoredText(fr'$\chi^2 / \mathrm{{ndf}} =${chi2:.2f} / {ndf}''\n'
+                                fr'$S=${signal:.0f} $\pm$ {signal_err:.0f}''\n'
+                                fr'$B(3\sigma)=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
+                                fr'$S/B(3\sigma)=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
+                                fr'Signif.$(3\sigma)=${significance:.1f} $\pm$ {significance_err:.1f}',
+                                loc = 'center right',
+                                frameon=False)
+            axs.add_artist(text)
 
         return fig
 
