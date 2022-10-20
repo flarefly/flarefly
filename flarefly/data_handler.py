@@ -202,6 +202,22 @@ class DataHandler:
 
         return self._norm_
 
+    def get_bin_center(self):
+        """
+        Get the center of the bins
+
+        Returns
+        -------------------------------------------------
+        binning: array
+            The bin center
+        """
+        binning = self.get_obs().binning[0]
+        bin_center = []
+        for bin_ in binning:
+            bin_center.append((bin_[0] + bin_[1])/2)
+
+        return bin_center
+
     def get_nbins(self):
         """
         Get the number of bins
