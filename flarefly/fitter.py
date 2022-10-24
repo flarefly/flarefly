@@ -5,6 +5,7 @@ Module containing the class used to perform mass fits
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+from matplotlib.offsetbox import AnchoredText
 
 import zfit
 import mplhep
@@ -470,6 +471,20 @@ class F2MassFitter:
         self._total_pdf_ = zfit.pdf.SumPDF(
             self._signal_pdf_+self._background_pdf_, self._fracs_)
 
+    def __build_total_pdf_binned(self):
+        """
+        Helper function to compose the total pdf binned from unbinned
+        """
+
+        # for binned data, obs already contains the wanted binning
+        if self._data_handler_.get_is_binned():
+            obs = self._data_handler_.get_obs()
+        # for unbinned data, one needs to impose a binning
+        else:
+            obs = self._data_handler_.get_binned_obs_from_unbinned_data()
+
+        self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._total_pdf_, obs)
+
     def __prefit(self):
         """
         Helper function to perform a prefit to the sidebands
@@ -514,16 +529,16 @@ class F2MassFitter:
         fit_result: zfit.minimizers.fitresult.FitResult
             The fit result
         """
+
         if self._data_handler_ is None:
             Logger('Data handler not specified', 'FATAL')
 
         self.__build_total_pdf()
+        self.__build_total_pdf_binned()
         # pylint: disable=fixme
         self.__prefit() #TODO: implement me
 
         if self._data_handler_.get_is_binned():
-            self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._total_pdf_,
-                                                                     self._data_handler_.get_obs())
             # chi2 loss
             if self._chi2_loss_:
                 loss = zfit.loss.BinnedChi2(self._total_pdf_binned_,
@@ -566,7 +581,7 @@ class F2MassFitter:
 
         return self._fit_result_
 
-    # pylint: disable=too-many-statements
+    # pylint: disable=too-many-statements, too-many-locals
     def plot_mass_fit(self, **kwargs):
         """
         Plot the mass fit
@@ -585,11 +600,11 @@ class F2MassFitter:
             - figsize: tuple
                 size of the figure
 
-            - bins: int
-                number of bins in case of unbinned fit
-
             - axis_title: str
                 x-axis title
+
+            - show_extra_info
+                show chi2/ndf, signal, bkg, signal/bkg, significance
 
         Returns
         -------------------------------------------------
@@ -600,20 +615,20 @@ class F2MassFitter:
         style = kwargs.get('style', 'LHCb2')
         logy = kwargs.get('logy', False)
         figsize = kwargs.get('figsize', (7, 7))
-        bins = kwargs.get('bins', 100)
+        bins = self._data_handler_.get_nbins()
         axis_title = kwargs.get('axis_title', self._data_handler_.get_var_name())
+        show_extra_info = kwargs.get('show_extra_info', False)
 
         mplhep.style.use(style)
 
         obs = self._data_handler_.get_obs()
         limits = self._data_handler_.get_limits()
 
-        fig = plt.figure(figsize=figsize)
+        fig, axs = plt.subplots(figsize=figsize)
         if self._data_handler_.get_is_binned():
             hist = self._data_handler_.get_binned_data().to_hist()
             hist.plot(yerr=True, color='black', histtype='errorbar',
                       label='data')
-            bins = len(self._data_handler_.get_binned_data().values())
             bin_sigma = (limits[1] - limits[0]) / bins
             norm = self._data_handler_.get_norm() * bin_sigma
         else:
@@ -664,6 +679,31 @@ class F2MassFitter:
             plt.yscale('log')
             plt.ylim(min(total_func) * norm / 5, max(total_func) * norm * 5)
 
+        if show_extra_info:
+            # info on chi2/ndf
+            chi2 = self.get_chi2()
+            ndf = self.get_ndf()
+            anchored_text_chi2 = AnchoredText(fr'$\chi^2 / \mathrm{{ndf}} =${chi2:.2f} / {ndf}',
+                                              loc = 'upper left',
+                                              frameon=False)
+            # signal and background info for all signals
+            text = []
+            for idx, _ in enumerate(self._name_signal_pdf_):
+                signal, signal_err = self.get_signal(idx=idx)
+                bkg, bkg_err = self.get_background(idx=idx)
+                s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx)
+                significance, significance_err = self.get_significance(idx=idx)
+                text.append(fr'signal{idx}''\n'
+                        fr'  $S=${signal:.0f} $\pm$ {signal_err:.0f}''\n'
+                        fr'  $B(3\sigma)=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
+                        fr'  $S/B(3\sigma)=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
+                        fr'  Signif.$(3\sigma)=${significance:.1f} $\pm$ {significance_err:.1f}')
+            concatenated_text = '\n'.join(text)
+            anchored_text_signal = AnchoredText(concatenated_text, loc = 'lower right', frameon=False)
+
+            axs.add_artist(anchored_text_chi2)
+            axs.add_artist(anchored_text_signal)
+
         return fig
 
     def get_fit_result(self):
@@ -702,27 +742,35 @@ class F2MassFitter:
         chi2: float
             chi2
         """
-        # for chi2 loss, just retrieve loss value in fit result
-        if self._chi2_loss_:
-            chi2 = float(self._fit_result_.loss.value())
-        # for nll loss, compute chi2 "by hand"
-        else:
-            chi2 = 0
+
+        chi2 = 0
+        norm = self._data_handler_.get_norm()
+        if self._data_handler_.get_is_binned():
+            # for chi2 loss, just retrieve loss value in fit result
+            if self._chi2_loss_:
+                return float(self._fit_result_.loss.value())
+
+            # for nll loss, compute chi2 "by hand"
             # access normalized data values and errors for all bins
             binned_data = self._data_handler_.get_binned_data()
-            norm = self._data_handler_.get_norm()
-            data_values = binned_data.values()/norm
-            data_variances = binned_data.variances()/norm/norm
+            data_values = binned_data.values()
+            data_variances = binned_data.variances()
             # access model predicted values
-            model_values = self._total_pdf_binned_.values()
+            model_values = self._total_pdf_binned_.values()*norm
             # compute chi2
-            bins = len(data_values)
-            for ibin in range(bins):
-                residual = data_values[ibin] - model_values[ibin]
-                denom = data_variances[ibin]
-                chi2 += residual*residual/denom
+            for (data, model, data_variance) in zip(data_values, model_values, data_variances):
+                chi2 += (data - model)**2/data_variance
+            return chi2
 
-        return chi2
+        # for unbinned data
+        data_values = self._data_handler_.get_binned_data_from_unbinned_data()
+        # access model predicted values
+        model_values = self._total_pdf_binned_.values()*norm
+        # compute chi2
+        for (data, model) in zip(data_values, model_values):
+            chi2 += (data - model)**2/data
+
+        return float(chi2)
 
     def get_chi2_ndf(self):
         """
@@ -745,17 +793,24 @@ class F2MassFitter:
         residuals: array[float]
             The residuals
         """
-        if not self._data_handler_.get_is_binned():
-            Logger('Raw residuals not available in case of unbinned data.', 'FATAL')
 
         bins = self._data_handler_.get_nbins()
+        norm = self._data_handler_.get_norm()
         residuals = [None]*bins
         background_pdf_binned_ = [None for _ in enumerate(self._name_background_pdf_)]
         model_bkg_values = [None for _ in enumerate(self._name_background_pdf_)]
+
         # access normalized data values and errors for all bins
-        binned_data = self._data_handler_.get_binned_data()
-        norm = self._data_handler_.get_norm()
-        data_values = binned_data.values()
+        if self._data_handler_.get_is_binned():
+            binned_data = self._data_handler_.get_binned_data()
+            data_values = binned_data.values()
+            variances = binned_data.variances()
+            obs = self._data_handler_.get_obs()
+        else:
+            data_values = self._data_handler_.get_binned_data_from_unbinned_data()
+            variances = data_values # poissonian errors
+            obs = self._data_handler_.get_binned_obs_from_unbinned_data()
+
         # get background fractions
         if len(self._background_pdf_) == 1:
             signal_fracs, _, _, _ = self.__get_all_fracs()
@@ -764,16 +819,15 @@ class F2MassFitter:
             _, bkg_fracs, _, _ = self.__get_all_fracs()
         # access model predicted values for background
         for ipdf, _ in enumerate(self._name_background_pdf_):
-            background_pdf_binned_[ipdf] = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[ipdf],
-                                                                          self._data_handler_.get_obs())
+            background_pdf_binned_[ipdf] = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[ipdf], obs)
             model_bkg_values[ipdf] = background_pdf_binned_[ipdf].values()*bkg_fracs[ipdf]*norm
         # compute residuals
-        for ibin in range(bins):
-            residuals[ibin] = float(data_values[ibin])
+        for ibin, data in enumerate(data_values):
+            residuals[ibin] = float(data)
             for ipdf, _ in enumerate(self._name_background_pdf_):
                 residuals[ibin] -= model_bkg_values[ipdf][ibin]
 
-        return residuals, binned_data.variances()
+        return residuals, variances
 
     def plot_raw_residuals(self, **kwargs):
         """
@@ -812,23 +866,22 @@ class F2MassFitter:
 
         residuals, variances = self.get_raw_residuals()
         # draw residuals
-        if self._data_handler_.get_is_binned():
-            plt.errorbar(
-                self._data_handler_.get_bin_center(),
-                residuals,
-                xerr = None,
-                yerr = np.sqrt(variances),
-                linestyle = "None",
-                elinewidth = 1,
-                capsize = 0,
-                color = "black",
-                marker = "o",
-                markersize = 5,
-                label = "residuals"
-            )
-            bins = self._data_handler_.get_nbins()
-            bin_sigma = (limits[1] - limits[0]) / bins
-            norm = self._data_handler_.get_norm() * bin_sigma
+        plt.errorbar(
+            self._data_handler_.get_bin_center(),
+            residuals,
+            xerr = None,
+            yerr = np.sqrt(variances),
+            linestyle = "None",
+            elinewidth = 1,
+            capsize = 0,
+            color = "black",
+            marker = "o",
+            markersize = 5,
+            label = "residuals"
+        )
+        bins = self._data_handler_.get_nbins()
+        bin_sigma = (limits[1] - limits[0]) / bins
+        norm = self._data_handler_.get_norm() * bin_sigma
 
         x_plot = np.linspace(limits[0], limits[1], num=1000)
         signal_funcs, signal_fracs, _, _ = ([] for _ in range(4))
@@ -864,25 +917,30 @@ class F2MassFitter:
         residuals: array[float]
             The standardized residuals
         """
-        if not self._data_handler_.get_is_binned():
-            Logger('Standardized residuals not available in case of unbinned data.', 'FATAL')
 
         bins = self._data_handler_.get_nbins()
-        residuals, variances = [None]*bins, [None]*bins
-        # access normalized data values and errors for all bins
-        binned_data = self._data_handler_.get_binned_data()
         norm = self._data_handler_.get_norm()
-        data_values = binned_data.values()/norm
-        data_variances = binned_data.variances()/norm/norm
-        # access model predicted values for background
-        total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._total_pdf_,
-                                                           self._data_handler_.get_obs())
-        model_values = total_pdf_binned_.values()
-        for ibin in range(bins):
-            residuals[ibin] = float(data_values[ibin] - model_values[ibin])/float(np.sqrt(data_variances[ibin]))
-            variances[ibin] = float(data_variances[ibin])/float(np.sqrt(data_variances[ibin]))
+        residuals, residuals_variances = [None]*bins, [None]*bins
 
-        return residuals, variances
+        # access normalized data values and errors for all bins
+        if self._data_handler_.get_is_binned():
+            binned_data = self._data_handler_.get_binned_data()
+            data_values = binned_data.values()
+            variances = binned_data.variances()
+        else:
+            data_values = self._data_handler_.get_binned_data_from_unbinned_data()
+            variances = data_values # poissonian errors
+
+        # access model predicted values for background
+        self.__build_total_pdf_binned()
+        model_values = self._total_pdf_binned_.values()*norm
+        for ibin, (data, model, variance) in enumerate(zip(data_values, model_values, variances)):
+            if variance == 0:
+                Logger('Null variance. Consider enlarging the bins.', 'FATAL')
+            residuals[ibin] = float((data - model)/np.sqrt(variance))
+            residuals_variances[ibin] = float(variance/np.sqrt(variance))
+
+        return residuals, residuals_variances
 
     def plot_std_residuals(self, **kwargs):
         """
@@ -915,25 +973,24 @@ class F2MassFitter:
         mplhep.style.use(style)
 
         limits = self._data_handler_.get_limits()
+        bins = self._data_handler_.get_nbins()
+        bin_center = self._data_handler_.get_bin_center()
 
         fig = plt.figure(figsize=figsize)
 
         residuals, variances = self.get_std_residuals()
         # draw residuals
-        if self._data_handler_.get_is_binned():
-            bin_center = self._data_handler_.get_bin_center()
-            plt.errorbar(bin_center,
-                         residuals,
-                         xerr = None,
-                         yerr = np.sqrt(variances),
-                         linestyle = "None",
-                         elinewidth = 1,
-                         capsize = 0,
-                         color = "black",
-                         marker = "o",
-                         markersize = 5,
-                         label = None)
-            bins = self._data_handler_.get_nbins()
+        plt.errorbar(bin_center,
+                    residuals,
+                    xerr = None,
+                    yerr = np.sqrt(variances),
+                    linestyle = "None",
+                    elinewidth = 1,
+                    capsize = 0,
+                    color = "black",
+                    marker = "o",
+                    markersize = 5,
+                    label = None)
 
         # line at 0
         plt.plot([bin_center[0], bin_center[-1]], [0., 0.], lw=2, color='xkcd:blue')

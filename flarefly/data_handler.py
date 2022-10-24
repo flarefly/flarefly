@@ -29,12 +29,21 @@ class DataHandler:
             Limits of the x axis used in the fit
         use_zfit: bool
             If True, zfit package is used to fit the data
+
         **kwargs: dict
             Additional optional arguments:
 
+            - nbins: int
+                Number of bins chosen by user to bin data in case of unbinned data
+
             - histoname: str
                 Name of the histogram to be used in the fit in case of ROOT file
+
+            - treename: str
+                Name of the tree to be used in the fit in case of ROOT file
         """
+        nbins = kwargs.get('nbins', 100)
+
         self._input_ = data
         self._var_name_ = var_name
         self._limits_ = limits if limits is not None else [-1, -1]
@@ -42,7 +51,7 @@ class DataHandler:
         self._obs_ = None
         self._data_ = None
         self._binned_data_ = None
-        self._nbins_ = None
+        self._nbins_ = nbins
         self._isbinned_ = False
         self._norm_ = 1.
 
@@ -190,6 +199,23 @@ class DataHandler:
         Logger('Observable not available for non-zfit data', 'ERROR')
         return None
 
+    def get_binned_obs_from_unbinned_data(self):
+        """
+        Get the binned obs from unbinned obs
+
+        Returns
+        -------------------------------------------------
+        binned_data: zfit.core.space.Space
+            The observation space for unbinned data converted to binned data
+        """
+        bins = self.get_nbins()
+        limits = self.get_limits()
+        var_name = self.get_var_name()
+        binning = zfit.binned.RegularBinning(bins, limits[0], limits[1], name=var_name)
+        obs = zfit.Space(var_name, binning=binning)
+
+        return obs
+
     def get_norm(self):
         """
         Get the integral of the data
@@ -211,11 +237,13 @@ class DataHandler:
         binning: array
             The bin center
         """
-        binning = self.get_obs().binning[0]
+        if self.get_is_binned():
+            binning = self.get_obs().binning[0]
+        else:
+            binning = self.get_binned_obs_from_unbinned_data().binning[0]
         bin_center = []
         for bin_ in binning:
             bin_center.append((bin_[0] + bin_[1])/2)
-
         return bin_center
 
     def get_nbins(self):
@@ -250,6 +278,21 @@ class DataHandler:
             The binned data
         """
         return self._binned_data_
+
+    def get_binned_data_from_unbinned_data(self):
+        """
+        Get the binned data from unbinned data
+
+        Returns
+        -------------------------------------------------
+        binned_data: float array
+            The binned data obtained from unbinned data
+        """
+        limits = self.get_limits()
+        data_np = zfit.run(self.get_data()[:, 0])
+        data_values, _ = np.histogram(data_np, self.get_nbins(), range=(limits[0], limits[1]))
+
+        return data_values
 
     def to_pandas(self):
         """
