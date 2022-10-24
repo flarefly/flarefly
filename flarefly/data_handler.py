@@ -15,7 +15,7 @@ class DataHandler:
     Class for storing and managing the data of (ROOT tree, TH1, numpy array, etc.)
     """
 
-    def __init__(self, data=None, var_name='', limits=None, use_zfit=True, nbins=100, **kwargs):
+    def __init__(self, data=None, var_name='', limits=None, use_zfit=True, **kwargs):
         """
         Initialize the DataHandler class
 
@@ -29,14 +29,21 @@ class DataHandler:
             Limits of the x axis used in the fit
         use_zfit: bool
             If True, zfit package is used to fit the data
-        nbins: int
-            Number of bins chosen by user to bin data in case of unbinned data
+
         **kwargs: dict
             Additional optional arguments:
 
+            - nbins: int
+                Number of bins chosen by user to bin data in case of unbinned data
+
             - histoname: str
                 Name of the histogram to be used in the fit in case of ROOT file
+
+            - treename: str
+                Name of the tree to be used in the fit in case of ROOT file
         """
+        nbins = kwargs.get('nbins', 100)
+
         self._input_ = data
         self._var_name_ = var_name
         self._limits_ = limits if limits is not None else [-1, -1]

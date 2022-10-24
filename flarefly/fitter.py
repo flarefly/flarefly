@@ -600,9 +600,6 @@ class F2MassFitter:
             - figsize: tuple
                 size of the figure
 
-            - bins: int
-                number of bins in case of unbinned fit
-
             - axis_title: str
                 x-axis title
 
@@ -618,10 +615,9 @@ class F2MassFitter:
         style = kwargs.get('style', 'LHCb2')
         logy = kwargs.get('logy', False)
         figsize = kwargs.get('figsize', (7, 7))
-        #bins = kwargs.get('bins', 100)
         bins = self._data_handler_.get_nbins()
         axis_title = kwargs.get('axis_title', self._data_handler_.get_var_name())
-        show_extra_info = kwargs.get('show_extra_info', True)
+        show_extra_info = kwargs.get('show_extra_info', False)
 
         mplhep.style.use(style)
 
@@ -684,20 +680,29 @@ class F2MassFitter:
             plt.ylim(min(total_func) * norm / 5, max(total_func) * norm * 5)
 
         if show_extra_info:
+            # info on chi2/ndf
             chi2 = self.get_chi2()
             ndf = self.get_ndf()
-            signal, signal_err = self.get_signal()
-            bkg, bkg_err = self.get_background()
-            s_over_b, s_over_b_err = self.get_signal_over_background()
-            significance, significance_err = self.get_significance()
-            text = AnchoredText(fr'$\chi^2 / \mathrm{{ndf}} =${chi2:.2f} / {ndf}''\n'
-                                fr'$S=${signal:.0f} $\pm$ {signal_err:.0f}''\n'
-                                fr'$B(3\sigma)=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
-                                fr'$S/B(3\sigma)=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
-                                fr'Signif.$(3\sigma)=${significance:.1f} $\pm$ {significance_err:.1f}',
-                                loc = 'center right',
-                                frameon=False)
-            axs.add_artist(text)
+            anchored_text_chi2 = AnchoredText(fr'$\chi^2 / \mathrm{{ndf}} =${chi2:.2f} / {ndf}',
+                                              loc = 'upper left',
+                                              frameon=False)
+            # signal and background info for all signals
+            text = []
+            for idx, _ in enumerate(self._name_signal_pdf_):
+                signal, signal_err = self.get_signal(idx=idx)
+                bkg, bkg_err = self.get_background(idx=idx)
+                s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx)
+                significance, significance_err = self.get_significance(idx=idx)
+                text.append(fr'signal{idx}''\n'
+                        fr'  $S=${signal:.0f} $\pm$ {signal_err:.0f}''\n'
+                        fr'  $B(3\sigma)=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
+                        fr'  $S/B(3\sigma)=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
+                        fr'  Signif.$(3\sigma)=${significance:.1f} $\pm$ {significance_err:.1f}')
+            concatenated_text = '\n'.join(text)
+            anchored_text_signal = AnchoredText(concatenated_text, loc = 'lower right', frameon=False)
+
+            axs.add_artist(anchored_text_chi2)
+            axs.add_artist(anchored_text_signal)
 
         return fig
 
@@ -754,7 +759,7 @@ class F2MassFitter:
             model_values = self._total_pdf_binned_.values()*norm
             # compute chi2
             for (data, model, data_variance) in zip(data_values, model_values, data_variances):
-                chi2 += (data - model)*(data - model)/data_variance
+                chi2 += (data - model)**2/data_variance
             return chi2
 
         # for unbinned data
@@ -763,7 +768,7 @@ class F2MassFitter:
         model_values = self._total_pdf_binned_.values()*norm
         # compute chi2
         for (data, model) in zip(data_values, model_values):
-            chi2 += (data - model)*(data - model)/model
+            chi2 += (data - model)**2/data
 
         return float(chi2)
 
