@@ -1174,12 +1174,10 @@ class F2MassFitter:
             if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
-            else:
-                mass, _ = self.get_mass(idx)
-                sigma, _ = self.get_sigma(idx)
-
-                min_value = mass - nsigma * sigma
-                max_value = mass + nsigma * sigma
+            mass, _ = self.get_mass(idx)
+            sigma, _ = self.get_sigma(idx)
+            min_value = mass - nsigma * sigma
+            max_value = mass + nsigma * sigma
 
         # pylint: disable=missing-kwoa
         signal = self._signal_pdf_[idx].integrate((min_value, max_value))
@@ -1246,12 +1244,10 @@ class F2MassFitter:
             if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
-            else:
-                mass, _ = self.get_mass(idx)
-                sigma, _ = self.get_sigma(idx)
-
-                min_value = mass - nsigma * sigma
-                max_value = mass + nsigma * sigma
+            mass, _ = self.get_mass(idx)
+            sigma, _ = self.get_sigma(idx)
+            min_value = mass - nsigma * sigma
+            max_value = mass + nsigma * sigma
 
         signal_fracs, bkg_fracs, signal_err_fracs, bkg_err_fracs = self.__get_all_fracs()
 
