@@ -8,6 +8,8 @@ from matplotlib.colors import ListedColormap
 from matplotlib.offsetbox import AnchoredText
 
 import zfit
+import uproot
+from hist import Hist
 import mplhep
 from particle import Particle
 from flarefly.utils import Logger
@@ -21,7 +23,7 @@ class F2MassFitter:
     https://github.com/zfit/zfit
     """
 
-    def __init__(self, data_handler, name_signal_pdf, name_background_pdf, name="", chi2_loss=False):
+    def __init__(self, data_handler, name_signal_pdf, name_background_pdf, name="", chi2_loss=False, **kwargs):
         """
         Initialize the F2MassFitter class
         Parameters
@@ -80,7 +82,27 @@ class F2MassFitter:
         chi2_loss: bool
             chi2 minimization if True, nll minmization else
             Default value to False
+
+        **kwargs: dict
+            Additional optional arguments:
+
+            - ofile: str
+                Optional name for .root output file
+
+            - save_output: bool
+                Optional boolean to choose whether one wants to store
+                information in the .root output file
         """
+
+        save_output = kwargs.get('save_output', False)
+        ofile = kwargs.get('ofile', './default_output.root')
+        self._save_output_ = save_output
+        self._ofile_ = ofile
+
+        if self._save_output_ or self._ofile_ != './default_output.root':
+            with uproot.recreate(self._ofile_) as _:
+                pass
+
         self._data_handler_ = data_handler
         self._name_signal_pdf_ = name_signal_pdf
         self._name_background_pdf_ = name_background_pdf
@@ -636,6 +658,9 @@ class F2MassFitter:
             - show_extra_info
                 show chi2/ndf, signal, bkg, signal/bkg, significance
 
+            - num: int
+                number of bins to plot (and save) pdfs converted into histograms
+
         Returns
         -------------------------------------------------
         fig: matplotlib.figure.Figure
@@ -648,6 +673,7 @@ class F2MassFitter:
         bins = self._data_handler_.get_nbins()
         axis_title = kwargs.get('axis_title', self._data_handler_.get_var_name())
         show_extra_info = kwargs.get('show_extra_info', False)
+        num = kwargs.get('num', 10000)
 
         mplhep.style.use(style)
 
@@ -655,21 +681,19 @@ class F2MassFitter:
         limits = self._data_handler_.get_limits()
 
         fig, axs = plt.subplots(figsize=figsize)
-        if self._data_handler_.get_is_binned():
-            hist = self._data_handler_.get_binned_data().to_hist()
-            hist.plot(yerr=True, color='black', histtype='errorbar',
-                      label='data')
-            bin_sigma = (limits[1] - limits[0]) / bins
-            norm = self._data_handler_.get_norm() * bin_sigma
-        else:
-            data_np = zfit.run(self._data_handler_.get_data()[:, 0])
-            counts, bin_edges = np.histogram(data_np, bins, range=(limits[0], limits[1]))
-            mplhep.histplot((counts, bin_edges), yerr=True, color='black', histtype='errorbar',
-                            label='data')
-            norm = data_np.shape[0] / bins * obs.area()
 
-        x_plot = np.linspace(limits[0], limits[1], num=1000)
+        hdata = self._data_handler_.to_hist(lower_edge=limits[0],
+                                            upper_edge=limits[1],
+                                            nbins=bins,
+                                            varname=self._data_handler_.get_var_name())
+        self.write_data(hdata)
+        hdata.plot(yerr=True, color='black', histtype='errorbar', label='data')
+        bin_sigma = (limits[1] - limits[0]) / bins
+        norm = self._data_handler_.get_norm() * bin_sigma
+
+        x_plot = np.linspace(limits[0], limits[1], num=num)
         total_func = zfit.run(self._total_pdf_.pdf(x_plot, norm_range=obs))
+        self.write_pdf(histname='total_func', weight=total_func, num=num)
         signal_funcs, signal_fracs, bkg_funcs, bkg_fracs = ([] for _ in range(4))
         for signal_pdf in self._signal_pdf_:
             signal_funcs.append(zfit.run(signal_pdf.pdf(x_plot, norm_range=obs)))
@@ -691,14 +715,23 @@ class F2MassFitter:
             if ibkg < len(bkg_fracs) - 1:
                 plt.plot(x_plot, bkg_func * norm * bkg_fracs[ibkg], color=bkg_cmap(ibkg),
                          ls='--', label=f'background {ibkg}')
+                self.write_pdf(histname=f'bkg {ibkg}',
+                               weight=bkg_func * norm * bkg_fracs[ibkg],
+                               num=num)
             else:
                 plt.plot(x_plot, bkg_func * norm * (1-sum(bkg_fracs)-sum(signal_fracs)),
                          color='firebrick', ls='--', label=f'background {ibkg}')
+                self.write_pdf(histname=f'bkg {ibkg}',
+                               weight=bkg_func * norm * (1-sum(bkg_fracs)-sum(signal_fracs)),
+                               num=num)
         # then draw signals
         for isgn, (frac, signal_func) in enumerate(zip(signal_funcs, signal_fracs)):
             plt.plot(x_plot, signal_func * norm * frac, color=self._sgn_cmap_(isgn))
             plt.fill_between(x_plot, signal_func * norm * frac, color=self._sgn_cmap_(isgn),
                              alpha=0.5, label=f'signal {isgn}')
+            self.write_pdf(histname=f'signal {isgn}',
+                           weight=signal_func * norm * frac,
+                           num=num)
 
         plt.plot(x_plot, total_func * norm, color='xkcd:blue', label='total fit')
         plt.xlim(limits[0], limits[1])
@@ -1514,3 +1547,30 @@ class F2MassFitter:
 
         self._kde_bkg_sample_[idx] = sample
         self._kde_bkg_option_[idx] = kwargs
+
+    def write_data(self, hdata):
+        """
+        Helper method to save a data histogram in a .root file (TH1D format)
+        """
+        if not (self._save_output_ or self._ofile_ != './default_output.root'):
+            return
+
+        with uproot.update(self._ofile_) as ofile:
+            ofile['hdata'] = hdata
+
+    def write_pdf(self, histname, weight, num, **kwargs):
+        """
+        Helper method to save a pdf histogram in a .root file (TH1D format)
+        """
+        name = kwargs.get('name', self._data_handler_.get_var_name())
+
+        if not (self._save_output_ or self._ofile_ != './default_output.root'):
+            return
+
+        limits = self._data_handler_.get_limits()
+        x_plot = np.linspace(limits[0], limits[1], num=num)
+        histo = Hist.new.Reg(num, limits[0], limits[1], name=name).Double()
+        histo.fill(x_plot, weight=weight)
+
+        with uproot.update(self._ofile_) as ofile:
+            ofile[histname] = histo
