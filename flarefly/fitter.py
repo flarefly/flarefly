@@ -706,6 +706,7 @@ class F2MassFitter:
 
         return fig
 
+    @property
     def get_fit_result(self):
         """
         Get the fit result
@@ -1137,16 +1138,25 @@ class F2MassFitter:
 
         return parameter, parameter_err
 
-    def get_signal(self, idx=0, nsigma=3):
+    def get_signal(self, idx=0, **kwargs):
         """
-        Get the signal and its error in mass +- nsigma * width
+        Get the signal and its error in a given invariant-mass region
 
         Parameters
         -------------------------------------------------
         idx: int
             Index of the signal to be returned
-        nsigma: float
-            nsigma window for signal computation
+        **kwargs: dict
+            Additional optional arguments:
+
+            - nsigma: float
+                nsigma invariant-mass window around mean for signal computation
+
+            - min: float
+                minimum value of invariant-mass for signal computation (alternative to nsigma)
+
+            - max: float
+                maximum value of invariant-mass for signal computation (alternative to nsigma)
 
         Returns
         -------------------------------------------------
@@ -1156,17 +1166,18 @@ class F2MassFitter:
             The signal error obtained from the fit
         """
 
-        if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball']:
-            # pylint: disable=fixme
-            # TODO: add possibility to compute signal not based on nsigma
-            Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
-            return 0., 0.
+        nsigma = kwargs.get('nsigma', 3.)
+        min_value = kwargs.get('min', None)
+        max_value = kwargs.get('max', None)
 
-        mass, _ = self.get_mass(idx)
-        sigma, _ = self.get_sigma(idx)
-
-        min_value = mass - nsigma * sigma
-        max_value = mass + nsigma * sigma
+        if min_value is None or max_value is None:
+            if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball']:
+                Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
+                return 0., 0.
+            mass, _ = self.get_mass(idx)
+            sigma, _ = self.get_sigma(idx)
+            min_value = mass - nsigma * sigma
+            max_value = mass + nsigma * sigma
 
         # pylint: disable=missing-kwoa
         signal = self._signal_pdf_[idx].integrate((min_value, max_value))
@@ -1193,16 +1204,25 @@ class F2MassFitter:
 
         return float(signal * norm), float(signal * norm_err)
 
-    def get_background(self, idx=0, nsigma=3):
+    def get_background(self, idx=0, **kwargs):
         """
-        Get the background and its error in mass +- nsigma * width
+        Get the background and its error in a given invariant-mass region
 
         Parameters
         -------------------------------------------------
         idx: int
             Index of the signal to be used to compute nsigma window
-        nsigma: float
-            nsigma window for background computation
+        **kwargs: dict
+            Additional optional arguments:
+
+            - nsigma: float
+                nsigma invariant-mass window around mean for background computation
+
+            - min: float
+                minimum value of invariant-mass for background computation (alternative to nsigma)
+
+            - max: float
+                maximum value of invariant-mass for background computation (alternative to nsigma)
 
         Returns
         -------------------------------------------------
@@ -1216,11 +1236,18 @@ class F2MassFitter:
             Logger('Background not fitted', 'ERROR')
             return 0., 0.
 
-        mass, _ = self.get_mass(idx)
-        sigma, _ = self.get_sigma(idx)
+        nsigma = kwargs.get('nsigma', 3.)
+        min_value = kwargs.get('min', None)
+        max_value = kwargs.get('max', None)
 
-        min_value = mass - nsigma * sigma
-        max_value = mass + nsigma * sigma
+        if min_value is None or max_value is None:
+            if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball']:
+                Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
+                return 0., 0.
+            mass, _ = self.get_mass(idx)
+            sigma, _ = self.get_sigma(idx)
+            min_value = mass - nsigma * sigma
+            max_value = mass + nsigma * sigma
 
         signal_fracs, bkg_fracs, signal_err_fracs, bkg_err_fracs = self.__get_all_fracs()
 
@@ -1247,16 +1274,25 @@ class F2MassFitter:
 
         return float(background), float(background_err)
 
-    def get_signal_over_background(self, idx=0, nsigma=3):
+    def get_signal_over_background(self, idx=0, **kwargs):
         """
-        Get the S/B ratio and its error in mass +- nsigma * width
+        Get the S/B ratio and its error in a given invariant-mass region
 
         Parameters
         -------------------------------------------------
         idx: int
             Index of the signal to be used to compute nsigma window
-        nsigma: float
-            nsigma window for background computation
+        **kwargs: dict
+            Additional optional arguments:
+
+            - nsigma: float
+                nsigma invariant-mass window around mean for signal and background computation
+
+            - min: float
+                minimum value of invariant-mass for signal and background computation (alternative to nsigma)
+
+            - max: float
+                maximum value of invariant-mass for signal and background computation (alternative to nsigma)
 
         Returns
         -------------------------------------------------
@@ -1266,24 +1302,33 @@ class F2MassFitter:
             The S/B error obtained from the fit
         """
 
-        signal = self.get_signal(idx, nsigma)
-        bkg = self.get_background(idx, nsigma)
+        signal = self.get_signal(idx, **kwargs)
+        bkg = self.get_background(idx, **kwargs)
         signal_over_background = signal[0]/bkg[0]
         signal_over_background_err = np.sqrt(signal[1]**2/signal[0]**2 + bkg[1]**2/bkg[0]**2)
         signal_over_background_err *= signal_over_background
 
         return signal_over_background, signal_over_background_err
 
-    def get_significance(self, idx=0, nsigma=3):
+    def get_significance(self, idx=0, **kwargs):
         """
-        Get the significance and its error in mass +- nsigma * width
+        Get the significance and its error in a given invariant-mass region
 
         Parameters
         -------------------------------------------------
         idx: int
             Index of the signal to be used to compute nsigma window
-        nsigma: float
-            nsigma window for background computation
+        **kwargs: dict
+            Additional optional arguments:
+
+            - nsigma: float
+                nsigma invariant-mass window around mean for signal and background computation
+
+            - min: float
+                minimum value of invariant-mass for signal and background computation (alternative to nsigma)
+
+            - max: float
+                maximum value of invariant-mass for signal and background computation (alternative to nsigma)
 
         Returns
         -------------------------------------------------
@@ -1293,8 +1338,8 @@ class F2MassFitter:
             The significance error obtained from the fit
         """
 
-        signal = self.get_signal(idx, nsigma)
-        bkg = self.get_background(idx, nsigma)
+        signal = self.get_signal(idx, **kwargs)
+        bkg = self.get_background(idx, **kwargs)
         significance = signal[0]/np.sqrt(signal[0]+bkg[0])
         sig_plus_bkg = signal[0] + bkg[0]
 
