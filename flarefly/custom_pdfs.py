@@ -4,13 +4,15 @@ Module containing custom pdfs
 
 import zfit
 import tensorflow as tf
+from zfit import z
+from scipy.special import voigt_profile
 
 # pylint: disable=too-many-ancestors
 
 
 class DoubleGauss(zfit.pdf.ZPDF):
     """
-    Pdf composed by the sum of two gaussians sharing the same mean parameter
+    PDF composed by the sum of two gaussians sharing the same mean parameter
     Parameters:
 
         - mu: shared mean parameter
@@ -43,7 +45,7 @@ class DoubleGauss(zfit.pdf.ZPDF):
 
 class Pow(zfit.pdf.ZPDF):
     """
-    Pdf composed by a power-law function
+    PDF composed by a power-law function
     f(x) = (x - m)^power
 
     Parameters:
@@ -70,7 +72,7 @@ class Pow(zfit.pdf.ZPDF):
 
 class ExpoPow(zfit.pdf.ZPDF):
     """
-    Pdf composed by an exponential power-law function
+    PDF composed by an exponential power-law function
     f(x) = sqrt(x - m) * exp( -lam * (x - m) )
 
     Parameters:
@@ -94,3 +96,35 @@ class ExpoPow(zfit.pdf.ZPDF):
         mass = self.params['mass']
         lam = self.params['lam']
         return tf.sqrt(x - mass) * tf.exp(-lam * (x - mass))
+
+class Voigtian(zfit.pdf.ZPDF):
+    """
+    Voigtian PDF defined starting from the scipy.special definition
+    See https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.voigt_profile.html
+    for more details
+
+    Parameters:
+
+        - mu: mass parameter
+
+        - sigma: sigma of the gaussian
+
+        - gamma: gamma of the cauchy
+    """
+
+    # override the name of the parameters
+    _PARAMS = ['mu', 'sigma', 'gamma']
+
+    def _unnormalized_pdf(self, x):
+        """
+        PDF 'unnormalized'.
+        See https://zfit.github.io/zfit/_modules/zfit/core/basepdf.html#BasePDF.unnormalized_pdf
+        for more details
+        """
+        zfit.run.assert_executing_eagerly()  # make sure we're eager
+        x = zfit.z.unstack_x(x)
+        mass = self.params['mu']
+        gamma = self.params['gamma']
+        sigma = self.params['sigma']
+
+        return z.convert_to_tensor(voigt_profile(x - mass, sigma, gamma))
