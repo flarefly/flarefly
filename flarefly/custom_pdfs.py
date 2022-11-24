@@ -121,8 +121,6 @@ class Voigtian(zfit.pdf.ZPDF):
         See https://zfit.github.io/zfit/_modules/zfit/core/basepdf.html#BasePDF.unnormalized_pdf
         for more details
         """
-        zfit.run.set_graph_mode(False)
-        zfit.run.set_autograd_mode(False)
         zfit.run.assert_executing_eagerly()  # make sure we're eager
         x = zfit.z.unstack_x(x)
         mass = self.params['mu']
