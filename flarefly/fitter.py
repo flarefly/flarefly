@@ -121,9 +121,8 @@ class F2MassFitter:
 
         zfit.settings.advanced_warnings.all = False
         zfit.settings.changed_warnings.all = False
-        if "voigtian" in self._name_signal_pdf_:
-            zfit.run.set_graph_mode(False)
-            zfit.run.set_autograd_mode(False)
+        zfit.run.set_graph_mode(False)
+        zfit.run.set_autograd_mode(False)
 
     # pylint: disable=too-many-branches, too-many-statements
     def __build_signal_pdfs(self, obs):
