@@ -5,7 +5,7 @@ Module containing custom pdfs
 import zfit
 import tensorflow as tf
 from zfit import z
-from scipy.special import voigt_profile
+from scipy import special
 
 # pylint: disable=too-many-ancestors
 
@@ -127,4 +127,4 @@ class Voigtian(zfit.pdf.ZPDF):
         gamma = self.params['gamma']
         sigma = self.params['sigma']
 
-        return z.convert_to_tensor(voigt_profile(x - mass, sigma, gamma))
+        return z.convert_to_tensor(special.voigt_profile(x - mass, sigma, gamma))
