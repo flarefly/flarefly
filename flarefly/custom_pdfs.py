@@ -127,4 +127,4 @@ class Voigtian(zfit.pdf.ZPDF):
         gamma = self.params['gamma']
         sigma = self.params['sigma']
 
-        return z.convert_to_tensor(special.voigt_profile(x - mass, sigma, gamma))
+        return z.convert_to_tensor(special.voigt_profile(x - mass, sigma, gamma)) # pylint: disable=no-member
