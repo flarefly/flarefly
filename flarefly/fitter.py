@@ -11,7 +11,6 @@ import zfit
 import mplhep
 from particle import Particle
 from flarefly.utils import Logger
-from flarefly.utils import disable_graph_mode
 import flarefly.custom_pdfs as cpdf
 
 
@@ -122,8 +121,6 @@ class F2MassFitter:
 
         zfit.settings.advanced_warnings.all = False
         zfit.settings.changed_warnings.all = False
-        if "voigtian" in self._name_signal_pdf_:
-            disable_graph_mode()
 
     # pylint: disable=too-many-branches, too-many-statements
     def __build_signal_pdfs(self, obs):

@@ -3,14 +3,6 @@ Simple module with a class to manage the data used in the analysis
 """
 
 import sys
-import zfit
-
-def disable_graph_mode():
-    """
-    Helper function to disable graph mode, needed in case of purely pythonic functions
-    """
-    zfit.run.set_graph_mode(False)
-    zfit.run.set_autograd_mode(False)
 
 # pylint: disable=too-few-public-methods
 class Logger:
