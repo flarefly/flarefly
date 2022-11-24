@@ -6,6 +6,8 @@ import zfit
 import tensorflow as tf
 from zfit import z
 from scipy import special
+from flarefly.utils import Logger
+from flarefly.utils import disable_graph_mode
 
 # pylint: disable=too-many-ancestors
 
@@ -121,7 +123,12 @@ class Voigtian(zfit.pdf.ZPDF):
         See https://zfit.github.io/zfit/_modules/zfit/core/basepdf.html#BasePDF.unnormalized_pdf
         for more details
         """
-        zfit.run.assert_executing_eagerly()  # make sure we're eager
+        try:
+            zfit.run.assert_executing_eagerly()  # make sure we're eager
+        except RuntimeError:
+            Logger('In case of Voigtian function you should call the `disable_graph_mode()` '
+                   'function from flarefly.utils at the beginning of your script', 'FATAL')
+
         x = zfit.z.unstack_x(x)
         mass = self.params['mu']
         gamma = self.params['gamma']
