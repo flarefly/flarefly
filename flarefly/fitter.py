@@ -294,8 +294,6 @@ class F2MassFitter:
                     gamma=self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}']
                 )
             elif pdf_name == 'voigtian':
-                zfit.run.set_graph_mode(False)
-                zfit.run.set_autograd_mode(False)
                 self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
                 self._init_sgn_pars_[ipdf].setdefault('gamma', 0.010)
                 self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
