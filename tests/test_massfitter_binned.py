@@ -14,7 +14,7 @@ from flarefly.fitter import F2MassFitter
 FITTERBINNEDDPLUS, FITTERBINNEDDSTAR, FITRES, FIG, RAWYHIST, RAWYIN = ([] for _ in range(6))
 SGNPDFSDPLUS = ["crystalball", "gaussian", "doublegaus", "doublecb"]
 BKGPDFSDPLUS = ["chebpol1", "expo"]
-SGNPDFSDSTAR = ["gaussian"]
+SGNPDFSDSTAR = ["gaussian", "voigtian"]
 BKGPDFSDSTAR = ["expopow", "powlaw"]
 
 # test all possible functions with D+
@@ -64,9 +64,9 @@ for bkg_pdf in BKGPDFSDSTAR:
         FITTERBINNEDDSTAR[-1].set_particle_mass(0, mass=0.1455, fix=True)
         if sgn_pdf == "gaussian":
             FITTERBINNEDDSTAR[-1].set_signal_initpar(0, "sigma", 0.007)
-        elif sgn_pdf == "doublegaus":
-            FITTERBINNEDDSTAR[-1].set_signal_initpar(0, "sigma1", 0.001)
-            FITTERBINNEDDSTAR[-1].set_signal_initpar(0, "sigma2", 0.010)
+        elif sgn_pdf == "voigtian":
+            FITTERBINNEDDSTAR[-1].set_signal_initpar(0, "sigma", 0.007)
+            FITTERBINNEDDSTAR[-1].set_signal_initpar(0, "gamma", 70.e-6) # 70 keV
         FITRES.append(FITTERBINNEDDSTAR[-1].mass_zfit())
         FIG.append(FITTERBINNEDDSTAR[-1].plot_mass_fit(style="ATLAS"))
         RAWYHIST.append(uproot.open(INFILEDSTAR)["hRawYields"].to_numpy())
