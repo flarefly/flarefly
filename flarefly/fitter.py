@@ -42,6 +42,8 @@ class F2MassFitter:
 
             - 'cauchy'
 
+            - 'voigtian'
+
             - 'kde_exact' (requires to set the datasample and options)
 
             - 'kde_grid' (requires to set the datasample and options)
@@ -289,6 +291,34 @@ class F2MassFitter:
                 self._signal_pdf_[ipdf] = zfit.pdf.Cauchy(
                     obs=obs,
                     m=self._sgn_pars_[ipdf][f'{self._name_}_m_signal{ipdf}'],
+                    gamma=self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}']
+                )
+            elif pdf_name == 'voigtian':
+                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
+                self._init_sgn_pars_[ipdf].setdefault('gamma', 0.010)
+                self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
+                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
+                self._fix_sgn_pars_[ipdf].setdefault('gamma', False)
+                self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('gamma', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
+                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
+                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
+                self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_gamma_signal{ipdf}', self._init_sgn_pars_[ipdf]['gamma'],
+                    self._limits_sgn_pars_[ipdf]['gamma'][0], self._limits_sgn_pars_[ipdf]['gamma'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['gamma'])
+                self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma'],
+                    self._limits_sgn_pars_[ipdf]['sigma'][0], self._limits_sgn_pars_[ipdf]['sigma'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['sigma'])
+                self._signal_pdf_[ipdf] = cpdf.Voigtian(
+                    obs=obs,
+                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
+                    sigma=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'],
                     gamma=self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}']
                 )
             elif 'kde' in pdf_name:
