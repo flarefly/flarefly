@@ -43,6 +43,87 @@ class DoubleGauss(zfit.pdf.ZPDF):
         return frac1 * gauss1 + (1-frac1) * gauss2
 
 
+class StdPol1(zfit.pdf.ZPDF):
+    """
+    PDF composed by a 1-order power law
+    f(x) = 1 + c1 * x
+
+    Parameters:
+
+        - c1: 1st oder parameter
+    """
+
+    # override the name of the parameters
+    _PARAMS = ['c1']
+
+    def _unnormalized_pdf(self, x):
+        """
+        PDF 'unnormalized'.
+        See https://zfit.github.io/zfit/_modules/zfit/core/basepdf.html#BasePDF.unnormalized_pdf
+        for more details
+        """
+        x = zfit.z.unstack_x(x)
+        c1 = self.params['c1']
+        return 1 + c1 * x
+
+
+class StdPol2(zfit.pdf.ZPDF):
+    """
+    PDF composed by a 2-order power law
+    f(x) = 1 + c1 * x + c2 * x * x
+
+    Parameters:
+
+        - c1: 1st oder parameter
+
+        - c2: 2nd oder parameter
+    """
+
+    # override the name of the parameters
+    _PARAMS = ['c1', 'c2']
+
+    def _unnormalized_pdf(self, x):
+        """
+        PDF 'unnormalized'.
+        See https://zfit.github.io/zfit/_modules/zfit/core/basepdf.html#BasePDF.unnormalized_pdf
+        for more details
+        """
+        x = zfit.z.unstack_x(x)
+        c1 = self.params['c1']
+        c2 = self.params['c2']
+        return 1 + c1 * x + c2 * x * x
+
+
+class StdPol3(zfit.pdf.ZPDF):
+    """
+    PDF composed by a 3-order power law
+    f(x) = 1 + c1 * x + c2 * x * x + c3 * x * x * x
+
+    Parameters:
+
+        - c1: 1st oder parameter
+
+        - c2: 2nd oder parameter
+
+        - c3: 3rd oder parameter
+    """
+
+    # override the name of the parameters
+    _PARAMS = ['c1', 'c2', 'c3']
+
+    def _unnormalized_pdf(self, x):
+        """
+        PDF 'unnormalized'.
+        See https://zfit.github.io/zfit/_modules/zfit/core/basepdf.html#BasePDF.unnormalized_pdf
+        for more details
+        """
+        x = zfit.z.unstack_x(x)
+        c1 = self.params['c1']
+        c2 = self.params['c2']
+        c3 = self.params['c3']
+        return 1 + c1 * x + c2 * x * x + c3 * x * x * x
+
+
 class Pow(zfit.pdf.ZPDF):
     """
     PDF composed by a power-law function

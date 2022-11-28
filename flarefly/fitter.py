@@ -63,6 +63,8 @@ class F2MassFitter:
 
             - 'expopow'
 
+            - 'stdpolN' (N is the order of the polynomial)
+
             - 'chebpolN' (N is the order of the polynomial)
 
             - 'kde_exact' (requires to set the datasample and options)
@@ -429,6 +431,36 @@ class F2MassFitter:
                     mass=self._bkg_pars_[ipdf][f'{self._name_}_mass_bkg{ipdf}'],
                     lam=self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}']
                 )
+            elif 'stdpol' in pdf_name:
+                pol_degree = int(pdf_name.split('stdpol')[1])
+                for deg in range(pol_degree + 1):
+                    self._init_bkg_pars_[ipdf].setdefault(f'c{deg}', 0.1)
+                    self._limits_bkg_pars_[ipdf].setdefault(f'c{deg}', [-1.e6, 1.e6])
+                    self._fix_bkg_pars_[ipdf].setdefault(f'c{deg}', False)
+                    self._bkg_pars_[ipdf][f'{self._name_}_c{deg}_bkg{ipdf}'] = zfit.Parameter(
+                        f'{self._name_}_c{deg}_bkg{ipdf}', self._init_bkg_pars_[ipdf][f'c{deg}'],
+                        self._limits_bkg_pars_[ipdf][f'c{deg}'][0], self._limits_bkg_pars_[ipdf][f'c{deg}'][1],
+                        floating=not self._fix_bkg_pars_[ipdf][f'c{deg}'])
+                if pol_degree == 1:
+                    self._background_pdf_[ipdf] = cpdf.StdPol1(
+                        obs=obs,
+                        c1=self._bkg_pars_[ipdf][f'{self._name_}_c1_bkg{ipdf}']
+                    )
+                elif pol_degree == 2:
+                    self._background_pdf_[ipdf] = cpdf.StdPol2(
+                        obs=obs,
+                        c1=self._bkg_pars_[ipdf][f'{self._name_}_c1_bkg{ipdf}'],
+                        c2=self._bkg_pars_[ipdf][f'{self._name_}_c2_bkg{ipdf}']
+                    )
+                elif pol_degree == 3:
+                    self._background_pdf_[ipdf] = cpdf.StdPol3(
+                        obs=obs,
+                        c1=self._bkg_pars_[ipdf][f'{self._name_}_c1_bkg{ipdf}'],
+                        c2=self._bkg_pars_[ipdf][f'{self._name_}_c2_bkg{ipdf}'],
+                        c3=self._bkg_pars_[ipdf][f'{self._name_}_c3_bkg{ipdf}']
+                    )
+                else:
+                    Logger(f'Standard polynomial only defined for 1st, 2nd, or 3rd order, not for {pol_degree}!', 'FATAL')
             elif 'kde' in pdf_name:
                 if self._kde_bkg_sample_[ipdf]:
                     if pdf_name == 'kde_exact':
