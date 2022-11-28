@@ -173,7 +173,7 @@ class F2MassFitter:
                 self._sgn_pars_[ipdf][f'{self._name_}_sigma2_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_sigma2_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma2'],
                     self._limits_sgn_pars_[ipdf]['sigma2'][0], self._limits_sgn_pars_[ipdf]['sigma2'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigma1'])
+                    floating=not self._fix_sgn_pars_[ipdf]['sigma2'])
                 self._sgn_pars_[ipdf][f'{self._name_}_frac1_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_frac1_signal{ipdf}', self._init_sgn_pars_[ipdf]['frac1'],
                     self._limits_sgn_pars_[ipdf]['frac1'][0], self._limits_sgn_pars_[ipdf]['frac1'][1],
@@ -707,7 +707,7 @@ class F2MassFitter:
         plt.legend(loc='best')
         if logy:
             plt.yscale('log')
-            plt.ylim(min(total_func) * norm / 5, max(total_func) * norm * 5)
+            plt.ylim(max(0.1, min(total_func)) * norm / 5, max(total_func) * norm * 5)
 
         if show_extra_info:
             # info on chi2/ndf
@@ -719,11 +719,15 @@ class F2MassFitter:
             # signal and background info for all signals
             text = []
             for idx, _ in enumerate(self._name_signal_pdf_):
+                mass, mass_err = self.get_mass(idx=idx)
+                sigma, sigma_err = self.get_sigma(idx=idx)
                 signal, signal_err = self.get_signal(idx=idx)
                 bkg, bkg_err = self.get_background(idx=idx)
                 s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx)
                 significance, significance_err = self.get_significance(idx=idx)
                 text.append(fr'signal{idx}''\n'
+                        fr'  $\mu=${mass:.4f} $\pm$ {mass_err:.4f}''\n'
+                        fr'  $\sigma=${sigma:.4f} $\pm$ {sigma_err:.4f}''\n'
                         fr'  $S=${signal:.0f} $\pm$ {signal_err:.0f}''\n'
                         fr'  $B(3\sigma)=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
                         fr'  $S/B(3\sigma)=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
@@ -1334,9 +1338,13 @@ class F2MassFitter:
 
         signal = self.get_signal(idx, **kwargs)
         bkg = self.get_background(idx, **kwargs)
-        signal_over_background = signal[0]/bkg[0]
-        signal_over_background_err = np.sqrt(signal[1]**2/signal[0]**2 + bkg[1]**2/bkg[0]**2)
-        signal_over_background_err *= signal_over_background
+        if bkg[0]:
+            signal_over_background = signal[0]/bkg[0]
+            signal_over_background_err = np.sqrt(signal[1]**2/signal[0]**2 + bkg[1]**2/bkg[0]**2)
+            signal_over_background_err *= signal_over_background
+        else:
+            signal_over_background = 0
+            signal_over_background_err = 0
 
         return signal_over_background, signal_over_background_err
 
