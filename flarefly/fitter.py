@@ -1599,8 +1599,8 @@ class F2MassFitter:
             Histogram containing the data
         """
 
-        outputExists = os.path.exists("./output.root")
-        if not outputExists:
+        output_exists = os.path.exists("./output.root")
+        if not output_exists:
             with uproot.recreate("output.root") as ofile:
                 ofile['hdata'] = hdata
         else:
@@ -1628,8 +1628,8 @@ class F2MassFitter:
         histo = Hist.new.Reg(num, limits[0], limits[1], name=self._data_handler_.get_var_name()).Double()
         histo.fill(x_plot, weight=weight)
 
-        outputExists = os.path.exists("./output.root")
-        if not outputExists:
+        output_exists = os.path.exists("./output.root")
+        if not output_exists:
             with uproot.recreate("output.root") as ofile:
                 ofile[histname] = histo
         else:
