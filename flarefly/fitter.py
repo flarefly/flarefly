@@ -764,7 +764,7 @@ class F2MassFitter:
 
             - option: str
                 option (recreate or update)
-                
+
 
             - suffix: str
                 suffix to append to objects
