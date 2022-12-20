@@ -2,6 +2,7 @@
 Test for unbinned fit with flarefly.F2MassFitter
 """
 
+import os
 import zfit
 import numpy as np
 import matplotlib
@@ -19,6 +20,7 @@ FITTER = F2MassFitter(DATA, name_signal_pdf=['gaussian'],
 FITTER.set_background_initpar(0, 'lam', 0.1, limits=[-10., 10.], fix=False)
 FITRES = FITTER.mass_zfit()
 FIG = FITTER.plot_mass_fit(figsize=(10, 10))
+FITTER.dump_to_root("test.root")
 
 def test_fitter():
     """
@@ -38,3 +40,11 @@ def test_plot():
     Test the mass fitter plot
     """
     assert isinstance(FIG, matplotlib.figure.Figure)
+
+def test_dump():
+    """
+    Test the dump of the root file
+    """
+
+    assert os.path.isfile("test.root")
+    os.remove("test.root")
