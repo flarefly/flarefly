@@ -2,7 +2,6 @@
 Module containing the class used to perform mass fits
 """
 
-import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
@@ -10,8 +9,6 @@ from matplotlib.offsetbox import AnchoredText
 
 import zfit
 import uproot
-import pandas as pd
-import hist
 from hist import Hist
 import mplhep
 from particle import Particle
