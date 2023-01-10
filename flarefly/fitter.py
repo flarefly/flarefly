@@ -2,7 +2,6 @@
 Module containing the class used to perform mass fits
 """
 
-import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
@@ -768,12 +767,15 @@ class F2MassFitter:
         return fig
 
     # pylint: disable=too-many-statements, too-many-locals
-    def dump_to_root(self, **kwargs):
+    def dump_to_root(self, filename, **kwargs):
         """
         Plot the mass fit
 
         Parameters
         -------------------------------------------------
+        filename: str
+            Name of output ROOT file
+
         **kwargs: dict
             Additional optional arguments:
 
@@ -782,9 +784,18 @@ class F2MassFitter:
 
             - num: int
                 number of bins to plot pdfs converted into histograms
+
+            - option: str
+                option (recreate or update)
+
+
+            - suffix: str
+                suffix to append to objects
         """
 
         num = kwargs.get('num', 10000)
+        suffix = kwargs.get('suffix', '')
+        option = kwargs.get('option', 'recreate')
         bins = self._data_handler_.get_nbins()
         obs = self._data_handler_.get_obs()
         limits = self._data_handler_.get_limits()
@@ -794,7 +805,7 @@ class F2MassFitter:
                                             nbins=bins,
                                             varname=self._data_handler_.get_var_name())
         # write data
-        self.__write_data(hdata)
+        self.__write_data(hdata, f'hdata{suffix}', filename, option)
 
         bin_sigma = (limits[1] - limits[0]) / bins
         norm = self._data_handler_.get_norm() * bin_sigma
@@ -802,7 +813,8 @@ class F2MassFitter:
 
         total_func = zfit.run(self._total_pdf_.pdf(x_plot, norm_range=obs))
         # write total_func
-        self.__write_pdf(histname='total_func', weight=total_func, num=num)
+        self.__write_pdf(histname=f'total_func{suffix}', weight=total_func, num=num,
+                         filename=filename, option='update')
 
         signal_funcs, signal_fracs, bkg_funcs, bkg_fracs = ([] for _ in range(4))
         for signal_pdf in self._signal_pdf_:
@@ -821,18 +833,18 @@ class F2MassFitter:
         # first write backgrounds
         for ibkg, bkg_func in enumerate(bkg_funcs):
             if ibkg < len(bkg_fracs) - 1:
-                self.__write_pdf(histname=f'bkg {ibkg}',
-                               weight=bkg_func * norm * bkg_fracs[ibkg],
-                               num=num)
+                self.__write_pdf(histname=f'bkg_{ibkg}{suffix}',
+                                 weight=bkg_func * norm * bkg_fracs[ibkg],
+                                 num=num, filename=filename, option='update')
             else:
-                self.__write_pdf(histname=f'bkg {ibkg}',
+                self.__write_pdf(histname=f'bkg_{ibkg}{suffix}',
                                weight=bkg_func * norm * (1-sum(bkg_fracs)-sum(signal_fracs)),
-                               num=num)
+                               num=num, filename=filename, option='update')
         # then write signals
         for isgn, (frac, signal_func) in enumerate(zip(signal_funcs, signal_fracs)):
-            self.__write_pdf(histname=f'signal {isgn}',
+            self.__write_pdf(histname=f'signal_{isgn}{suffix}',
                            weight=signal_func * norm * frac,
-                           num=num)
+                           num=num, filename=filename, option='update')
 
     @property
     def get_fit_result(self):
@@ -1613,7 +1625,7 @@ class F2MassFitter:
         self._kde_bkg_sample_[idx] = sample
         self._kde_bkg_option_[idx] = kwargs
 
-    def __write_data(self, hdata):
+    def __write_data(self, hdata, histname='hdata', filename='output.root', option='recreate'):
         """
         Helper method to save a data histogram in a .root file (TH1D format)
 
@@ -1621,17 +1633,27 @@ class F2MassFitter:
         -------------------------------------------------
         hdata: hist
             Histogram containing the data
+
+        histname: str
+            Name of the histogram
+
+        filename: str
+            Name of the ROOT file
+
+        option: str
+            Option (recreate or update)
         """
+        if option not in ['recreate', 'update']:
+            Logger('Illegal option to save outputs in ROOT file!', 'FATAL')
 
-        output_exists = os.path.exists("./output.root")
-        if not output_exists:
-            with uproot.recreate("output.root") as ofile:
-                ofile['hdata'] = hdata
+        if option == 'recreate':
+            with uproot.recreate(filename) as ofile:
+                ofile[histname] = hdata
         else:
-            with uproot.update("output.root") as ofile:
-                ofile['hdata'] = hdata
+            with uproot.update(filename) as ofile:
+                ofile[histname] = hdata
 
-    def __write_pdf(self, histname, weight, num):
+    def __write_pdf(self, histname, weight, num, filename='output.root', option='recreate'):
         """
         Helper method to save a pdf histogram in a .root file (TH1D format)
 
@@ -1645,17 +1667,25 @@ class F2MassFitter:
 
         num: int
             Number of bins to plot pdfs converted into histograms
+
+        filename: str
+            ROOT file name
+
+        option: str
+            Option (recreate or update)
         """
+
+        if option not in ['recreate', 'update']:
+            Logger('Illegal option to save outputs in ROOT file!', 'FATAL')
 
         limits = self._data_handler_.get_limits()
         x_plot = np.linspace(limits[0], limits[1], num=num)
         histo = Hist.new.Reg(num, limits[0], limits[1], name=self._data_handler_.get_var_name()).Double()
         histo.fill(x_plot, weight=weight)
 
-        output_exists = os.path.exists("./output.root")
-        if not output_exists:
-            with uproot.recreate("output.root") as ofile:
+        if option == 'recreate':
+            with uproot.recreate(filename) as ofile:
                 ofile[histname] = histo
         else:
-            with uproot.update("output.root") as ofile:
+            with uproot.update(filename) as ofile:
                 ofile[histname] = histo
