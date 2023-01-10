@@ -10,8 +10,6 @@ from matplotlib.offsetbox import AnchoredText
 
 import zfit
 import uproot
-import pandas as pd
-import hist
 from hist import Hist
 import mplhep
 from particle import Particle
@@ -639,8 +637,17 @@ class F2MassFitter:
             - axis_title: str
                 x-axis title
 
-            - show_extra_info
+            - show_extra_info: bool
                 show chi2/ndf, signal, bkg, signal/bkg, significance
+
+            - extra_info_massrange: list
+                mass range limits for extra info
+
+            - extra_info_masssigma: float
+                number of sigmas for extra info
+
+            - extra_info_loc: list
+                location of extra info (one for chi2 and one for other info)
 
             - num: int
                 number of bins to plot pdfs converted into histograms
@@ -658,6 +665,9 @@ class F2MassFitter:
         axis_title = kwargs.get('axis_title', self._data_handler_.get_var_name())
         show_extra_info = kwargs.get('show_extra_info', False)
         num = kwargs.get('num', 10000)
+        mass_range = kwargs.get('extra_info_massrange', None)
+        nsigma = kwargs.get('extra_info_masssigma', 3)
+        loc = kwargs.get('extra_info_loc', ['upper left', 'lower right'])
 
         mplhep.style.use(style)
 
@@ -721,22 +731,36 @@ class F2MassFitter:
             chi2 = self.get_chi2()
             ndf = self.get_ndf()
             anchored_text_chi2 = AnchoredText(fr'$\chi^2 / \mathrm{{ndf}} =${chi2:.2f} / {ndf}',
-                                              loc = 'upper left',
+                                              loc = loc[0],
                                               frameon=False)
             # signal and background info for all signals
             text = []
             for idx, _ in enumerate(self._name_signal_pdf_):
-                signal, signal_err = self.get_signal(idx=idx)
-                bkg, bkg_err = self.get_background(idx=idx)
-                s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx)
-                significance, significance_err = self.get_significance(idx=idx)
-                text.append(fr'signal{idx}''\n'
-                        fr'  $S=${signal:.0f} $\pm$ {signal_err:.0f}''\n'
-                        fr'  $B(3\sigma)=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
-                        fr'  $S/B(3\sigma)=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
-                        fr'  Signif.$(3\sigma)=${significance:.1f} $\pm$ {significance_err:.1f}')
+                if mass_range is not None:
+                    signal, signal_err = self.get_signal(idx=idx, min=mass_range[0], max=mass_range[1])
+                    bkg, bkg_err = self.get_background(idx=idx, min=mass_range[0], max=mass_range[1])
+                    s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, min=mass_range[0],
+                                                                             max=mass_range[1])
+                    significance, significance_err = self.get_significance(idx=idx, min=mass_range[0],
+                                                                           max=mass_range[1])
+                    interval = f'[{mass_range[0]:.3f}, {mass_range[1]:.3f}]'
+                    text.append(fr'signal{idx}''\n'
+                            fr'  $S({interval})={signal:.0f} \pm {signal_err:.0f}$''\n'
+                            fr'  $B({interval})={bkg:.0f} \pm {bkg_err:.0f}$''\n'
+                            fr'  $S/B({interval})={s_over_b:.2f} \pm {s_over_b_err:.2f}$''\n'
+                            fr'  Signif.$({interval})={significance:.1f} \pm {significance_err:.1f}$')
+                else:
+                    signal, signal_err = self.get_signal(idx=idx, nsigma=nsigma)
+                    bkg, bkg_err = self.get_background(idx=idx, nsigma=nsigma)
+                    s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, nsigma=nsigma)
+                    significance, significance_err = self.get_significance(idx=idx, nsigma=nsigma)
+                    text.append(fr'signal{idx}''\n'
+                                fr'  $S=${signal:.0f} $\pm$ {signal_err:.0f}''\n'
+                                fr'  $B({nsigma}\sigma)=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
+                                fr'  $S/B({nsigma}\sigma)=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
+                                fr'  Signif.$({nsigma}\sigma)=${significance:.1f} $\pm$ {significance_err:.1f}')
             concatenated_text = '\n'.join(text)
-            anchored_text_signal = AnchoredText(concatenated_text, loc = 'lower right', frameon=False)
+            anchored_text_signal = AnchoredText(concatenated_text, loc = loc[1], frameon=False)
 
             axs.add_artist(anchored_text_chi2)
             axs.add_artist(anchored_text_signal)
