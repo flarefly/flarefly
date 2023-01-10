@@ -10,8 +10,6 @@ from matplotlib.offsetbox import AnchoredText
 
 import zfit
 import uproot
-import pandas as pd
-import hist
 from hist import Hist
 import mplhep
 from particle import Particle
