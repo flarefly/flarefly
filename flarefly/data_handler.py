@@ -210,9 +210,8 @@ class DataHandler:
         """
         bins = self.get_nbins()
         limits = self.get_limits()
-        var_name = self.get_var_name()
-        binning = zfit.binned.RegularBinning(bins, limits[0], limits[1], name=var_name)
-        obs = zfit.Space(var_name, binning=binning)
+        binning = zfit.binned.RegularBinning(bins, limits[0], limits[1], name=self._var_name_)
+        obs = zfit.Space(self._var_name_, binning=binning)
 
         return obs
 
@@ -289,7 +288,7 @@ class DataHandler:
             The binned data obtained from unbinned data
         """
         limits = self.get_limits()
-        data_np = zfit.run(self.get_data()[:, 0])
+        data_np = zfit.run(self.get_data()[self._var_name_])
         data_values, _ = np.histogram(data_np, self.get_nbins(), range=(limits[0], limits[1]))
 
         return data_values
