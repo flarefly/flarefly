@@ -56,7 +56,7 @@ SETUP = Setup(
     name="flarefly",
 
     # LAST-TAG is a placeholder. Automatically replaced at deploy time with the right tag
-    version="0.0.5",
+    version="0.0.6",
     description="FLexible And REliable Fitting LibrarY for particle physics analysis",
     url="https://github.com/flarefly/flarefly",
     author="flarefly-developers",
@@ -71,7 +71,8 @@ SETUP = Setup(
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9"
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10"
     ],
 
     # What does your project relate to?
@@ -87,7 +88,7 @@ SETUP = Setup(
     install_requires=[
         "psutil", "dutil", "prophet==1.0.1", "numpy>=1.20", "pandas>=1.1.5", "uproot>=4.3.4",
         "ipython>=7.16.1", "jedi==0.17.2", "zfit>=0.10", "mplhep>=0.3.25", "matplotlib>=3.1.3",
-        "particle>=0.20.1"
+        "particle>=0.20.1", "scipy>=1.7.3"
     ],
     python_requires=">=3.7",
 
