@@ -1522,6 +1522,7 @@ class F2MassFitter:
                 fix the mass parameter
         """
         mass_name = 'm' if self._name_signal_pdf_[idx] == 'cauchy' else 'mu'
+        mass = 0.
         if 'mass' in kwargs:
             mass = kwargs['mass']
         elif 'pdg_id' in kwargs:
@@ -1530,7 +1531,7 @@ class F2MassFitter:
             mass = Particle.from_name(kwargs['pdg_name']).mass*1e-3
         else:
             Logger(f'"mass", "pdg_id", and "pdg_name" not provided, mass value for signal {idx} will not be set',
-                         'ERROR')
+                   'ERROR')
         self._init_sgn_pars_[idx][mass_name] = mass
         if 'limits' in kwargs:
             self._limits_sgn_pars_[idx][mass_name] = kwargs['limits']
