@@ -637,7 +637,7 @@ class F2MassFitter:
                 x-axis title
 
             - show_extra_info: bool
-                show chi2/ndf, signal, bkg, signal/bkg, significance
+                show mu, sigma, chi2/ndf, signal, bkg, signal/bkg, significance
 
             - extra_info_massrange: list
                 mass range limits for extra info
@@ -735,6 +735,13 @@ class F2MassFitter:
             # signal and background info for all signals
             text = []
             for idx, _ in enumerate(self._name_signal_pdf_):
+                mass, mass_unc = self.get_mass(idx)
+                sigma, sigma_unc = None, None
+                if self._name_signal_pdf_[idx] in ['gaussian', 'crystalball']:
+                    sigma, sigma_unc = self.get_sigma(idx)
+                extra_info = fr'signal{idx}''\n' + fr'  $\mu = {mass*1000:.0f}\pm{mass_unc*1000:.0f}$ MeV$/c^2$''\n'
+                if sigma is not None:
+                    extra_info += fr'  $\sigma = {sigma*1000:.0f}\pm{sigma_unc*1000:.0f}$ MeV$/c^2$''\n'
                 if mass_range is not None:
                     signal, signal_err = self.get_signal(idx=idx, min=mass_range[0], max=mass_range[1])
                     bkg, bkg_err = self.get_background(idx=idx, min=mass_range[0], max=mass_range[1])
@@ -743,21 +750,20 @@ class F2MassFitter:
                     significance, significance_err = self.get_significance(idx=idx, min=mass_range[0],
                                                                            max=mass_range[1])
                     interval = f'[{mass_range[0]:.3f}, {mass_range[1]:.3f}]'
-                    text.append(fr'signal{idx}''\n'
-                            fr'  $S({interval})={signal:.0f} \pm {signal_err:.0f}$''\n'
-                            fr'  $B({interval})={bkg:.0f} \pm {bkg_err:.0f}$''\n'
-                            fr'  $S/B({interval})={s_over_b:.2f} \pm {s_over_b_err:.2f}$''\n'
-                            fr'  Signif.$({interval})={significance:.1f} \pm {significance_err:.1f}$')
+                    extra_info += fr'  $S({interval})={signal:.0f} \pm {signal_err:.0f}$''\n'
+                    extra_info += fr'  $B({interval})={bkg:.0f} \pm {bkg_err:.0f}$''\n'
+                    extra_info += fr'  $S/B({interval})={s_over_b:.2f} \pm {s_over_b_err:.2f}$''\n'
+                    extra_info += fr'  Signif.$({interval})={significance:.1f} \pm {significance_err:.1f}$'
                 else:
                     signal, signal_err = self.get_signal(idx=idx, nsigma=nsigma)
                     bkg, bkg_err = self.get_background(idx=idx, nsigma=nsigma)
                     s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, nsigma=nsigma)
                     significance, significance_err = self.get_significance(idx=idx, nsigma=nsigma)
-                    text.append(fr'signal{idx}''\n'
-                                fr'  $S=${signal:.0f} $\pm$ {signal_err:.0f}''\n'
-                                fr'  $B({nsigma}\sigma)=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
-                                fr'  $S/B({nsigma}\sigma)=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
-                                fr'  Signif.$({nsigma}\sigma)=${significance:.1f} $\pm$ {significance_err:.1f}')
+                    extra_info += fr'  $S=${signal:.0f} $\pm$ {signal_err:.0f}''\n'
+                    extra_info += fr'  $B({nsigma}\sigma)=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
+                    extra_info += fr'  $S/B({nsigma}\sigma)=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
+                    extra_info += fr'  Signif.$({nsigma}\sigma)=${significance:.1f} $\pm$ {significance_err:.1f}'
+            text.append(extra_info)
             concatenated_text = '\n'.join(text)
             anchored_text_signal = AnchoredText(concatenated_text, loc = loc[1], frameon=False)
 
@@ -1516,6 +1522,7 @@ class F2MassFitter:
                 fix the mass parameter
         """
         mass_name = 'm' if self._name_signal_pdf_[idx] == 'cauchy' else 'mu'
+        mass = 0.
         if 'mass' in kwargs:
             mass = kwargs['mass']
         elif 'pdg_id' in kwargs:
@@ -1524,7 +1531,7 @@ class F2MassFitter:
             mass = Particle.from_name(kwargs['pdg_name']).mass*1e-3
         else:
             Logger(f'"mass", "pdg_id", and "pdg_name" not provided, mass value for signal {idx} will not be set',
-                         'ERROR')
+                   'ERROR')
         self._init_sgn_pars_[idx][mass_name] = mass
         if 'limits' in kwargs:
             self._limits_sgn_pars_[idx][mass_name] = kwargs['limits']
