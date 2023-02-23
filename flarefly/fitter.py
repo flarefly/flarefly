@@ -1606,7 +1606,7 @@ class F2MassFitter:
             (signal[1]**2 + bkg[1]**2) / (4. * sig_plus_bkg**2) + (
                 bkg[0]/sig_plus_bkg) * signal[1]**2 / signal[0]**2)
 
-        return signif, signif_err
+        return significance, significance_err
 
     def set_particle_mass(self, idx, **kwargs):
         """
