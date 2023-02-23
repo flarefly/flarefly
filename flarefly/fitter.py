@@ -756,31 +756,31 @@ class F2MassFitter:
                     bkg, bkg_err = self.get_background(idx=idx, min=mass_range[0], max=mass_range[1])
                     s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, min=mass_range[0],
                                                                              max=mass_range[1])
-                    significance, significance_err = self.get_significance(idx=idx, min=mass_range[0],
+                    signif, signif_err = self.get_significance(idx=idx, min=mass_range[0],
                                                                            max=mass_range[1])
                     interval = f'[{mass_range[0]:.3f}, {mass_range[1]:.3f}]'
                     extra_info += fr'  $S({interval})={signal:.0f} \pm {signal_err:.0f}$''\n'
                     extra_info += fr'  $B({interval})={bkg:.0f} \pm {bkg_err:.0f}$''\n'
                     extra_info += fr'  $S/B({interval})={s_over_b:.2f} \pm {s_over_b_err:.2f}$''\n'
-                    extra_info += fr'  Signif.$({interval})={significance:.1f} \pm {significance_err:.1f}$'
+                    extra_info += fr'  Signif.$({interval})={signif:.1f} \pm {signif_err:.1f}$'
                 elif nhwhm is not None:
                     signal, signal_err = self.get_signal(idx=idx, nhwhm=nhwhm)
                     bkg, bkg_err = self.get_background(idx=idx, nhwhm=nhwhm)
                     s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, nhwhm=nhwhm)
-                    significance, significance_err = self.get_significance(idx=idx, nhwhm=nhwhm)
+                    signif, signif_err = self.get_significance(idx=idx, nhwhm=nhwhm)
                     extra_info += fr'  $S=${signal:.0f} $\pm$ {signal_err:.0f}''\n'
                     extra_info += fr'  $B({nhwhm}~\mathrm{{HWHM}})=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
                     extra_info += fr'  $S/B({nhwhm}~\mathrm{{HWHM}})=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
-                    extra_info += fr'  Signif.$({nhwhm}~\mathrm{{HWHM}})=${significance:.1f} $\pm$ {significance_err:.1f}'
+                    extra_info += fr'  Signif.$({nhwhm}~\mathrm{{HWHM}})=${signif:.1f} $\pm$ {signif_err:.1f}'
                 else:
                     signal, signal_err = self.get_signal(idx=idx, nsigma=nsigma)
                     bkg, bkg_err = self.get_background(idx=idx, nsigma=nsigma)
                     s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, nsigma=nsigma)
-                    significance, significance_err = self.get_significance(idx=idx, nsigma=nsigma)
+                    signif, signif_err = self.get_significance(idx=idx, nsigma=nsigma)
                     extra_info += fr'  $S=${signal:.0f} $\pm$ {signal_err:.0f}''\n'
                     extra_info += fr'  $B({nsigma}\sigma)=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
                     extra_info += fr'  $S/B({nsigma}\sigma)=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
-                    extra_info += fr'  Signif.$({nsigma}\sigma)=${significance:.1f} $\pm$ {significance_err:.1f}'
+                    extra_info += fr'  Signif.$({nsigma}\sigma)=${signif:.1f} $\pm$ {signif_err:.1f}'
             text.append(extra_info)
             concatenated_text = '\n'.join(text)
             anchored_text_signal = AnchoredText(concatenated_text, loc = loc[1], frameon=False)
@@ -1606,7 +1606,7 @@ class F2MassFitter:
             (signal[1]**2 + bkg[1]**2) / (4. * sig_plus_bkg**2) + (
                 bkg[0]/sig_plus_bkg) * signal[1]**2 / signal[0]**2)
 
-        return significance, significance_err
+        return signif, signif_err
 
     def set_particle_mass(self, idx, **kwargs):
         """
