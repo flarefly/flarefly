@@ -639,11 +639,14 @@ class F2MassFitter:
             - show_extra_info: bool
                 show mu, sigma, chi2/ndf, signal, bkg, signal/bkg, significance
 
-            - extra_info_massrange: list
-                mass range limits for extra info
-
-            - extra_info_masssigma: float
+            - extra_info_massnsigma: float
                 number of sigmas for extra info
+
+            - extra_info_massnhwhm: float
+                number of hwhms for extra info (alternative to extra_info_massnsigma)
+
+            - extra_info_massrange: list
+                mass range limits for extra info (alternative to extra_info_massnsigma)
 
             - extra_info_loc: list
                 location of extra info (one for chi2 and one for other info)
@@ -665,7 +668,8 @@ class F2MassFitter:
         show_extra_info = kwargs.get('show_extra_info', False)
         num = kwargs.get('num', 10000)
         mass_range = kwargs.get('extra_info_massrange', None)
-        nsigma = kwargs.get('extra_info_masssigma', 3)
+        nhwhm = kwargs.get('extra_info_massnhwhm', None)
+        nsigma = kwargs.get('extra_info_massnsigma', 3)
         loc = kwargs.get('extra_info_loc', ['upper left', 'lower right'])
 
         mplhep.style.use(style)
@@ -737,32 +741,46 @@ class F2MassFitter:
             for idx, _ in enumerate(self._name_signal_pdf_):
                 mass, mass_unc = self.get_mass(idx)
                 sigma, sigma_unc = None, None
-                if self._name_signal_pdf_[idx] in ['gaussian', 'crystalball']:
+                gamma, gamma_unc = None, None
+                if self._name_signal_pdf_[idx] in ['gaussian', 'crystalball', 'voigtian']:
                     sigma, sigma_unc = self.get_sigma(idx)
-                extra_info = fr'signal{idx}''\n' + fr'  $\mu = {mass*1000:.0f}\pm{mass_unc*1000:.0f}$ MeV$/c^2$''\n'
+                if self._name_signal_pdf_[idx] in ['cauchy', 'voigtian']:
+                    gamma, gamma_unc = self.get_signal_parameter(idx, 'gamma')
+                extra_info = fr'signal{idx}''\n' + fr'  $\mu = {mass*1000:.1f}\pm{mass_unc*1000:.1f}$ MeV$/c^2$''\n'
                 if sigma is not None:
-                    extra_info += fr'  $\sigma = {sigma*1000:.0f}\pm{sigma_unc*1000:.0f}$ MeV$/c^2$''\n'
+                    extra_info += fr'  $\sigma = {sigma*1000:.1f}\pm{sigma_unc*1000:.1f}$ MeV$/c^2$''\n'
+                if gamma is not None:
+                    extra_info += fr'  $\Gamma = {gamma*1000:.1f}\pm{gamma_unc*1000:.1f}$ MeV$/c^2$''\n'
                 if mass_range is not None:
                     signal, signal_err = self.get_signal(idx=idx, min=mass_range[0], max=mass_range[1])
                     bkg, bkg_err = self.get_background(idx=idx, min=mass_range[0], max=mass_range[1])
                     s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, min=mass_range[0],
                                                                              max=mass_range[1])
-                    significance, significance_err = self.get_significance(idx=idx, min=mass_range[0],
+                    signif, signif_err = self.get_significance(idx=idx, min=mass_range[0],
                                                                            max=mass_range[1])
                     interval = f'[{mass_range[0]:.3f}, {mass_range[1]:.3f}]'
                     extra_info += fr'  $S({interval})={signal:.0f} \pm {signal_err:.0f}$''\n'
                     extra_info += fr'  $B({interval})={bkg:.0f} \pm {bkg_err:.0f}$''\n'
                     extra_info += fr'  $S/B({interval})={s_over_b:.2f} \pm {s_over_b_err:.2f}$''\n'
-                    extra_info += fr'  Signif.$({interval})={significance:.1f} \pm {significance_err:.1f}$'
+                    extra_info += fr'  Signif.$({interval})={signif:.1f} \pm {signif_err:.1f}$'
+                elif nhwhm is not None:
+                    signal, signal_err = self.get_signal(idx=idx, nhwhm=nhwhm)
+                    bkg, bkg_err = self.get_background(idx=idx, nhwhm=nhwhm)
+                    s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, nhwhm=nhwhm)
+                    signif, signif_err = self.get_significance(idx=idx, nhwhm=nhwhm)
+                    extra_info += fr'  $S=${signal:.0f} $\pm$ {signal_err:.0f}''\n'
+                    extra_info += fr'  $B({nhwhm}~\mathrm{{HWHM}})=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
+                    extra_info += fr'  $S/B({nhwhm}~\mathrm{{HWHM}})=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
+                    extra_info += fr'  Signif.$({nhwhm}~\mathrm{{HWHM}})=${signif:.1f} $\pm$ {signif_err:.1f}'
                 else:
                     signal, signal_err = self.get_signal(idx=idx, nsigma=nsigma)
                     bkg, bkg_err = self.get_background(idx=idx, nsigma=nsigma)
                     s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, nsigma=nsigma)
-                    significance, significance_err = self.get_significance(idx=idx, nsigma=nsigma)
+                    signif, signif_err = self.get_significance(idx=idx, nsigma=nsigma)
                     extra_info += fr'  $S=${signal:.0f} $\pm$ {signal_err:.0f}''\n'
                     extra_info += fr'  $B({nsigma}\sigma)=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
                     extra_info += fr'  $S/B({nsigma}\sigma)=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
-                    extra_info += fr'  Signif.$({nsigma}\sigma)=${significance:.1f} $\pm$ {significance_err:.1f}'
+                    extra_info += fr'  Signif.$({nsigma}\sigma)=${signif:.1f} $\pm$ {signif_err:.1f}'
             text.append(extra_info)
             concatenated_text = '\n'.join(text)
             anchored_text_signal = AnchoredText(concatenated_text, loc = loc[1], frameon=False)
@@ -1213,7 +1231,7 @@ class F2MassFitter:
         sigma_err: float
             The sigma error obtained from the fit
         """
-        if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball']:
+        if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'voigtian']:
             Logger(f'Sigma parameter not defined for {self._name_signal_pdf_[idx]} pdf!', 'ERROR')
             return 0., 0.
 
@@ -1225,6 +1243,47 @@ class F2MassFitter:
             sigma_err = self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['hesse']['error']
 
         return sigma, sigma_err
+
+    def get_hwhm(self, idx=0):
+        """
+        Get the half width half maximum and its error
+
+        Parameters
+        -------------------------------------------------
+        idx: int
+            Index of the sigma to be returned (default: 0)
+
+        Returns
+        -------------------------------------------------
+        hwhm: float
+            The sigma value obtained from the fit
+        hwhm_err: float
+            The sigma error obtained from the fit
+        """
+        if self._name_signal_pdf_[idx] not in ['gaussian', 'cauchy', 'voigtian']:
+            Logger(f'HFWM parameter not defined for {self._name_signal_pdf_[idx]} pdf!', 'ERROR')
+            return 0., 0.
+
+        if self._name_signal_pdf_[idx] == 'gaussian':
+            mult_fact = np.sqrt(2 * np.log(2))
+            hwhm, hwhm_err = self.get_sigma(idx)
+            hwhm *= mult_fact
+            hwhm_err *= mult_fact
+        elif self._name_signal_pdf_[idx] == 'cauchy':
+            hwhm, hwhm_err = self.get_signal_parameter(idx, 'gamma')
+        elif self._name_signal_pdf_[idx] == 'voigtian':
+            mult_fact = np.sqrt(2 * np.log(2))
+            sigma, sigma_err = self.get_sigma(idx)
+            sigma *= mult_fact
+            sigma_err *= mult_fact
+            gamma, gamma_err = self.get_signal_parameter(idx, 'gamma')
+            hwhm = 0.5346 * gamma + np.sqrt(0.2166 * gamma**2 + sigma**2)
+            # we neglect the correlation between sigma and gamma
+            der_sigma = sigma / np.sqrt(0.0721663 + sigma**2)
+            der_gamma = 0.5346 + (0.2166 * gamma) / np.sqrt(0.2166 * gamma**2 + sigma**2)
+            hwhm_err = np.sqrt(der_sigma**2 * sigma_err**2 + der_gamma**2 * gamma_err**2)
+
+        return hwhm, hwhm_err
 
     def get_signal_parameter(self, idx, par):
         """
@@ -1298,6 +1357,10 @@ class F2MassFitter:
             - nsigma: float
                 nsigma invariant-mass window around mean for signal computation
 
+            - nhwhm: float
+                number of hwhm invariant-mass window around mean for signal and background computation 
+                (alternative to nsigma)
+
             - min: float
                 minimum value of invariant-mass for signal computation (alternative to nsigma)
 
@@ -1313,10 +1376,29 @@ class F2MassFitter:
         """
 
         nsigma = kwargs.get('nsigma', 3.)
+        nhwhm = kwargs.get('nhwhm', None)
         min_value = kwargs.get('min', None)
         max_value = kwargs.get('max', None)
+        use_nsigma = True
 
-        if min_value is None or max_value is None:
+        if nhwhm is not None and (min_value is not None or max_value is not None):
+            Logger('I cannot compute the signal within a fixed mass interval and a number of HWFM', 'ERROR')
+            return 0., 0.
+
+        if min_value is not None and max_value is not None:
+            use_nsigma = False
+
+        if nhwhm is not None:
+            use_nsigma = False
+            if self._name_signal_pdf_[idx] not in ['gaussian', 'cauchy', 'voigtian']:
+                Logger('HWHM not defined, I cannot compute the signal for this pdf', 'ERROR')
+                return 0., 0.
+            mass, _ = self.get_mass(idx)
+            hwhm, _ = self.get_hwhm(idx)
+            min_value = mass - nhwhm * hwhm
+            max_value = mass + nhwhm * hwhm
+
+        if use_nsigma:
             if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
@@ -1364,6 +1446,10 @@ class F2MassFitter:
             - nsigma: float
                 nsigma invariant-mass window around mean for background computation
 
+            - nhwhm: float
+                number of hwhm invariant-mass window around mean for signal and background computation 
+                (alternative to nsigma)
+
             - min: float
                 minimum value of invariant-mass for background computation (alternative to nsigma)
 
@@ -1383,10 +1469,29 @@ class F2MassFitter:
             return 0., 0.
 
         nsigma = kwargs.get('nsigma', 3.)
+        nhwhm = kwargs.get('nhwhm', None)
         min_value = kwargs.get('min', None)
         max_value = kwargs.get('max', None)
+        use_nsigma = True
 
-        if min_value is None or max_value is None:
+        if nhwhm is not None and (min_value is not None or max_value is not None):
+            Logger('I cannot compute the signal within a fixed mass interval and a number of HWFM', 'ERROR')
+            return 0., 0.
+
+        if min_value is not None and max_value is not None:
+            use_nsigma = False
+
+        if nhwhm is not None:
+            use_nsigma = False
+            if self._name_signal_pdf_[idx] not in ['gaussian', 'cauchy', 'voigtian']:
+                Logger('HWHM not defined, I cannot compute the signal for this pdf', 'ERROR')
+                return 0., 0.
+            mass, _ = self.get_mass(idx)
+            hwhm, _ = self.get_hwhm(idx)
+            min_value = mass - nhwhm * hwhm
+            max_value = mass + nhwhm * hwhm
+
+        if use_nsigma:
             if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
@@ -1434,6 +1539,10 @@ class F2MassFitter:
             - nsigma: float
                 nsigma invariant-mass window around mean for signal and background computation
 
+            - nhwhm: float
+                number of hwhm invariant-mass window around mean for signal and background computation 
+                (alternative to nsigma)
+
             - min: float
                 minimum value of invariant-mass for signal and background computation (alternative to nsigma)
 
@@ -1469,6 +1578,10 @@ class F2MassFitter:
 
             - nsigma: float
                 nsigma invariant-mass window around mean for signal and background computation
+
+            - nhwhm: float
+                number of hwhm invariant-mass window around mean for signal and background computation 
+                (alternative to nsigma)
 
             - min: float
                 minimum value of invariant-mass for signal and background computation (alternative to nsigma)
