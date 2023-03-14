@@ -837,7 +837,7 @@ class F2MassFitter:
 
         total_func = zfit.run(self._total_pdf_.pdf(x_plot, norm_range=obs))
         # write total_func
-        self.__write_pdf(histname=f'total_func{suffix}', weight=total_func, num=num,
+        self.__write_pdf(histname=f'total_func{suffix}', weight=total_func * norm, num=num,
                          filename=filename, option='update')
 
         signal_funcs, signal_fracs, bkg_funcs, bkg_fracs = ([] for _ in range(4))
