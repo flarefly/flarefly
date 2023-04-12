@@ -25,7 +25,7 @@ def test_data_binned():
     """
     Test the get_data() function
     """
-    assert isinstance(DATABINNED.get_binned_data(), zfit.core.data.BinnedData)
+    assert isinstance(DATABINNED.get_binned_data(), zfit.data.BinnedData)
 
 def test_obs():
     """
