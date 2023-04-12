@@ -90,8 +90,7 @@ class DataHandler:
                         )
                         self._obs_ = zfit.Space("xaxis", binning=binning)
                         self._binned_data_ = zfit.data.BinnedData.from_tensor(
-                            self._obs_, hist.values()[idx_min:idx_max],
-                            [err for err in hist.variances()[idx_min:idx_max]])
+                            self._obs_, hist.values()[idx_min:idx_max], hist.variances()[idx_min:idx_max])
                         self._isbinned_ = True
                     elif 'treename' in kwargs:
                         input_df = uproot.open(data)[kwargs['treename']].arrays(library='pd')
@@ -156,8 +155,7 @@ class DataHandler:
                 )
                 self._obs_ = zfit.Space("xaxis", binning=binning)
                 self._binned_data_ = zfit.data.BinnedData.from_tensor(
-                    self._obs_, hist.values()[idx_min:idx_max],
-                    [err for err in hist.variances()[idx_min:idx_max]])
+                    self._obs_, hist.values()[idx_min:idx_max], hist.variances()[idx_min:idx_max])
                 self._isbinned_ = True
 
             else:
