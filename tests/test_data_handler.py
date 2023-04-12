@@ -48,4 +48,4 @@ def test_histo_conversion():
     """
     Test the to_hist() function
     """
-    assert isinstance(DATA.to_hist(), Hist)
+    assert isinstance(DATA.to_hist(varname='x'), Hist)

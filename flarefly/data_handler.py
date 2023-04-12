@@ -352,10 +352,8 @@ class DataHandler:
         """
         returns data in NamedHist
 
-        Returns
-        -------------------------------------------------
-        hist: Hist
-            The data in a hist.Hist
+        Parameters
+        ------------------------------------------------
         **kwargs: dict
             Additional optional arguments:
 
@@ -373,6 +371,11 @@ class DataHandler:
 
             - varname: str
                 name of variable (needed in case of originally unbinned data)
+
+        Returns
+        -------------------------------------------------
+        hist: Hist
+            The data in a hist.Hist
         """
 
         if self._isbinned_:
