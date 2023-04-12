@@ -20,7 +20,7 @@ BKGPDFSDSTAR = ["expopow", "powlaw"]
 # test all possible functions with D+
 INFILEDPLUS = os.path.join(os.getcwd(), "tests/histos_dplus.root")
 DATABINNEDDPLUS = DataHandler(INFILEDPLUS, var_name=r"$M_\mathrm{K\pi\pi}$ (GeV/$c^{2}$)",
-                              histoname="hMass_80_120", limits=[1.75, 2.06])
+                              histoname="hMass_80_120", limits=[1.75, 2.06], rebin=2)
 for bkg_pdf in BKGPDFSDPLUS:
     for sgn_pdf in SGNPDFSDPLUS:
         FITTERBINNEDDPLUS.append(F2MassFitter(DATABINNEDDPLUS,
