@@ -2,6 +2,7 @@
 Test for flarefly.DataHandler
 """
 
+import os
 import zfit
 import numpy as np
 import pandas as pd
@@ -11,7 +12,7 @@ from flarefly.data_handler import DataHandler
 
 DATANP = np.random.normal(0, 1, size=10000)
 DATA = DataHandler(DATANP, axis=0, var_name='x', limits=[1.75, 2.0])
-DATAUPROOT = uproot.open("tests/histos_dplus.root")["hMass_20_40"]
+DATAUPROOT = uproot.open(os.path.join(os.getcwd(), "tests/histos_dplus.root"))["hMass_20_40"]
 DATABINNED = DataHandler(DATAUPROOT, axis=0, var_name='x', limits=[1.75, 2.0], rebin=2)
 
 def test_data():
