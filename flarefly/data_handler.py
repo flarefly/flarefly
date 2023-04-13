@@ -21,7 +21,7 @@ class DataHandler:
 
         Parameters
         ------------------------------------------------
-        data: numpy array
+        data: numpy.array / pandas.DataFrame / uproot.behaviors.TH1.Histogram / string
             Data or path to data to be used in the fit
         var_name: str
             Name of the variable used in the fit
@@ -36,6 +36,9 @@ class DataHandler:
             - nbins: int
                 Number of bins chosen by user to bin data in case of unbinned data
 
+            - rebin: int
+                Rebin factor in case of binned data
+
             - histoname: str
                 Name of the histogram to be used in the fit in case of ROOT file
 
@@ -43,6 +46,7 @@ class DataHandler:
                 Name of the tree to be used in the fit in case of ROOT file
         """
         nbins = kwargs.get('nbins', 100)
+        rebin = kwargs.get('rebin', 1)
 
         self._input_ = data
         self._var_name_ = var_name
@@ -54,6 +58,7 @@ class DataHandler:
         self._nbins_ = nbins
         self._isbinned_ = False
         self._norm_ = 1.
+        self._rebin_ = rebin
 
         if use_zfit:
             if isinstance(data, str):
@@ -61,9 +66,11 @@ class DataHandler:
                     self.__format__ = 'root'
                     if 'histoname' in kwargs:
                         hist = uproot.open(data)[kwargs['histoname']]
+                        hist = hist.to_hist()
+                        hist = eval(f"hist[::{self._rebin_}j]") # pylint: disable=eval-used
                         hist_array = hist.to_numpy()
                         if limits is None:
-                            self._binned_data_ = zfit.data.BinnedData.from_hist(hist.to_hist())
+                            self._binned_data_ = zfit.data.BinnedData.from_hist(hist)
                             self._nbins_ = len(hist_array[1]) - 1
                             self._limits_[0] = hist_array[1][0]
                             self._limits_[1] = hist_array[1][-1]
@@ -83,8 +90,7 @@ class DataHandler:
                         )
                         self._obs_ = zfit.Space("xaxis", binning=binning)
                         self._binned_data_ = zfit.data.BinnedData.from_tensor(
-                            self._obs_, hist.values()[idx_min:idx_max],
-                            [err**2 for err in hist.errors()[idx_min:idx_max]])
+                            self._obs_, hist.values()[idx_min:idx_max], hist.variances()[idx_min:idx_max])
                         self._isbinned_ = True
                     elif 'treename' in kwargs:
                         input_df = uproot.open(data)[kwargs['treename']].arrays(library='pd')
@@ -122,6 +128,35 @@ class DataHandler:
                     self._limits_[1] = max(data[self._var_name_])
                 self._obs_ = zfit.Space(self._var_name_, limits=(self._limits_[0], self._limits_[1]))
                 self._data_ = zfit.data.Data.from_pandas(obs=self._obs_, df=data)
+
+            elif isinstance(data, uproot.behaviors.TH1.Histogram):
+                self.__format__ = 'uproot'
+                hist = data.to_hist()
+                hist = eval(f"hist[::{self._rebin_}j]") # pylint: disable=eval-used
+                hist_array = hist.to_numpy()
+                if limits is None:
+                    self._binned_data_ = zfit.data.BinnedData.from_hist(hist)
+                    self._nbins_ = len(hist_array[1]) - 1
+                    self._limits_[0] = hist_array[1][0]
+                    self._limits_[1] = hist_array[1][-1]
+                    idx_min = 0
+                    idx_max = len(hist_array[1])-1
+                else:
+                    idx_min = np.argmin(np.abs(hist_array[1]-self._limits_[0]))
+                    idx_max = np.argmin(np.abs(hist_array[1]-self._limits_[1]))
+                    self._nbins_ = len(hist_array[1][idx_min:idx_max])
+                    self._limits_[0] = hist_array[1][idx_min]
+                    self._limits_[1] = hist_array[1][idx_max]
+                binning = zfit.binned.RegularBinning(
+                    self._nbins_,
+                    self._limits_[0],
+                    self._limits_[1],
+                    name="xaxis"
+                )
+                self._obs_ = zfit.Space("xaxis", binning=binning)
+                self._binned_data_ = zfit.data.BinnedData.from_tensor(
+                    self._obs_, hist.values()[idx_min:idx_max], hist.variances()[idx_min:idx_max])
+                self._isbinned_ = True
 
             else:
                 Logger('Data format not supported', 'FATAL')
@@ -315,10 +350,8 @@ class DataHandler:
         """
         returns data in NamedHist
 
-        Returns
-        -------------------------------------------------
-        hist: Hist
-            The data in a hist.Hist
+        Parameters
+        ------------------------------------------------
         **kwargs: dict
             Additional optional arguments:
 
@@ -336,6 +369,11 @@ class DataHandler:
 
             - varname: str
                 name of variable (needed in case of originally unbinned data)
+
+        Returns
+        -------------------------------------------------
+        hist: Hist
+            The data in a hist.Hist
         """
 
         if self._isbinned_:
