@@ -54,6 +54,8 @@ class F2MassFitter:
 
             - 'kde_isj' (requires to set the datasample and options)
 
+            - 'hist' (only for binned fits, requires to set the datasample)
+
         name_background_pdf: list
             The list of names of the background pdfs. The possible options are:
 
@@ -75,6 +77,8 @@ class F2MassFitter:
 
             - 'kde_isj' (requires to set the datasample and options)
 
+            - 'hist' (only for binned fits, requires to set the datasample)
+
         name: str
             Optional name for the fitter,
             needed in case of multiple fitters defined in the same script
@@ -88,14 +92,17 @@ class F2MassFitter:
         self._name_signal_pdf_ = name_signal_pdf
         self._name_background_pdf_ = name_background_pdf
         self._signal_pdf_ = [None for _ in enumerate(name_signal_pdf)]
+        self._hist_signal_sample_ = [None for _ in enumerate(name_signal_pdf)]
         self._kde_signal_sample_ = [None for _ in enumerate(name_signal_pdf)]
         self._kde_signal_option_ = [None for _ in enumerate(name_signal_pdf)]
         if self._name_background_pdf_[0] == "nobkg":
             self._background_pdf_ = []
+            self._hist_bkg_sample_ = []
             self._kde_bkg_sample_ = []
             self._kde_bkg_option_ = []
         else:
             self._background_pdf_ = [None for _ in enumerate(name_background_pdf)]
+            self._hist_bkg_sample_ = [None for _ in enumerate(name_background_pdf)]
             self._kde_bkg_sample_ = [None for _ in enumerate(name_background_pdf)]
             self._kde_bkg_option_ = [None for _ in enumerate(name_background_pdf)]
         self._total_pdf_ = None
@@ -348,6 +355,16 @@ class F2MassFitter:
                                                                       **self._kde_signal_option_[ipdf])
                 else:
                     Logger(f'Missing datasample for Kernel Density Estimation of signal {ipdf}!', 'FATAL')
+            elif pdf_name == 'hist':
+                if not self._data_handler_.get_is_binned():
+                    Logger('Histogram template is supported only for binned data. Use KDE instead for unbinned data',
+                           'FATAL')
+
+                if self._hist_signal_sample_[ipdf]:
+                    self._signal_pdf_[ipdf] = zfit.pdf.HistogramPDF(self._hist_signal_sample_[ipdf].get_binned_data(),
+                                              name=f'{self._name_}_hist_signal{ipdf}')
+                else:
+                    Logger(f'Missing datasample for histogram template of signal {ipdf}!', 'FATAL')
             else:
                 Logger(f'Signal pdf {pdf_name} not supported', 'FATAL')
 
@@ -457,6 +474,16 @@ class F2MassFitter:
 
                 else:
                     Logger(f'Missing datasample for Kernel Density Estimation of background {ipdf}!', 'FATAL')
+            elif pdf_name == 'hist':
+                if not self._data_handler_.get_is_binned():
+                    Logger('Histogram template is supported only for binned data. Use KDE instead for unbinned data',
+                           'FATAL')
+
+                if self._hist_bkg_sample_[ipdf]:
+                    self._background_pdf_[ipdf] = zfit.pdf.HistogramPDF(self._hist_bkg_sample_[ipdf].get_binned_data(),
+                                                                        name=f'{self._name_}_hist_background{ipdf}')
+                else:
+                    Logger(f'Missing datasample for histogram template of background {ipdf}!', 'FATAL')
             else:
                 Logger(f'Background pdf {pdf_name} not supported', 'FATAL')
 
@@ -501,13 +528,28 @@ class F2MassFitter:
                     self._limits_bkg_pars_[ipdf]['frac'][1],
                     floating=not self._fix_bkg_pars_[ipdf]['frac'])
 
-        self._total_pdf_ = zfit.pdf.SumPDF(
-            self._signal_pdf_+self._background_pdf_, self._fracs_)
+        if 'hist' in self._name_signal_pdf_ or 'hist' in self._name_background_pdf_:
+            # we need to be binned already
+            obs = self._data_handler_.get_obs()
+            for ipdf, _ in enumerate(self._signal_pdf_):
+                if not self._name_signal_pdf_[ipdf] == 'hist':
+                    self._signal_pdf_[ipdf] = zfit.pdf.BinnedFromUnbinnedPDF(self._signal_pdf_[ipdf], obs)
+            for ipdf, _ in enumerate(self._background_pdf_):
+                if not self._name_background_pdf_[ipdf] == 'hist':
+                    self._background_pdf_[ipdf] = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[ipdf], obs)
+            self._total_pdf_ = zfit.pdf.BinnedSumPDF(self._signal_pdf_+self._background_pdf_, self._fracs_)
+            return
+
+        self._total_pdf_ = zfit.pdf.SumPDF(self._signal_pdf_+self._background_pdf_, self._fracs_)
 
     def __build_total_pdf_binned(self):
         """
         Helper function to compose the total pdf binned from unbinned
         """
+
+        if isinstance(self._total_pdf_, zfit.pdf.BinnedSumPDF):
+            self._total_pdf_binned_ = self._total_pdf_
+            return
 
         # for binned data, obs already contains the wanted binning
         if self._data_handler_.get_is_binned():
@@ -574,15 +616,12 @@ class F2MassFitter:
         if self._data_handler_.get_is_binned():
             # chi2 loss
             if self._chi2_loss_:
-                loss = zfit.loss.BinnedChi2(self._total_pdf_binned_,
-                                            self._data_handler_.get_binned_data())
+                loss = zfit.loss.BinnedChi2(self._total_pdf_binned_, self._data_handler_.get_binned_data())
             # nll loss
             else:
-                loss = zfit.loss.BinnedNLL(self._total_pdf_binned_,
-                                            self._data_handler_.get_binned_data())
+                loss = zfit.loss.BinnedNLL(self._total_pdf_binned_, self._data_handler_.get_binned_data())
         else:
-            loss = zfit.loss.UnbinnedNLL(
-                model=self._total_pdf_, data=self._data_handler_.get_data())
+            loss = zfit.loss.UnbinnedNLL(model=self._total_pdf_, data=self._data_handler_.get_data())
 
         self._fit_result_ = self._minimizer_.minimize(loss=loss)
         if self._fit_result_.hesse() == {}:
@@ -742,7 +781,7 @@ class F2MassFitter:
                 mass, mass_unc = self.get_mass(idx)
                 sigma, sigma_unc = None, None
                 gamma, gamma_unc = None, None
-                if self._name_signal_pdf_[idx] in ['gaussian', 'crystalball', 'voigtian']:
+                if self._name_signal_pdf_[idx] in ['gaussian', 'crystalball', 'voigtian', 'hist']:
                     sigma, sigma_unc = self.get_sigma(idx)
                 if self._name_signal_pdf_[idx] in ['cauchy', 'voigtian']:
                     gamma, gamma_unc = self.get_signal_parameter(idx, 'gamma')
@@ -1205,13 +1244,21 @@ class F2MassFitter:
         mass_err: float
             The mass error obtained from the fit
         """
-        mass_name = 'm' if self._name_signal_pdf_[idx] == 'cauchy' else 'mu'
-        if self._fix_sgn_pars_[idx][mass_name]:
-            mass = self._init_sgn_pars_[idx][mass_name]
+        if 'hist' in self._name_signal_pdf_[idx]:
+            hist = self._signal_pdf_[idx].to_hist()
+            bin_limits = hist.to_numpy()[1]
+            centres = [0.5 * (minn + maxx) for minn, maxx in zip(bin_limits[1:],  bin_limits[:-1])]
+            counts = hist.values()
+            mass = np.average(centres, weights=counts)
             mass_err = 0.
         else:
-            mass = self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['value']
-            mass_err = self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['hesse']['error']
+            mass_name = 'm' if self._name_signal_pdf_[idx] == 'cauchy' else 'mu'
+            if self._fix_sgn_pars_[idx][mass_name]:
+                mass = self._init_sgn_pars_[idx][mass_name]
+                mass_err = 0.
+            else:
+                mass = self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['value']
+                mass_err = self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['hesse']['error']
 
         return mass, mass_err
 
@@ -1231,16 +1278,27 @@ class F2MassFitter:
         sigma_err: float
             The sigma error obtained from the fit
         """
-        if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'voigtian']:
+        if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'voigtian', 'hist']:
             Logger(f'Sigma parameter not defined for {self._name_signal_pdf_[idx]} pdf!', 'ERROR')
             return 0., 0.
 
-        if self._fix_sgn_pars_[idx]['sigma']:
-            sigma = self._init_sgn_pars_[idx]['sigma']
+        # if histogram, the rms is used as proxy
+        if 'hist' in self._name_signal_pdf_[idx]:
+            Logger(f'RMS used as proxy for sigma parameter of {self._name_signal_pdf_[idx]} pdf!', 'WARNING')
+            mean = self.get_mass(idx)[0]
+            hist = self._signal_pdf_[idx].to_hist()
+            bin_limits = hist.to_numpy()[1]
+            centres = [0.5 * (minn + maxx) for minn, maxx in zip(bin_limits[1:],  bin_limits[:-1])]
+            counts = hist.values()
+            sigma = np.sqrt(np.average((centres - mean)**2, weights=counts))
             sigma_err = 0.
         else:
-            sigma = self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['value']
-            sigma_err = self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['hesse']['error']
+            if self._fix_sgn_pars_[idx]['sigma']:
+                sigma = self._init_sgn_pars_[idx]['sigma']
+                sigma_err = 0.
+            else:
+                sigma = self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['value']
+                sigma_err = self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['hesse']['error']
 
         return sigma, sigma_err
 
@@ -1358,7 +1416,7 @@ class F2MassFitter:
                 nsigma invariant-mass window around mean for signal computation
 
             - nhwhm: float
-                number of hwhm invariant-mass window around mean for signal and background computation 
+                number of hwhm invariant-mass window around mean for signal and background computation
                 (alternative to nsigma)
 
             - min: float
@@ -1399,7 +1457,7 @@ class F2MassFitter:
             max_value = mass + nhwhm * hwhm
 
         if use_nsigma:
-            if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball']:
+            if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'hist']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -1447,7 +1505,7 @@ class F2MassFitter:
                 nsigma invariant-mass window around mean for background computation
 
             - nhwhm: float
-                number of hwhm invariant-mass window around mean for signal and background computation 
+                number of hwhm invariant-mass window around mean for signal and background computation
                 (alternative to nsigma)
 
             - min: float
@@ -1492,7 +1550,7 @@ class F2MassFitter:
             max_value = mass + nhwhm * hwhm
 
         if use_nsigma:
-            if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball']:
+            if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'hist']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -1540,7 +1598,7 @@ class F2MassFitter:
                 nsigma invariant-mass window around mean for signal and background computation
 
             - nhwhm: float
-                number of hwhm invariant-mass window around mean for signal and background computation 
+                number of hwhm invariant-mass window around mean for signal and background computation
                 (alternative to nsigma)
 
             - min: float
@@ -1580,7 +1638,7 @@ class F2MassFitter:
                 nsigma invariant-mass window around mean for signal and background computation
 
             - nhwhm: float
-                number of hwhm invariant-mass window around mean for signal and background computation 
+                number of hwhm invariant-mass window around mean for signal and background computation
                 (alternative to nsigma)
 
             - min: float
@@ -1706,6 +1764,21 @@ class F2MassFitter:
             self._fix_bkg_pars_[idx][par_name] = kwargs['fix']
 
     # pylint: disable=line-too-long
+    def set_signal_template(self, idx, sample):
+        """
+        Set sample and options for signal kde
+
+        Parameters
+        -------------------------------------------------
+        idx: int
+            Index of the signal
+        sample: flarefly.DataHandler
+            Data sample for histogram template
+        """
+
+        self._hist_signal_sample_[idx] = sample
+
+    # pylint: disable=line-too-long
     def set_signal_kde(self, idx, sample, **kwargs):
         """
         Set sample and options for signal kde
@@ -1724,6 +1797,21 @@ class F2MassFitter:
 
         self._kde_signal_sample_[idx] = sample
         self._kde_signal_option_[idx] = kwargs
+
+    # pylint: disable=line-too-long
+    def set_background_template(self, idx, sample):
+        """
+        Set sample and options for background template histogram
+
+        Parameters
+        -------------------------------------------------
+        idx: int
+            Index of the background
+        sample: flarefly.DataHandler
+            Data sample for template histogram
+        """
+
+        self._hist_bkg_sample_[idx] = sample
 
     # pylint: disable=line-too-long
     def set_background_kde(self, idx, sample, **kwargs):
