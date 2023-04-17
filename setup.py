@@ -90,7 +90,7 @@ SETUP = Setup(
         "ipython>=7.16.1", "jedi==0.17.2", "zfit>=0.12.1", "mplhep>=0.3.25", "matplotlib>=3.1.3",
         "particle>=0.20.1", "scipy>=1.7.3"
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.8",
 
     # List additional groups of dependencies here (e.g. development dependencies). You can install
     # these using the following syntax, for example:
