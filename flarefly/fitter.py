@@ -658,7 +658,7 @@ class F2MassFitter:
         refl_err_fracs: list
             errors of fractions of the reflected signal pdfs
         """
-        signal_fracs, bkg_fracs, refl_fracs, signal_err_fracs, bkg_err_fracs, refl_err_fracs = ([] for _ in range(6))        
+        signal_fracs, bkg_fracs, refl_fracs, signal_err_fracs, bkg_err_fracs, refl_err_fracs = ([] for _ in range(6))
         for frac_par in self._fracs_:
             par_name = frac_par.name
             if f'{self._name_}_frac_signal' in par_name:
@@ -1207,7 +1207,7 @@ class F2MassFitter:
             for isgn, (signal_func, refl_func, frac_sgn, frac_refl) in enumerate(
                 zip(signal_funcs, refl_funcs, signal_fracs, refl_fracs)):
                 plt.plot(x_plot, (signal_func * frac_sgn + frac_refl * refl_func) * norm,
-                        color='xkcd:blue', label=f'total - bkg')
+                        color='xkcd:blue', label='total - bkg')
 
 
         plt.xlim(limits[0], limits[1])
