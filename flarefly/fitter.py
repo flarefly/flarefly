@@ -3,6 +3,7 @@ Module containing the class used to perform mass fits
 """
 
 import numpy as np
+import tensorflow as tf
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from matplotlib.offsetbox import AnchoredText
@@ -524,11 +525,17 @@ class F2MassFitter:
         """
 
         for ipdf, pdf_name in enumerate(self._name_refl_pdf_):
-            if pdf_name is None: # by default we put a dummy pdf without
+            if pdf_name is None: # by default we put a dummy pdf
                 low = zfit.Parameter(f'{self._name_}_low_refl{ipdf}',
-                                     self._data_handler_.get_limits()[0], -1.e10, 1.e10, floating=False)
+                                     self._data_handler_.get_limits()[0],
+                                     self._data_handler_.get_limits()[0]*0.99,
+                                     self._data_handler_.get_limits()[0]*1.01,
+                                     floating=False)
                 high = zfit.Parameter(f'{self._name_}_high_refl{ipdf}',
-                                      self._data_handler_.get_limits()[1], -1.e10, 1.e10, floating=False)
+                                      self._data_handler_.get_limits()[1],
+                                      self._data_handler_.get_limits()[1]*0.99,
+                                      self._data_handler_.get_limits()[1]*1.01,
+                                      floating=False)
                 self._refl_pdf_[ipdf] = zfit.pdf.Uniform(obs=obs, low=low, high=high)
             elif 'kde' in pdf_name:
                 if self._kde_refl_sample_[ipdf]:
@@ -590,18 +597,20 @@ class F2MassFitter:
             self._limits_sgn_pars_[ipdf].setdefault('frac', [0, 1.])
             if len(self._background_pdf_) == 0 and ipdf == len(self._signal_pdf_) - 1:
                 continue
-            self._fracs_[2 * ipdf] = zfit.Parameter(f'{self._name_}_frac_signal{ipdf}',
-                                                    self._init_sgn_pars_[ipdf]['frac'],
-                                                    self._limits_sgn_pars_[ipdf]['frac'][0],
-                                                    self._limits_sgn_pars_[ipdf]['frac'][1],
-                                                    floating=not self._fix_sgn_pars_[ipdf]['frac'])
+            self._fracs_[ipdf] = zfit.Parameter(f'{self._name_}_frac_signal{ipdf}',
+                                                self._init_sgn_pars_[ipdf]['frac'],
+                                                self._limits_sgn_pars_[ipdf]['frac'][0],
+                                                self._limits_sgn_pars_[ipdf]['frac'][1],
+                                                floating=not self._fix_sgn_pars_[ipdf]['frac'])
 
             # normalisation of reflection fixed to the one of the signal
             def func_mult(params):
                 return params['ros'] * params['s']
-            self._fracs_[2 * ipdf + 1] = zfit.ComposedParameter(f'{self._name_}_frac_refl{ipdf}',
-                                                                func_mult, params={'ros' : self._refl_over_sgn_[ipdf],
-                                                                                   's' : self._fracs_[ipdf]})
+            self._fracs_[ipdf + len(self._signal_pdf_)] = zfit.ComposedParameter(
+                f'{self._name_}_frac_refl{ipdf}',
+                func_mult, params={'ros' : self._refl_over_sgn_[ipdf],
+                                   's' : self._fracs_[ipdf]}
+            )
 
         if len(self._background_pdf_) > 1:
             for ipdf, _ in enumerate(self._background_pdf_):
@@ -702,11 +711,11 @@ class F2MassFitter:
             loss = zfit.loss.UnbinnedNLL(model=self._total_pdf_, data=self._data_handler_.get_data())
 
         self._fit_result_ = self._minimizer_.minimize(loss=loss)
+        Logger(self._fit_result_, 'RESULT')
+
         if self._fit_result_.hesse() == {}:
             if self._fit_result_.hesse(method='hesse_np') == {}:
                 Logger('Impossible to compute hesse error', 'FATAL')
-
-        Logger(self._fit_result_, 'RESULT')
 
         norm = self._data_handler_.get_norm()
         if len(self._fracs_) == 0:
