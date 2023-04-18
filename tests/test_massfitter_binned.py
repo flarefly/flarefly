@@ -11,14 +11,16 @@ from particle import Particle
 from flarefly.data_handler import DataHandler
 from flarefly.fitter import F2MassFitter
 
-FITTERBINNEDDPLUS, FITTERBINNEDDSTAR, FITRES, FIG, RAWYHIST, RAWYIN = ([] for _ in range(6))
+FITTERBINNEDDPLUS, FITTERBINNEDDSTAR, FITTERBINNEDD0, FITRES, FIG, RAWYHIST, RAWYIN = ([] for _ in range(7))
 SGNPDFSDPLUS = ["gaussian", "crystalball", "doublegaus", "doublecb"]
 BKGPDFSDPLUS = ["expo", "chebpol1"]
 SGNPDFSDSTAR = ["gaussian", "voigtian"]
 BKGPDFSDSTAR = ["expopow", "powlaw"]
+SGNPDFSD0 = ["gaussian"]
+BKGPDFSD0 = ["expo"]
 
 # test all possible functions with D+
-INFILEDPLUS = os.path.join(os.getcwd(), "tests/histos_dplus.root")
+INFILEDPLUS = os.path.join(os.getcwd(), "histos_dplus.root")
 DATABINNEDDPLUS = DataHandler(INFILEDPLUS, var_name=r"$M_\mathrm{K\pi\pi}$ (GeV/$c^{2}$)",
                               histoname="hMass_80_120", limits=[1.75, 2.06], rebin=4)
 for bkg_pdf in BKGPDFSDPLUS:
@@ -61,7 +63,7 @@ for bkg_pdf in BKGPDFSDPLUS:
             RAWYIN.append(None)
 
 # test also bkg functions for D*
-INFILEDSTAR = os.path.join(os.getcwd(), "tests/histos_dstar.root")
+INFILEDSTAR = os.path.join(os.getcwd(), "histos_dstar.root")
 DATABINNEDDSTAR = DataHandler(INFILEDSTAR, var_name=r"$M_\mathrm{K\pi\pi}-M_\mathrm{K\pi}$ (GeV/$c^{2}$)",
                               histoname="hMass_40_60", limits=[Particle.from_pdgid(211).mass*1e-3, 0.155], rebin=4)
 for bkg_pdf in BKGPDFSDSTAR:
@@ -71,10 +73,9 @@ for bkg_pdf in BKGPDFSDSTAR:
                                         name_background_pdf=[bkg_pdf],
                                         name=f"dstar_{bkg_pdf}_{sgn_pdf}"))
         FITTERBINNEDDSTAR[-1].set_particle_mass(0, mass=0.1455, fix=True)
-        if sgn_pdf == "gaussian":
-            FITTERBINNEDDSTAR[-1].set_signal_initpar(0, "sigma", 0.007)
+        if sgn_pdf in ["gaussian", "voigtian"]:
+            FITTERBINNEDDSTAR[-1].set_signal_initpar(0, "sigma", 0.0007, limits=[0.0001, 0.0015])
         elif sgn_pdf == "voigtian":
-            FITTERBINNEDDSTAR[-1].set_signal_initpar(0, "sigma", 0.007)
             FITTERBINNEDDSTAR[-1].set_signal_initpar(0, "gamma", 70.e-6) # 70 keV
         FITRES.append(FITTERBINNEDDSTAR[-1].mass_zfit())
         if FITRES[-1].converged:
@@ -87,31 +88,33 @@ for bkg_pdf in BKGPDFSDSTAR:
             RAWYIN.append(None)
 
 # test also D0 reflections
-INFILED0 = os.path.join(os.getcwd(), "tests/histos_dzero.root")
+INFILED0 = os.path.join(os.getcwd(), "histos_dzero.root")
 DATABINNEDD0 = DataHandler(INFILED0, var_name=r"$M_\mathrm{K\pi}$ (GeV/$c^{2}$)",
                            histoname="histMass_6", limits=[1.7, 2.10], rebin=4)
 REFLBINNEDD0 = DataHandler(INFILED0, var_name=r"$M_\mathrm{K\pi}$ (GeV/$c^{2}$)",
                            histoname="histRfl_6", limits=[1.7, 2.10], rebin=4)
 
-FITTERD0 = F2MassFitter(DATABINNEDD0, name_signal_pdf=["gaussian"],
-                        name_background_pdf=["chebpol2"],
-                        name_refl_pdf=["hist"], name="dzero")
-FITTERD0.set_reflection_template(0, REFLBINNEDD0, 0.1)
-FITTERD0.set_particle_mass(0, pdg_id=421, fix=False)
-FITTERD0.set_signal_initpar(0, "frac", 0.1, limits=[0., 1.])
-FITTERD0.set_signal_initpar(0, "sigma", 0.01, limits=[0.005, 0.03])
-FITTERD0.set_background_initpar(0, "c0", 2.)
-FITTERD0.set_background_initpar(0, "c1", -0.293708)
-FITTERD0.set_background_initpar(0, "c2", 0.02)
-FITRES.append(FITTERD0.mass_zfit())
-if FITRES[-1].converged:
-    FIG.append(FITTERBINNEDDPLUS[-1].plot_mass_fit(style="ATLAS"))
-    RAWYHIST.append(None) # we do not have it, to be fixed
-    RAWYIN.append(None) # we do not have it, to be fixed
-else:
-    FIG.append(None)
-    RAWYHIST.append(None)
-    RAWYIN.append(None)
+for bkg_pdf in BKGPDFSD0:
+    for sgn_pdf in SGNPDFSD0:
+        FITTERBINNEDD0.append(F2MassFitter(DATABINNEDD0, name_signal_pdf=[sgn_pdf],
+                              name_background_pdf=[bkg_pdf],
+                              name_refl_pdf=["hist"], name=f"dzero_{bkg_pdf}_{sgn_pdf}"))
+        FITTERBINNEDD0[-1].set_reflection_template(0, REFLBINNEDD0, 0.294)
+        FITTERBINNEDD0[-1].set_particle_mass(0, pdg_id=421, fix=False)
+        FITTERBINNEDD0[-1].set_signal_initpar(0, "frac", 0.1, limits=[0., 1.])
+        FITTERBINNEDD0[-1].set_signal_initpar(0, "sigma", 0.01, limits=[0.005, 0.03])
+        FITTERBINNEDD0[-1].set_background_initpar(0, "c0", 2.)
+        FITTERBINNEDD0[-1].set_background_initpar(0, "c1", -0.293708)
+        FITTERBINNEDD0[-1].set_background_initpar(0, "c2", 0.02)
+        FITRES.append(FITTERBINNEDD0[-1].mass_zfit())
+        if FITRES[-1].converged:
+            FIG.append(FITTERBINNEDD0[-1].plot_mass_fit(style="ATLAS"))
+            RAWYHIST.append(uproot.open(INFILED0)["hSignal"].to_numpy())
+            RAWYIN.append(RAWYHIST[-1][0][2]) # we do not have it, to be fixed
+        else:
+            FIG.append(None)
+            RAWYHIST.append(None)
+            RAWYIN.append(None)
 
 def test_fitter():
     """
@@ -124,7 +127,7 @@ def test_fitter_result():
     """
     Test the fitter output
     """
-    for _, (fitterbinned, raw_in) in enumerate(zip(FITTERBINNEDDPLUS, RAWYIN)):
+    for _, (fitterbinned, raw_in) in enumerate(zip(FITTERBINNEDDPLUS+FITTERBINNEDDSTAR+FITTERBINNEDD0, RAWYIN)):
         rawy, rawy_err = fitterbinned.get_raw_yield()
         assert np.isclose(raw_in, rawy, atol=5*rawy_err)
 
