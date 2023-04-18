@@ -87,7 +87,7 @@ for bkg_pdf in BKGPDFSDSTAR:
             RAWYIN.append(None)
 
 # test also D0 reflections
-INFILED0 = os.path.join(os.getcwd(), "tests/histos_dstar.root")
+INFILED0 = os.path.join(os.getcwd(), "tests/histos_dzero.root")
 DATABINNEDD0 = DataHandler(INFILED0, var_name=r"$M_\mathrm{K\pi}$ (GeV/$c^{2}$)",
                            histoname="histMass_6", limits=[1.7, 2.10], rebin=4)
 REFLBINNEDD0 = DataHandler(INFILED0, var_name=r"$M_\mathrm{K\pi}$ (GeV/$c^{2}$)",
