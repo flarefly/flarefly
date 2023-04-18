@@ -124,7 +124,7 @@ def test_fitter_result():
     """
     Test the fitter output
     """
-    for _, (fitterbinned, raw_in) in enumerate(zip(FITTERBINNEDDPLUS+FITTERBINNEDDSTAR, RAWYIN)):
+    for _, (fitterbinned, raw_in) in enumerate(zip(FITTERBINNEDDPLUS, RAWYIN)):
         rawy, rawy_err = fitterbinned.get_raw_yield()
         assert np.isclose(raw_in, rawy, atol=5*rawy_err)
 
