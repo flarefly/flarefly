@@ -3,7 +3,6 @@ Module containing the class used to perform mass fits
 """
 
 import numpy as np
-import tensorflow as tf
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from matplotlib.offsetbox import AnchoredText
