@@ -668,6 +668,8 @@ class F2MassFitter:
         """
         signal_fracs, bkg_fracs, refl_fracs, signal_err_fracs, bkg_err_fracs, refl_err_fracs = ([] for _ in range(6))
         for frac_par in self._fracs_:
+            if frac_par is None:
+                continue
             par_name = frac_par.name
             if f'{self._name_}_frac_signal' in par_name:
                 signal_fracs.append(self._fit_result_.params[par_name]['value'])
@@ -678,6 +680,10 @@ class F2MassFitter:
             elif f'{self._name_}_frac_bkg' in par_name:
                 bkg_fracs.append(self._fit_result_.params[par_name]['value'])
                 bkg_err_fracs.append(self._fit_result_.params[par_name]['hesse']['error'])
+
+        if len(signal_fracs) == len(bkg_fracs) == len(refl_fracs) == 0:
+            signal_fracs.append(1.)
+            signal_err_fracs.append(0.)
 
         return signal_fracs, bkg_fracs, refl_fracs, signal_err_fracs, bkg_err_fracs, refl_err_fracs
 
@@ -824,8 +830,6 @@ class F2MassFitter:
             bkg_funcs.append(zfit.run(bkg_pdf.pdf(x_plot, norm_range=obs)))
 
         signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
-        if len(signal_fracs) == 0:
-            signal_fracs.append(1.)
 
         # first draw backgrounds
         for ibkg, bkg_func in enumerate(bkg_funcs):
@@ -910,7 +914,7 @@ class F2MassFitter:
                     extra_info += fr'  $B({nsigma}\sigma)=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
                     extra_info += fr'  $S/B({nsigma}\sigma)=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
                     extra_info += fr'  Signif.$({nsigma}\sigma)=${signif:.1f} $\pm$ {signif_err:.1f}'
-            text.append(extra_info)
+                text.append(extra_info)
             concatenated_text = '\n'.join(text)
             anchored_text_signal = AnchoredText(concatenated_text, loc = loc[1], frameon=False)
 
@@ -978,8 +982,6 @@ class F2MassFitter:
             bkg_funcs.append(zfit.run(bkg_pdf.pdf(x_plot, norm_range=obs)))
 
         signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
-        if len(signal_fracs) == 0:
-            signal_fracs.append(1.)
 
         # first write backgrounds
         for ibkg, bkg_func in enumerate(bkg_funcs):
@@ -1191,8 +1193,6 @@ class F2MassFitter:
             refl_funcs.append(zfit.run(refl_pdf.pdf(x_plot, norm_range=obs)))
 
         signal_fracs, _, refl_fracs, _, _, _ = self.__get_all_fracs()
-        if len(signal_fracs) == 0:
-            signal_fracs.append(1.)
 
         # draw signals
         for isgn, (signal_func, frac) in enumerate(zip(signal_funcs, signal_fracs)):
