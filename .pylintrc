@@ -15,4 +15,4 @@ disable=useless-object-inheritance
 
 [DESIGN]
 max-args=10
-max-locals=40
+max-locals=100
