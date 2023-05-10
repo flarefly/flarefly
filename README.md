@@ -20,4 +20,4 @@ If you want to get familiar with flarefly, the following tutorial is available:
 
 | Type | Link |
 | -------------- | ------------- |
-| Invariant mass fit |  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/AlexBigO/flarefly/blob/myBranch/tutorials/flarefly_tutorial_Bzero.ipynb) |
+| Binned invariant mass fit |  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/flarefly/flarefly/blob/main/tutorials/flarefly_tutorial_Bzero.ipynb) |
