@@ -35,6 +35,8 @@ class F2MassFitter:
         name_signal_pdf: list
             The list of names for the signal pdfs. The possible options are:
 
+            - 'nosignal'
+
             - 'gaussian'
 
             - 'doublegaus'
@@ -109,10 +111,16 @@ class F2MassFitter:
         self._data_handler_ = data_handler
         self._name_signal_pdf_ = name_signal_pdf
         self._name_background_pdf_ = name_background_pdf
-        self._signal_pdf_ = [None for _ in enumerate(name_signal_pdf)]
-        self._hist_signal_sample_ = [None for _ in enumerate(name_signal_pdf)]
-        self._kde_signal_sample_ = [None for _ in enumerate(name_signal_pdf)]
-        self._kde_signal_option_ = [None for _ in enumerate(name_signal_pdf)]
+        if self._name_signal_pdf_[0] == 'nosignal':
+            self._signal_pdf_ = []
+            self._hist_signal_sample_ = []
+            self._kde_signal_sample_ = []
+            self._kde_signal_option_ = []
+        else:
+            self._signal_pdf_ = [None for _ in enumerate(name_signal_pdf)]
+            self._hist_signal_sample_ = [None for _ in enumerate(name_signal_pdf)]
+            self._kde_signal_sample_ = [None for _ in enumerate(name_signal_pdf)]
+            self._kde_signal_option_ = [None for _ in enumerate(name_signal_pdf)]
         if self._name_background_pdf_[0] == 'nobkg':
             self._background_pdf_ = []
             self._hist_bkg_sample_ = []
@@ -142,10 +150,14 @@ class F2MassFitter:
         self._fix_bkg_pars_ = [{} for _ in enumerate(name_signal_pdf)]
         self._sgn_pars_ = [{} for _ in enumerate(name_signal_pdf)]
         self._bkg_pars_ = [{} for _ in enumerate(name_background_pdf)]
-        if self._name_background_pdf_[0] == 'nobkg':
+        if self._name_signal_pdf_[0] != 'nosignal' and self._name_background_pdf_[0] == 'nobkg':
             self._fracs_ = [None for _ in range(2 * len(name_signal_pdf) - 1)]
-        else:
+        elif self._name_signal_pdf_[0] == 'nosignal' and self._name_background_pdf_[0] != 'nobkg':
+            self._fracs_ = [None for _ in range(len(name_background_pdf) - 1)]
+        elif self._name_signal_pdf_[0] != 'nosignal' and self._name_background_pdf_[0] != 'nobkg':
             self._fracs_ = [None for _ in range(2 * len(name_signal_pdf) + len(name_background_pdf) - 1)]
+        else:
+            Logger('No signal nor background pdf defined', 'FATAL')
         self._rawyield_ = [0. for _ in enumerate(name_signal_pdf)]
         self._rawyield_err_ = [0. for _ in enumerate(name_signal_pdf)]
         self._minimizer_ = zfit.minimize.Minuit(verbosity=7)
@@ -169,6 +181,9 @@ class F2MassFitter:
         """
 
         for ipdf, pdf_name in enumerate(self._name_signal_pdf_):
+            if pdf_name == 'nosignal':
+                Logger('Performing fit with no signal pdf', 'WARNING')
+                break
             if pdf_name == 'gaussian':
                 self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
                 self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
@@ -587,8 +602,12 @@ class F2MassFitter:
         self.__build_reflection_pdfs(obs)
 
         if len(self._signal_pdf_) + len(self._background_pdf_) == 1:
-            self._total_pdf_ = self._signal_pdf_[0]
-            return
+            if len(self._signal_pdf_) == 0:
+                self._total_pdf_ = self._background_pdf_[0]
+                return
+            if len(self._background_pdf_) == 0:
+                self._total_pdf_ = self._signal_pdf_[0]
+                return
 
         for ipdf, _ in enumerate(self._signal_pdf_):
             self._init_sgn_pars_[ipdf].setdefault('frac', 0.1)
@@ -682,8 +701,12 @@ class F2MassFitter:
                 bkg_err_fracs.append(self._fit_result_.params[par_name]['hesse']['error'])
 
         if len(signal_fracs) == len(bkg_fracs) == len(refl_fracs) == 0:
-            signal_fracs.append(1.)
-            signal_err_fracs.append(0.)
+            if len(self._background_pdf_) == 0:
+                signal_fracs.append(1.)
+                signal_err_fracs.append(0.)
+            elif len(self._signal_pdf_) == 0:
+                bkg_fracs.append(1.)
+                bkg_err_fracs.append(0.)
 
         return signal_fracs, bkg_fracs, refl_fracs, signal_err_fracs, bkg_err_fracs, refl_err_fracs
 
@@ -833,7 +856,7 @@ class F2MassFitter:
 
         # first draw backgrounds
         for ibkg, bkg_func in enumerate(bkg_funcs):
-            if ibkg < len(bkg_fracs) - 1:
+            if ibkg < len(bkg_fracs) - 1 or len(signal_fracs) == 0:
                 plt.plot(x_plot, bkg_func * norm * bkg_fracs[ibkg], color=self._bkg_cmap_(ibkg),
                          ls='--', label=f'background {ibkg}')
             else:
