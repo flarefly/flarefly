@@ -898,7 +898,7 @@ class F2MassFitter:
                 mass, mass_unc = self.get_mass(idx)
                 sigma, sigma_unc = None, None
                 gamma, gamma_unc = None, None
-                if self._name_signal_pdf_[idx] in ['gaussian', 'crystalball', 'voigtian', 'hist']:
+                if self._name_signal_pdf_[idx] in ['gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
                     sigma, sigma_unc = self.get_sigma(idx)
                 if self._name_signal_pdf_[idx] in ['cauchy', 'voigtian']:
                     gamma, gamma_unc = self.get_signal_parameter(idx, 'gamma')
@@ -1415,7 +1415,7 @@ class F2MassFitter:
         sigma_err: float
             The sigma error obtained from the fit
         """
-        if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'voigtian', 'hist']:
+        if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
             Logger(f'Sigma parameter not defined for {self._name_signal_pdf_[idx]} pdf!', 'ERROR')
             return 0., 0.
 
@@ -1594,7 +1594,7 @@ class F2MassFitter:
             max_value = mass + nhwhm * hwhm
 
         if use_nsigma:
-            if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'hist']:
+            if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -1687,7 +1687,7 @@ class F2MassFitter:
             max_value = mass + nhwhm * hwhm
 
         if use_nsigma:
-            if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'hist']:
+            if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
