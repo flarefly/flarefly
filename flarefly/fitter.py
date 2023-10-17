@@ -906,7 +906,7 @@ class F2MassFitter:
                 if sigma is not None:
                     extra_info += fr'  $\sigma = {sigma*1000:.1f}\pm{sigma_unc*1000:.1f}$ MeV$/c^2$''\n'
                 if gamma is not None:
-                    extra_info += fr'  $\Gamma = {gamma*1000:.1f}\pm{gamma_unc*1000:.1f}$ MeV$/c^2$''\n'
+                    extra_info += fr'  $\Gamma/2 = {gamma*1000:.1f}\pm{gamma_unc*1000:.1f}$ MeV$/c^2$''\n'
                 if mass_range is not None:
                     signal, signal_err = self.get_signal(idx=idx, min=mass_range[0], max=mass_range[1])
                     bkg, bkg_err = self.get_background(idx=idx, min=mass_range[0], max=mass_range[1])
@@ -1500,6 +1500,12 @@ class F2MassFitter:
 
         """
 
+        if par == 'gamma':
+            Logger('The gamma parameter that you are getting is half of the width of a resonance,'
+                   ' for more info check the Cauchy pdf defined here '
+                   'https://zfit.readthedocs.io/en/latest/user_api/pdf/_generated/basic/zfit.pdf.Cauchy.html',
+                   'WARNING')
+
         if self._fix_sgn_pars_[idx][par]:
             parameter = self._init_sgn_pars_[idx][par]
             parameter_err = 0.
@@ -1867,6 +1873,13 @@ class F2MassFitter:
             - fix: bool
                 fix the parameter to init_value
         """
+        if par == 'gamma':
+            Logger('The gamma parameter that you are setting is half of the width of a resonance,'
+                   ' for more info check the Cauchy pdf defined here '
+                   'https://zfit.readthedocs.io/en/latest/user_api/pdf/_generated/basic/zfit.pdf.Cauchy.html',
+                   'WARNING')
+
+
         self._init_sgn_pars_[idx][par_name] = init_value
         if 'limits' in kwargs:
             self._limits_sgn_pars_[idx][par_name] = kwargs['limits']
