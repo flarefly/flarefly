@@ -1480,7 +1480,7 @@ class F2MassFitter:
 
         return hwhm, hwhm_err
 
-    def get_signal_parameter(self, idx, par):
+    def get_signal_parameter(self, idx, par_name):
         """
         Get a signal parameter and its error
 
@@ -1488,7 +1488,7 @@ class F2MassFitter:
         -------------------------------------------------
         idx: int
             Index of the parameter to be returned (default: 0)
-        par: str
+        par_name: str
             parameter to return
 
         Returns
@@ -1500,22 +1500,22 @@ class F2MassFitter:
 
         """
 
-        if par == 'gamma':
+        if par_name == 'gamma':
             Logger('The gamma parameter that you are getting is half of the width of a resonance,'
                    ' for more info check the Cauchy pdf defined here '
                    'https://zfit.readthedocs.io/en/latest/user_api/pdf/_generated/basic/zfit.pdf.Cauchy.html',
                    'WARNING')
 
-        if self._fix_sgn_pars_[idx][par]:
-            parameter = self._init_sgn_pars_[idx][par]
+        if self._fix_sgn_pars_[idx][par_name]:
+            parameter = self._init_sgn_pars_[idx][par_name]
             parameter_err = 0.
         else:
-            parameter = self._fit_result_.params[f'{self._name_}_{par}_signal{idx}']['value']
-            parameter_err = self._fit_result_.params[f'{self._name_}_{par}_signal{idx}']['hesse']['error']
+            parameter = self._fit_result_.params[f'{self._name_}_{par_name}_signal{idx}']['value']
+            parameter_err = self._fit_result_.params[f'{self._name_}_{par_name}_signal{idx}']['hesse']['error']
 
         return parameter, parameter_err
 
-    def get_background_parameter(self, idx, par):
+    def get_background_parameter(self, idx, par_name):
         """
         Get a background parameter and its error
 
@@ -1523,7 +1523,7 @@ class F2MassFitter:
         -------------------------------------------------
         idx: int
             Index of the parameter to be returned (default: 0)
-        par: str
+        par_name: str
             parameter to return
 
         Returns
@@ -1535,12 +1535,12 @@ class F2MassFitter:
 
         """
 
-        if self._fix_bkg_pars_[idx][par]:
-            parameter = self._init_bkg_pars_[idx][par]
+        if self._fix_bkg_pars_[idx][par_name]:
+            parameter = self._init_bkg_pars_[idx][par_name]
             parameter_err = 0.
         else:
-            parameter = self._fit_result_.params[f'{self._name_}_{par}_bkg{idx}']['value']
-            parameter_err = self._fit_result_.params[f'{self._name_}_{par}_bkg{idx}']['hesse']['error']
+            parameter = self._fit_result_.params[f'{self._name_}_{par_name}_bkg{idx}']['value']
+            parameter_err = self._fit_result_.params[f'{self._name_}_{par_name}_bkg{idx}']['hesse']['error']
 
         return parameter, parameter_err
 
@@ -1873,7 +1873,7 @@ class F2MassFitter:
             - fix: bool
                 fix the parameter to init_value
         """
-        if par == 'gamma':
+        if par_name == 'gamma':
             Logger('The gamma parameter that you are setting is half of the width of a resonance,'
                    ' for more info check the Cauchy pdf defined here '
                    'https://zfit.readthedocs.io/en/latest/user_api/pdf/_generated/basic/zfit.pdf.Cauchy.html',
