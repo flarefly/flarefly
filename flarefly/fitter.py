@@ -166,8 +166,8 @@ class F2MassFitter:
         self._chi2_loss_ = kwargs.get('chi2_loss', False)
         self._base_sgn_cmap_ = plt.cm.get_cmap('viridis', len(self._signal_pdf_) * 4)
         self._sgn_cmap_ = ListedColormap(self._base_sgn_cmap_(np.linspace(0.4, 0.65, len(self._signal_pdf_))))
-        self._base_bkg_cmap_ = plt.cm.get_cmap('gist_heat', len(self._background_pdf_) * 2)
-        self._bkg_cmap_ = ListedColormap(self._base_bkg_cmap_(np.linspace(0.3, 0.8, len(self._background_pdf_))))
+        self._base_bkg_cmap_ = plt.cm.get_cmap('Reds', len(self._background_pdf_) * 10)
+        self._bkg_cmap_ = ListedColormap(self._base_bkg_cmap_(np.linspace(0.8, 0.2, len(self._background_pdf_))))
         self._base_refl_cmap_ = plt.cm.get_cmap('summer', len(self._refl_pdf_) * 2)
         self._refl_cmap_ = ListedColormap(self._base_refl_cmap_(np.linspace(0., 0.6, len(self._refl_pdf_))))
 
@@ -631,7 +631,7 @@ class F2MassFitter:
             )
 
         if len(self._background_pdf_) > 1:
-            for ipdf, _ in enumerate(self._background_pdf_):
+            for ipdf, _ in enumerate(self._background_pdf_[:-1]):
                 self._init_bkg_pars_[ipdf].setdefault('frac', 0.1)
                 self._fix_bkg_pars_[ipdf].setdefault('frac', False)
                 self._limits_bkg_pars_[ipdf].setdefault('frac', [0, 1.])
@@ -853,15 +853,12 @@ class F2MassFitter:
             bkg_funcs.append(zfit.run(bkg_pdf.pdf(x_plot, norm_range=obs)))
 
         signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
+        bkg_fracs.append(1-sum(bkg_fracs)-sum(signal_fracs)-sum(refl_fracs))
 
         # first draw backgrounds
-        for ibkg, bkg_func in enumerate(bkg_funcs):
-            if ibkg < len(bkg_fracs) - 1 or len(signal_fracs) == 0:
-                plt.plot(x_plot, bkg_func * norm * bkg_fracs[ibkg], color=self._bkg_cmap_(ibkg),
-                         ls='--', label=f'background {ibkg}')
-            else:
-                plt.plot(x_plot, bkg_func * norm * (1-sum(bkg_fracs)-sum(signal_fracs)-sum(refl_fracs)),
-                         color='firebrick', ls='--', label=f'background {ibkg}')
+        for ibkg, (bkg_func, bkg_frac) in enumerate(zip(bkg_funcs, bkg_fracs)):
+            plt.plot(x_plot, bkg_func * norm * bkg_frac,
+                     color=self._bkg_cmap_(ibkg), ls='--', label=f'background {ibkg}')
         # then draw signals
         for isgn, (signal_func, frac) in enumerate(zip(signal_funcs, signal_fracs)):
             plt.plot(x_plot, signal_func * norm * frac, color=self._sgn_cmap_(isgn))
@@ -884,6 +881,8 @@ class F2MassFitter:
         if logy:
             plt.yscale('log')
             plt.ylim(min(total_func) * norm / 5, max(total_func) * norm * 5)
+        else:
+            plt.ylim(0., max(total_func) * norm * 1.5)
 
         if show_extra_info:
             # info on chi2/ndf
@@ -1005,17 +1004,13 @@ class F2MassFitter:
             bkg_funcs.append(zfit.run(bkg_pdf.pdf(x_plot, norm_range=obs)))
 
         signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
+        bkg_fracs.append(1-sum(bkg_fracs)-sum(signal_fracs)-sum(refl_fracs))
 
         # first write backgrounds
-        for ibkg, bkg_func in enumerate(bkg_funcs):
-            if ibkg < len(bkg_fracs) - 1:
-                self.__write_pdf(histname=f'bkg_{ibkg}{suffix}',
-                                 weight=bkg_func * norm * bkg_fracs[ibkg],
-                                 num=num, filename=filename, option='update')
-            else:
-                self.__write_pdf(histname=f'bkg_{ibkg}{suffix}',
-                               weight=bkg_func * norm * (1-sum(bkg_fracs)-sum(signal_fracs)-sum(refl_fracs)),
-                               num=num, filename=filename, option='update')
+        for ibkg, (bkg_func, bkg_frac) in enumerate(zip(bkg_funcs, bkg_fracs)):
+            self.__write_pdf(histname=f'bkg_{ibkg}{suffix}',
+                           weight=bkg_func * norm * bkg_frac,
+                           num=num, filename=filename, option='update')
         # then write signals
         for isgn, (frac, signal_func) in enumerate(zip(signal_funcs, signal_fracs)):
             self.__write_pdf(histname=f'signal_{isgn}{suffix}',
@@ -1141,11 +1136,15 @@ class F2MassFitter:
             signal_fracs, _, refl_fracs, _, _, _ = self.__get_all_fracs()
             bkg_fracs = [1 - sum(signal_fracs) - sum(refl_fracs)]
         else:
-            _, bkg_fracs, _, _, _, _ = self.__get_all_fracs()
+            signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
+            bkg_fracs.append(1 - sum(bkg_fracs) - sum(signal_fracs) - sum(refl_fracs))
         # access model predicted values for background
-        for ipdf, _ in enumerate(self._name_background_pdf_):
+        for ipdf, bkg_name in enumerate(self._name_background_pdf_):
             background_pdf_binned_[ipdf] = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[ipdf], obs)
-            model_bkg_values[ipdf] = background_pdf_binned_[ipdf].values()*bkg_fracs[ipdf]*norm
+            if "hist" not in bkg_name:
+                model_bkg_values[ipdf] = background_pdf_binned_[ipdf].values()*bkg_fracs[ipdf]*norm
+            else:
+                model_bkg_values[ipdf] = background_pdf_binned_[ipdf].values()
         # compute residuals
         for ibin, data in enumerate(data_values):
             residuals[ibin] = float(data)
