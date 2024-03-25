@@ -100,12 +100,28 @@ class F2MassFitter:
                 - 'hist' (only for binned fits, requires to set the datasample)
 
             - name: str
-                Optional name for the fitter,
+                Optional name for the fitter, 
                 needed in case of multiple fitters defined in the same script
 
             - chi2_loss: bool
-                chi2 minimization if True, nll minmization else
-                Default value to False
+                chi2 minimization if True, nll minmization else, 
+                default value to False
+
+            - minuit_mode:
+                A number used by minuit to define the internal minimization strategy, either 0, 1 or 2. 
+                0 is the fastest, 2 is the slowest 
+                (see more details in 
+                https://zfit.readthedocs.io/en/latest/user_api/minimize/_generated/minimizers/zfit.minimize.Minuit.html#zfit.minimize.Minuit)
+                Default value to 0
+
+            - tol: float
+                Termination value for the convergence/stopping criterion of the algorithm in order to determine 
+                if the minimum has been found. 
+                Default value to 0.001
+
+            - verbosity: int
+                verbosity level (from 0 to 10)
+                Default value to 0
         """
 
         self._data_handler_ = data_handler
@@ -160,7 +176,11 @@ class F2MassFitter:
             Logger('No signal nor background pdf defined', 'FATAL')
         self._rawyield_ = [0. for _ in enumerate(name_signal_pdf)]
         self._rawyield_err_ = [0. for _ in enumerate(name_signal_pdf)]
-        self._minimizer_ = zfit.minimize.Minuit(verbosity=7)
+        self._minimizer_ = zfit.minimize.Minuit(
+            verbosity=kwargs.get('verbosity', 7),
+            mode=kwargs.get('minuit_mode', 0),
+            tol=kwargs.get('tol', 0.001)
+        )
         self._name_ = kwargs.get('name', '')
         self._ndf_ = None
         self._chi2_loss_ = kwargs.get('chi2_loss', False)
