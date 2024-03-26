@@ -129,7 +129,9 @@ def test_fitter_result():
     """
     for _, (fitterbinned, raw_in) in enumerate(zip(FITTERBINNEDDPLUS+FITTERBINNEDDSTAR+FITTERBINNEDD0, RAWYIN)):
         rawy, rawy_err = fitterbinned.get_raw_yield()
+        rawy_bc, rawy_bc_err = fitterbinned.get_raw_yield_bincounting()
         assert np.isclose(raw_in, rawy, atol=5*rawy_err)
+        assert np.isclose(raw_in, rawy_bc, atol=5*rawy_bc_err)
 
 def test_plot():
     """
