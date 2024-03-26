@@ -784,8 +784,8 @@ class F2MassFitter:
 
         bins = self._data_handler_.get_nbins()
         norm = self._data_handler_.get_norm()
-        self.__std_residuals_ = [None]*bins
-        self.__std_residual_variances = [None]*bins
+        self._std_residuals_ = [None]*bins
+        self._std_residual_variances_ = [None]*bins
 
         # access normalized data values and errors for all bins
         if self._data_handler_.get_is_binned():
@@ -802,8 +802,8 @@ class F2MassFitter:
         for ibin, (data, model, variance) in enumerate(zip(data_values, model_values, variances)):
             if variance == 0:
                 Logger('Null variance. Consider enlarging the bins.', 'FATAL')
-            self.__std_residuals_[ibin] = float((data - model)/np.sqrt(variance))
-            self.__std_residual_variances[ibin] = float(variance/np.sqrt(variance))
+            self._std_residuals_[ibin] = float((data - model)/np.sqrt(variance))
+            self._std_residual_variances_[ibin] = float(variance/np.sqrt(variance))
 
     def mass_zfit(self):
         """
