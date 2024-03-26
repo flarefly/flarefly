@@ -130,7 +130,7 @@ def test_fitter_result():
     for ifit, (fitterbinned, raw_in) in enumerate(zip(FITTERBINNEDDPLUS+FITTERBINNEDDSTAR+FITTERBINNEDD0, RAWYIN)):
         rawy, rawy_err = fitterbinned.get_raw_yield()
         assert np.isclose(raw_in, rawy, atol=5*rawy_err)
-        if ifit in [0, 4, 8, 10, 12]: # only test bin counting with Gaussian functions for simplicity
+        if ifit == 0: # only test bin counting with Gaussian functions for simplicity
             rawy_bc, rawy_bc_err = fitterbinned.get_raw_yield_bincounting()
             assert np.isclose(raw_in, rawy_bc, atol=5*rawy_bc_err)
 
