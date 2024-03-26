@@ -191,6 +191,11 @@ class F2MassFitter:
         self._base_refl_cmap_ = plt.cm.get_cmap('summer', len(self._refl_pdf_) * 2)
         self._refl_cmap_ = ListedColormap(self._base_refl_cmap_(np.linspace(0., 0.6, len(self._refl_pdf_))))
 
+        self._raw_residuals_ = []
+        self._raw_residual_variances_ = []
+        self._std_residuals_ = []
+        self._std_residual_variances_ = []
+
         zfit.settings.advanced_warnings.all = False
         zfit.settings.changed_warnings.all = False
 
@@ -730,6 +735,76 @@ class F2MassFitter:
 
         return signal_fracs, bkg_fracs, refl_fracs, signal_err_fracs, bkg_err_fracs, refl_err_fracs
 
+    def __get_raw_residuals(self):
+        """
+        Get the raw residuals (data_value - bkg_model_value) for all bins
+        """
+
+        bins = self._data_handler_.get_nbins()
+        norm = self._data_handler_.get_norm()
+        self._raw_residuals_ = [None]*bins
+        background_pdf_binned_ = [None for _ in enumerate(self._name_background_pdf_)]
+        model_bkg_values = [None for _ in enumerate(self._name_background_pdf_)]
+
+        # access normalized data values and errors for all bins
+        if self._data_handler_.get_is_binned():
+            binned_data = self._data_handler_.get_binned_data()
+            data_values = binned_data.values()
+            self._raw_residual_variances_ = binned_data.variances()
+            obs = self._data_handler_.get_obs()
+        else:
+            data_values = self._data_handler_.get_binned_data_from_unbinned_data()
+            self._raw_residual_variances_ = data_values # poissonian errors
+            obs = self._data_handler_.get_binned_obs_from_unbinned_data()
+
+        # get background fractions
+        if len(self._background_pdf_) == 1:
+            signal_fracs, _, refl_fracs, _, _, _ = self.__get_all_fracs()
+            bkg_fracs = [1 - sum(signal_fracs) - sum(refl_fracs)]
+        else:
+            signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
+            bkg_fracs.append(1 - sum(bkg_fracs) - sum(signal_fracs) - sum(refl_fracs))
+        # access model predicted values for background
+        for ipdf, bkg_name in enumerate(self._name_background_pdf_):
+            background_pdf_binned_[ipdf] = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[ipdf], obs)
+            if "hist" in bkg_name:
+                norm /= float(sum(background_pdf_binned_[ipdf].values()))
+            model_bkg_values[ipdf] = background_pdf_binned_[ipdf].values()*bkg_fracs[ipdf]*norm
+        # compute residuals
+        for ibin, data in enumerate(data_values):
+            self._raw_residuals_[ibin] = float(data)
+            for ipdf, _ in enumerate(self._name_background_pdf_):
+                self._raw_residuals_[ibin] -= model_bkg_values[ipdf][ibin]
+
+    def __get_std_residuals(self):
+        """
+        Get the standardized residuals
+        (data_value - bkg_model_value)/ sigma_data for all bins
+        """
+
+        bins = self._data_handler_.get_nbins()
+        norm = self._data_handler_.get_norm()
+        self.__std_residuals_ = [None]*bins
+        self.__std_residual_variances = [None]*bins
+
+        # access normalized data values and errors for all bins
+        if self._data_handler_.get_is_binned():
+            binned_data = self._data_handler_.get_binned_data()
+            data_values = binned_data.values()
+            variances = binned_data.variances()
+        else:
+            data_values = self._data_handler_.get_binned_data_from_unbinned_data()
+            variances = data_values # poissonian errors
+
+        # access model predicted values for background
+        self.__build_total_pdf_binned()
+        model_values = self._total_pdf_binned_.values()*norm
+        for ibin, (data, model, variance) in enumerate(zip(data_values, model_values, variances)):
+            if variance == 0:
+                Logger('Null variance. Consider enlarging the bins.', 'FATAL')
+            self.__std_residuals_[ibin] = float((data - model)/np.sqrt(variance))
+            self.__std_residual_variances[ibin] = float(variance/np.sqrt(variance))
+
     def mass_zfit(self):
         """
         Perform a mass fit with the zfit library
@@ -742,6 +817,11 @@ class F2MassFitter:
 
         if self._data_handler_ is None:
             Logger('Data handler not specified', 'FATAL')
+
+        self._raw_residuals_ = []
+        self._raw_residual_variances_ = []
+        self._std_residuals_ = []
+        self._std_residual_variances_ = []
 
         self.__build_total_pdf()
         self.__build_total_pdf_binned()
@@ -1124,55 +1204,6 @@ class F2MassFitter:
         """
         return self.get_chi2()/self.get_ndf()
 
-    def get_raw_residuals(self):
-        """
-        Get the raw residuals (data_value - bkg_model_value) for all bins
-
-        Returns
-        -------------------------------------------------
-        residuals: array[float]
-            The residuals
-        """
-
-        bins = self._data_handler_.get_nbins()
-        norm = self._data_handler_.get_norm()
-        residuals = [None]*bins
-        background_pdf_binned_ = [None for _ in enumerate(self._name_background_pdf_)]
-        model_bkg_values = [None for _ in enumerate(self._name_background_pdf_)]
-
-        # access normalized data values and errors for all bins
-        if self._data_handler_.get_is_binned():
-            binned_data = self._data_handler_.get_binned_data()
-            data_values = binned_data.values()
-            variances = binned_data.variances()
-            obs = self._data_handler_.get_obs()
-        else:
-            data_values = self._data_handler_.get_binned_data_from_unbinned_data()
-            variances = data_values # poissonian errors
-            obs = self._data_handler_.get_binned_obs_from_unbinned_data()
-
-        # get background fractions
-        if len(self._background_pdf_) == 1:
-            signal_fracs, _, refl_fracs, _, _, _ = self.__get_all_fracs()
-            bkg_fracs = [1 - sum(signal_fracs) - sum(refl_fracs)]
-        else:
-            signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
-            bkg_fracs.append(1 - sum(bkg_fracs) - sum(signal_fracs) - sum(refl_fracs))
-        # access model predicted values for background
-        for ipdf, bkg_name in enumerate(self._name_background_pdf_):
-            background_pdf_binned_[ipdf] = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[ipdf], obs)
-            if "hist" not in bkg_name:
-                model_bkg_values[ipdf] = background_pdf_binned_[ipdf].values()*bkg_fracs[ipdf]*norm
-            else:
-                model_bkg_values[ipdf] = background_pdf_binned_[ipdf].values()
-        # compute residuals
-        for ibin, data in enumerate(data_values):
-            residuals[ibin] = float(data)
-            for ipdf, _ in enumerate(self._name_background_pdf_):
-                residuals[ibin] -= model_bkg_values[ipdf][ibin]
-
-        return residuals, variances
-
     def plot_raw_residuals(self, **kwargs):
         """
         Plot the raw residuals
@@ -1208,13 +1239,15 @@ class F2MassFitter:
 
         fig = plt.figure(figsize=figsize)
 
-        residuals, variances = self.get_raw_residuals()
+        if len(self._raw_residuals_) == 0:
+            self.__get_raw_residuals()
+
         # draw residuals
         plt.errorbar(
             self._data_handler_.get_bin_center(),
-            residuals,
+            self._raw_residuals_,
             xerr = None,
-            yerr = np.sqrt(variances),
+            yerr = np.sqrt(self._raw_residual_variances_),
             linestyle = "None",
             elinewidth = 1,
             capsize = 0,
@@ -1267,41 +1300,6 @@ class F2MassFitter:
 
         return fig
 
-    def get_std_residuals(self):
-        """
-        Get the standardized residuals
-        (data_value - bkg_model_value)/ sigma_data for all bins
-
-        Returns
-        -------------------------------------------------
-        residuals: array[float]
-            The standardized residuals
-        """
-
-        bins = self._data_handler_.get_nbins()
-        norm = self._data_handler_.get_norm()
-        residuals, residuals_variances = [None]*bins, [None]*bins
-
-        # access normalized data values and errors for all bins
-        if self._data_handler_.get_is_binned():
-            binned_data = self._data_handler_.get_binned_data()
-            data_values = binned_data.values()
-            variances = binned_data.variances()
-        else:
-            data_values = self._data_handler_.get_binned_data_from_unbinned_data()
-            variances = data_values # poissonian errors
-
-        # access model predicted values for background
-        self.__build_total_pdf_binned()
-        model_values = self._total_pdf_binned_.values()*norm
-        for ibin, (data, model, variance) in enumerate(zip(data_values, model_values, variances)):
-            if variance == 0:
-                Logger('Null variance. Consider enlarging the bins.', 'FATAL')
-            residuals[ibin] = float((data - model)/np.sqrt(variance))
-            residuals_variances[ibin] = float(variance/np.sqrt(variance))
-
-        return residuals, residuals_variances
-
     def plot_std_residuals(self, **kwargs):
         """
         Plot the raw residuals
@@ -1338,19 +1336,20 @@ class F2MassFitter:
 
         fig = plt.figure(figsize=figsize)
 
-        residuals, variances = self.get_std_residuals()
+        if len(self._std_residuals_) == 0:
+            self.__get_std_residuals()
         # draw residuals
         plt.errorbar(bin_center,
-                    residuals,
-                    xerr = None,
-                    yerr = np.sqrt(variances),
-                    linestyle = "None",
-                    elinewidth = 1,
-                    capsize = 0,
-                    color = "black",
-                    marker = "o",
-                    markersize = 5,
-                    label = None)
+                     self._std_residuals_,
+                     xerr = None,
+                     yerr = np.sqrt(self._std_residual_variances_),
+                     linestyle = "None",
+                     elinewidth = 1,
+                     capsize = 0,
+                     color = "black",
+                     marker = "o",
+                     markersize = 5,
+                     label = None)
 
         # line at 0
         plt.plot([bin_center[0], bin_center[-1]], [0., 0.], lw=2, color='xkcd:blue')
@@ -1383,6 +1382,88 @@ class F2MassFitter:
             The raw yield error obtained from the fit
         """
         return self._rawyield_[idx], self._rawyield_err_[idx]
+
+
+    def get_raw_yield_bincounting(self, idx=0, **kwargs):
+        """
+        Get the raw yield and its error via the bin-counting method
+
+        Parameters
+        -------------------------------------------------
+        idx: int
+            Index of the raw yield to be returned (default: 0)
+
+        **kwargs: dict
+            Additional optional arguments:
+
+            - nsigma: float
+                nsigma invariant-mass window around mean for signal counting
+
+            - nhwhm: float
+                number of hwhm invariant-mass window around mean for signal counting
+                (alternative to nsigma)
+
+            - min: float
+                minimum value of invariant-mass for signal counting (alternative to nsigma)
+
+            - max: float
+                maximum value of invariant-mass for signal counting (alternative to nsigma)
+
+        Returns
+        -------------------------------------------------
+        raw_yield: float
+            The raw yield obtained from the bin counting
+        raw_yield_err: float
+            The raw yield error obtained from the bin counting
+        """
+
+        nsigma = kwargs.get('nsigma', 3.)
+        nhwhm = kwargs.get('nhwhm', None)
+        min_value = kwargs.get('min', None)
+        max_value = kwargs.get('max', None)
+        use_nsigma = True
+
+        if nhwhm is not None and (min_value is not None or max_value is not None):
+            Logger('I cannot compute the signal within a fixed mass interval and a number of HWFM', 'ERROR')
+            return 0., 0.
+
+        if min_value is not None and max_value is not None:
+            use_nsigma = False
+
+        if nhwhm is not None:
+            use_nsigma = False
+            if self._name_signal_pdf_[idx] not in ['gaussian', 'cauchy', 'voigtian']:
+                Logger('HWHM not defined, I cannot compute the signal for this pdf', 'ERROR')
+                return 0., 0.
+            mass, _ = self.get_mass(idx)
+            hwhm, _ = self.get_hwhm(idx)
+            min_value = mass - nhwhm * hwhm
+            max_value = mass + nhwhm * hwhm
+
+        if use_nsigma:
+            if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
+                Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
+                return 0., 0.
+            mass, _ = self.get_mass(idx)
+            sigma, _ = self.get_sigma(idx)
+            min_value = mass - nsigma * sigma
+            max_value = mass + nsigma * sigma
+
+        if len(self._raw_residuals_) == 0:
+            self.__get_raw_residuals()
+
+        bin_centers = self._data_handler_.get_bin_center()
+        bin_width = (bin_centers[1] - bin_centers[0]) / 2
+        raw_yield, raw_yield_err = 0., 0.
+        for residual, variance, bin_center in zip(self._raw_residuals_,
+                                                  self._raw_residual_variances_, bin_centers):
+            if bin_center - bin_width >= min_value and bin_center + bin_width <= max_value:
+                raw_yield += residual
+                raw_yield_err += variance
+        raw_yield = float(raw_yield)
+        raw_yield_err = np.sqrt(float(raw_yield_err))
+
+        return raw_yield, raw_yield_err
 
     def get_mass(self, idx=0):
         """

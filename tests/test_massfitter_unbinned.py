@@ -34,7 +34,9 @@ def test_fitter_result():
     Test the fitter output
     """
     rawy, rawy_err = FITTER.get_raw_yield()
+    rawy_bc, rawy_bc_err = FITTER.get_raw_yield_bincounting()
     assert np.isclose(10000, rawy, atol=3*rawy_err)
+    assert np.isclose(10000, rawy_bc, atol=3*rawy_bc_err)
 
 def test_plot():
     """
