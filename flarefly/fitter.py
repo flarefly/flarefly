@@ -997,6 +997,7 @@ class F2MassFitter:
                 mass, mass_unc = self.get_mass(idx)
                 sigma, sigma_unc = None, None
                 gamma, gamma_unc = None, None
+                rawyield, rawyield_err = self.get_raw_yield(idx=idx)
                 if self._name_signal_pdf_[idx] in ['gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
                     sigma, sigma_unc = self.get_sigma(idx)
                 if self._name_signal_pdf_[idx] in ['cauchy', 'voigtian']:
@@ -1007,32 +1008,28 @@ class F2MassFitter:
                 if gamma is not None:
                     extra_info += fr'  $\Gamma/2 = {gamma*1000:.1f}\pm{gamma_unc*1000:.1f}$ MeV$/c^2$''\n'
                 if mass_range is not None:
-                    signal, signal_err = self.get_signal(idx=idx, min=mass_range[0], max=mass_range[1])
                     bkg, bkg_err = self.get_background(idx=idx, min=mass_range[0], max=mass_range[1])
                     s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, min=mass_range[0],
                                                                              max=mass_range[1])
-                    signif, signif_err = self.get_significance(idx=idx, min=mass_range[0],
-                                                                           max=mass_range[1])
+                    signif, signif_err = self.get_significance(idx=idx, min=mass_range[0], max=mass_range[1])
                     interval = f'[{mass_range[0]:.3f}, {mass_range[1]:.3f}]'
-                    extra_info += fr'  $S({interval})={signal:.0f} \pm {signal_err:.0f}$''\n'
+                    extra_info += fr'  $S={rawyield:.0f} \pm {rawyield_err:.0f}$''\n'
                     extra_info += fr'  $B({interval})={bkg:.0f} \pm {bkg_err:.0f}$''\n'
                     extra_info += fr'  $S/B({interval})={s_over_b:.2f} \pm {s_over_b_err:.2f}$''\n'
                     extra_info += fr'  Signif.$({interval})={signif:.1f} \pm {signif_err:.1f}$'
                 elif nhwhm is not None:
-                    signal, signal_err = self.get_signal(idx=idx, nhwhm=nhwhm)
                     bkg, bkg_err = self.get_background(idx=idx, nhwhm=nhwhm)
                     s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, nhwhm=nhwhm)
                     signif, signif_err = self.get_significance(idx=idx, nhwhm=nhwhm)
-                    extra_info += fr'  $S=${signal:.0f} $\pm$ {signal_err:.0f}''\n'
+                    extra_info += fr'  $S=${rawyield:.0f} $\pm$ {rawyield_err:.0f}''\n'
                     extra_info += fr'  $B({nhwhm}~\mathrm{{HWHM}})=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
                     extra_info += fr'  $S/B({nhwhm}~\mathrm{{HWHM}})=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
                     extra_info += fr'  Signif.$({nhwhm}~\mathrm{{HWHM}})=${signif:.1f} $\pm$ {signif_err:.1f}'
                 else:
-                    signal, signal_err = self.get_signal(idx=idx, nsigma=nsigma)
                     bkg, bkg_err = self.get_background(idx=idx, nsigma=nsigma)
                     s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, nsigma=nsigma)
                     signif, signif_err = self.get_significance(idx=idx, nsigma=nsigma)
-                    extra_info += fr'  $S=${signal:.0f} $\pm$ {signal_err:.0f}''\n'
+                    extra_info += fr'  $S=${rawyield:.0f} $\pm$ {rawyield_err:.0f}''\n'
                     extra_info += fr'  $B({nsigma}\sigma)=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
                     extra_info += fr'  $S/B({nsigma}\sigma)=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
                     extra_info += fr'  Signif.$({nsigma}\sigma)=${signif:.1f} $\pm$ {signif_err:.1f}'
@@ -1441,7 +1438,8 @@ class F2MassFitter:
             max_value = mass + nhwhm * hwhm
 
         if use_nsigma:
-            if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
+            if self._name_signal_pdf_[idx] not in [
+                'gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -1700,7 +1698,8 @@ class F2MassFitter:
             max_value = mass + nhwhm * hwhm
 
         if use_nsigma:
-            if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
+            if self._name_signal_pdf_[idx] not in [
+                'gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -1793,7 +1792,8 @@ class F2MassFitter:
             max_value = mass + nhwhm * hwhm
 
         if use_nsigma:
-            if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
+            if self._name_signal_pdf_[idx] not in [
+                'gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -2101,6 +2101,12 @@ class F2MassFitter:
         sample: flarefly.DataHandler
             Data sample for template histogram
         """
+
+        limits_bkg = sample.get_limits()
+        limits_data = self._data_handler_.get_limits()
+        if sample.get_limits() != self._data_handler_.get_limits():
+            Logger(f'The data and the background template {idx} have different limits:'
+                   f' \n       -> background template: {limits_bkg}, data -> {limits_data}', 'FATAL')
 
         self._hist_bkg_sample_[idx] = sample
 
