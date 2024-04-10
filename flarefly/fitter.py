@@ -1804,10 +1804,8 @@ class F2MassFitter:
         signal_fracs, bkg_fracs, refl_fracs, signal_err_fracs, bkg_err_fracs, _ = self.__get_all_fracs()
 
         limits = self._data_handler_.get_limits()
-        if min_value < limits[0]:
-            min_value = limits[0]
-        if max_value > limits[1]:
-            max_value = limits[1]
+        min_value = max(min_value, limits[0])
+        max_value = min(max_value, limits[1])
 
         # pylint: disable=missing-kwoa
         background, background_err = 0., 0.
