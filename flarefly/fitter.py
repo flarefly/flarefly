@@ -767,9 +767,10 @@ class F2MassFitter:
         # access model predicted values for background
         for ipdf, bkg_name in enumerate(self._name_background_pdf_):
             background_pdf_binned_[ipdf] = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[ipdf], obs)
+            norm_bkg = norm
             if "hist" in bkg_name:
-                norm /= float(sum(background_pdf_binned_[ipdf].values()))
-            model_bkg_values[ipdf] = background_pdf_binned_[ipdf].values()*bkg_fracs[ipdf]*norm
+                norm_bkg /= float(sum(background_pdf_binned_[ipdf].values()))
+            model_bkg_values[ipdf] = background_pdf_binned_[ipdf].values()*bkg_fracs[ipdf]*norm_bkg
         # compute residuals
         for ibin, data in enumerate(data_values):
             self._raw_residuals_[ibin] = float(data)
