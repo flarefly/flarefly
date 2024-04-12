@@ -2109,7 +2109,8 @@ class F2MassFitter:
 
         limits_bkg = sample.get_limits()
         limits_data = self._data_handler_.get_limits()
-        if sample.get_limits() != self._data_handler_.get_limits():
+        if not np.isclose(limits_bkg[0], limits_data[0], rtol=1e-05, atol=1e-08, equal_nan=False) or \
+            not np.isclose(limits_bkg[1], limits_data[1], rtol=1e-05, atol=1e-08, equal_nan=False):
             Logger(f'The data and the background template {idx} have different limits:'
                    f' \n       -> background template: {limits_bkg}, data -> {limits_data}', 'FATAL')
 
