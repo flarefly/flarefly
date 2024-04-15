@@ -29,7 +29,7 @@ for bkg_pdf in BKGPDFSDPLUS:
                                  name_signal_pdf=[sgn_pdf, "gaussian"],
                                  name_background_pdf=[bkg_pdf],
                                  name=f"dplus_{bkg_pdf}_{sgn_pdf}",
-                                 chi2_loss=True, tol=1.e-1))
+                                 chi2_loss=True, tol=1.e-3))
         FITTERBINNEDDPLUS[-1].set_particle_mass(0, mass=1.872, fix=True)
         FITTERBINNEDDPLUS[-1].set_particle_mass(1, pdg_id=413, limits=[2.00, 2.02])
         FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "frac", 0.3, limits=[0.2, 0.4])
@@ -66,7 +66,7 @@ for bkg_pdf in BKGPDFSDPLUS:
 INFILEDSTAR = os.path.join(os.getcwd(), "tests/histos_dstar.root")
 DATABINNEDDSTAR = DataHandler(INFILEDSTAR, var_name=r"$M_\mathrm{K\pi\pi}-M_\mathrm{K\pi}$ (GeV/$c^{2}$)",
                               histoname="hMass_40_60", limits=[Particle.from_pdgid(211).mass*1e-3, 0.155], rebin=4,
-                              tol=1.e-1)
+                              tol=1.e-3)
 for bkg_pdf in BKGPDFSDSTAR:
     for sgn_pdf in SGNPDFSDSTAR:
         FITTERBINNEDDSTAR.append(F2MassFitter(DATABINNEDDSTAR,
@@ -99,7 +99,7 @@ for bkg_pdf in BKGPDFSD0:
     for sgn_pdf in SGNPDFSD0:
         FITTERBINNEDD0.append(F2MassFitter(DATABINNEDD0, name_signal_pdf=[sgn_pdf],
                               name_background_pdf=[bkg_pdf],
-                              name_refl_pdf=["hist"], name=f"dzero_{bkg_pdf}_{sgn_pdf}", tol=1.e-1))
+                              name_refl_pdf=["hist"], name=f"dzero_{bkg_pdf}_{sgn_pdf}", tol=1.e-3))
         FITTERBINNEDD0[-1].set_reflection_template(0, REFLBINNEDD0, 0.294)
         FITTERBINNEDD0[-1].set_particle_mass(0, pdg_id=421, fix=False)
         FITTERBINNEDD0[-1].set_signal_initpar(0, "frac", 0.1, limits=[0., 1.])
