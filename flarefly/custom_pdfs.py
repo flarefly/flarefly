@@ -52,7 +52,7 @@ class Pow(zfit.pdf.ZPDF):
 
         - mass: mass parameter
 
-        - power: exponential power
+        - power: power
     """
 
     # override the name of the parameters
@@ -96,6 +96,42 @@ class ExpoPow(zfit.pdf.ZPDF):
         mass = self.params['mass']
         lam = self.params['lam']
         return tf.sqrt(x - mass) * tf.exp(-lam * (x - mass))
+
+class ExpoPowExt(zfit.pdf.ZPDF):
+    """
+    PDF composed by an exponential power-law function
+    f(x) = (x - m)^power * exp( c1 * (x - m) + c2 * (x - m)^2  + c3 * (x - m)^3 )
+
+    Parameters:
+
+        - mass: mass parameter
+
+        - power: power
+
+        - c1: coefficient of the first-order term in the exponential
+
+        - c2: coefficient of the second-order term in the exponential
+
+        - c3: coefficient of the third-order term in the exponential
+    """
+
+    # override the name of the parameters
+    _PARAMS = ['mass', 'power', 'c1', 'c2', 'c3']
+
+    @tf.function
+    def _unnormalized_pdf(self, x):
+        """
+        PDF 'unnormalized'.
+        See https://zfit.github.io/zfit/_modules/zfit/core/basepdf.html#BasePDF.unnormalized_pdf
+        for more details
+        """
+        x = zfit.z.unstack_x(x)
+        mass = self.params['mass']
+        power = self.params['power']
+        c1 = self.params['c1']
+        c2 = self.params['c2']
+        c3 = self.params['c3']
+        return tf.pow(x - mass, power) * tf.exp(c1 * (x - mass) + c2 * (x - mass)**2 + c3 * (x - mass)**3)
 
 class Voigtian(zfit.pdf.ZPDF):
     """

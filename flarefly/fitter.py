@@ -70,6 +70,8 @@ class F2MassFitter:
 
             - 'expopow'
 
+            - 'expopowext'
+
             - 'chebpolN' (N is the order of the polynomial)
 
             - 'kde_exact' (requires to set the datasample and options)
@@ -495,6 +497,53 @@ class F2MassFitter:
                     obs=obs,
                     mass=self._bkg_pars_[ipdf][f'{self._name_}_mass_bkg{ipdf}'],
                     power=self._bkg_pars_[ipdf][f'{self._name_}_power_bkg{ipdf}']
+                )
+            elif 'expopowext' in pdf_name:
+                self._init_bkg_pars_[ipdf].setdefault('mass', Particle.from_pdgid(211).mass*1e-3) # pion mass as default
+                self._init_bkg_pars_[ipdf].setdefault('c1', -0.1)
+                self._init_bkg_pars_[ipdf].setdefault('c2', 0.)
+                self._init_bkg_pars_[ipdf].setdefault('c3', 0.)
+                self._init_bkg_pars_[ipdf].setdefault('power', 1./2)
+                self._limits_bkg_pars_[ipdf].setdefault('mass', [0., 1.e6])
+                self._limits_bkg_pars_[ipdf].setdefault('c1', [-1.e6, 1.e6])
+                self._limits_bkg_pars_[ipdf].setdefault('c2', [-1.e6, 1.e6])
+                self._limits_bkg_pars_[ipdf].setdefault('c3', [-1.e6, 1.e6])
+                self._limits_bkg_pars_[ipdf].setdefault('power', [0., 1.e6])
+                self._fix_bkg_pars_[ipdf].setdefault('mass', True)
+                self._fix_bkg_pars_[ipdf].setdefault('c1', False)
+                self._fix_bkg_pars_[ipdf].setdefault('c2', False)
+                self._fix_bkg_pars_[ipdf].setdefault('c3', False)
+                self._fix_bkg_pars_[ipdf].setdefault('power', False)
+                if self._data_handler_.get_limits()[0] < self._init_bkg_pars_[ipdf]["mass"]:
+                    Logger('The mass parameter in expopow cannot be smaller than the lower fit limit, please fix it.',
+                           'FATAL')
+                self._bkg_pars_[ipdf][f'{self._name_}_mass_bkg{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_mass_bkg{ipdf}', self._init_bkg_pars_[ipdf]['mass'],
+                    self._limits_bkg_pars_[ipdf]['mass'][0], self._limits_bkg_pars_[ipdf]['mass'][1],
+                    floating=not self._fix_bkg_pars_[ipdf]['mass'])
+                self._bkg_pars_[ipdf][f'{self._name_}_power_bkg{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_power_bkg{ipdf}', self._init_bkg_pars_[ipdf]['power'],
+                    self._limits_bkg_pars_[ipdf]['power'][0], self._limits_bkg_pars_[ipdf]['power'][1],
+                    floating=not self._fix_bkg_pars_[ipdf]['power'])
+                self._bkg_pars_[ipdf][f'{self._name_}_c1_bkg{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_c1_bkg{ipdf}', self._init_bkg_pars_[ipdf]['c1'],
+                    self._limits_bkg_pars_[ipdf]['c1'][0], self._limits_bkg_pars_[ipdf]['c1'][1],
+                    floating=not self._fix_bkg_pars_[ipdf]['c1'])
+                self._bkg_pars_[ipdf][f'{self._name_}_c2_bkg{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_c2_bkg{ipdf}', self._init_bkg_pars_[ipdf]['c2'],
+                    self._limits_bkg_pars_[ipdf]['c2'][0], self._limits_bkg_pars_[ipdf]['c2'][1],
+                    floating=not self._fix_bkg_pars_[ipdf]['c2'])
+                self._bkg_pars_[ipdf][f'{self._name_}_c3_bkg{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_c3_bkg{ipdf}', self._init_bkg_pars_[ipdf]['c3'],
+                    self._limits_bkg_pars_[ipdf]['c3'][0], self._limits_bkg_pars_[ipdf]['c3'][1],
+                    floating=not self._fix_bkg_pars_[ipdf]['c3'])
+                self._background_pdf_[ipdf] = cpdf.ExpoPowExt(
+                    obs=obs,
+                    mass=self._bkg_pars_[ipdf][f'{self._name_}_mass_bkg{ipdf}'],
+                    power=self._bkg_pars_[ipdf][f'{self._name_}_power_bkg{ipdf}'],
+                    c1=self._bkg_pars_[ipdf][f'{self._name_}_c1_bkg{ipdf}'],
+                    c2=self._bkg_pars_[ipdf][f'{self._name_}_c2_bkg{ipdf}'],
+                    c3=self._bkg_pars_[ipdf][f'{self._name_}_c3_bkg{ipdf}']
                 )
             elif 'expopow' in pdf_name:
                 self._init_bkg_pars_[ipdf].setdefault('mass', Particle.from_pdgid(211).mass*1e-3) # pion mass as default
