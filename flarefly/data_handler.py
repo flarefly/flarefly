@@ -260,7 +260,7 @@ class DataHandler:
             The observation space for binned data converted to unbinned data
         """
         limits = self.get_limits()
-        obs = zfit.Space("xaxis_unbinned", lower=limits[0], upper=limits[1])
+        obs = zfit.Space("xaxis", lower=limits[0], upper=limits[1])
 
         return obs
 
