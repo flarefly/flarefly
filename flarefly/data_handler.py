@@ -97,7 +97,7 @@ class DataHandler:
                         if limits is None:
                             self._limits_[0] = min(input_df[self._var_name_])
                             self._limits_[1] = max(input_df[self._var_name_])
-                        self._obs_ = zfit.Space(self._var_name_, limits=(self._limits_[0], self._limits_[1]))
+                        self._obs_ = zfit.Space(self._var_name_, lower=self._limits_[0], upper=self._limits_[1])
                         self._data_ = zfit.data.Data.from_pandas(obs=self._obs_, df=input_df)
                     else:
                         Logger('"histoname" not specified. Please specify the '
@@ -108,7 +108,7 @@ class DataHandler:
                     if limits is None:
                         self._limits_[0] = min(input_df[self._var_name_])
                         self._limits_[1] = max(input_df[self._var_name_])
-                    self._obs_ = zfit.Space(self._var_name_, limits=(self._limits_[0], self._limits_[1]))
+                    self._obs_ = zfit.Space(self._var_name_, lower=self._limits_[0], upper=self._limits_[1])
                     self._data_ = zfit.data.Data.from_pandas(obs=self._obs_, df=input_df)
                 else:
                     Logger('Data format not supported yet. Please use .root or .parquet', 'FATAL')
@@ -118,7 +118,7 @@ class DataHandler:
                 if limits is None:
                     self._limits_[0] = min(data)
                     self._limits_[1] = max(data)
-                self._obs_ = zfit.Space(self._var_name_, limits=(self._limits_[0], self._limits_[1]))
+                self._obs_ = zfit.Space(self._var_name_, lower=self._limits_[0], upper=self._limits_[1])
                 self._data_ = zfit.data.Data.from_numpy(obs=self._obs_, array=data)
 
             elif isinstance(data, pd.DataFrame):
@@ -126,7 +126,7 @@ class DataHandler:
                 if limits is None:
                     self._limits_[0] = min(data[self._var_name_])
                     self._limits_[1] = max(data[self._var_name_])
-                self._obs_ = zfit.Space(self._var_name_, limits=(self._limits_[0], self._limits_[1]))
+                self._obs_ = zfit.Space(self._var_name_, lower=self._limits_[0], upper=self._limits_[1])
                 self._data_ = zfit.data.Data.from_pandas(obs=self._obs_, df=data)
 
             elif isinstance(data, uproot.behaviors.TH1.Histogram):
@@ -240,13 +240,27 @@ class DataHandler:
 
         Returns
         -------------------------------------------------
-        binned_data: zfit.core.space.Space
+        binned_obs: zfit.core.space.Space
             The observation space for unbinned data converted to binned data
         """
         bins = self.get_nbins()
         limits = self.get_limits()
         binning = zfit.binned.RegularBinning(bins, limits[0], limits[1], name=self._var_name_)
         obs = zfit.Space(self._var_name_, binning=binning)
+
+        return obs
+
+    def get_unbinned_obs_from_binned_data(self):
+        """
+        Get the unbinned obs from binned obs
+
+        Returns
+        -------------------------------------------------
+        unbinned_obs: zfit.core.space.Space
+            The observation space for binned data converted to unbinned data
+        """
+        limits = self.get_limits()
+        obs = zfit.Space("xaxis_unbinned", lower=limits[0], upper=limits[1])
 
         return obs
 

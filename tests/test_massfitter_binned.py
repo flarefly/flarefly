@@ -15,7 +15,7 @@ FITTERBINNEDDPLUS, FITTERBINNEDDSTAR, FITTERBINNEDD0, FITRES, FIG, RAWYHIST, RAW
 SGNPDFSDPLUS = ["gaussian", "crystalball", "doublegaus", "doublecb"]
 BKGPDFSDPLUS = ["expo", "chebpol1"]
 SGNPDFSDSTAR = ["gaussian", "voigtian"]
-BKGPDFSDSTAR = ["expopow", "powlaw"]
+BKGPDFSDSTAR = ["expopow", "powlaw", "expopowext"]
 SGNPDFSD0 = ["gaussian"]
 BKGPDFSD0 = ["expo"]
 
