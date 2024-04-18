@@ -387,7 +387,7 @@ class F2MassFitter:
                 self._init_sgn_pars_[ipdf].setdefault('m', 1.865)
                 self._init_sgn_pars_[ipdf].setdefault('gamma', 0.010)
                 self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
-                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
+                self._fix_sgn_pars_[ipdf].setdefault('m', False)
                 self._fix_sgn_pars_[ipdf].setdefault('gamma', False)
                 self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
                 self._limits_sgn_pars_[ipdf].setdefault('m', [0, 1.e6])
@@ -2163,7 +2163,7 @@ class F2MassFitter:
             - fix: bool
                 fix the mass parameter
         """
-        mass_name = 'm' if self._name_signal_pdf_[idx] == 'cauchy' else 'mu'
+        mass_name = 'm' if self._name_signal_pdf_[idx] in ['cauchy', 'voigtian'] else 'mu'
         mass = 0.
         if 'mass' in kwargs:
             mass = kwargs['mass']
