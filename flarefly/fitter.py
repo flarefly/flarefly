@@ -41,9 +41,17 @@ class F2MassFitter:
 
             - 'doublegaus'
 
+            - 'gausexptail'
+
+            - 'genergausexptail'
+
+            - 'bifurgaus'
+
             - 'crystalball'
 
             - 'doublecb'
+
+            - 'genercrystalball'
 
             - 'cauchy'
 
@@ -376,19 +384,19 @@ class F2MassFitter:
                     gamma=self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}']
                 )
             elif pdf_name == 'voigtian':
-                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
+                self._init_sgn_pars_[ipdf].setdefault('m', 1.865)
                 self._init_sgn_pars_[ipdf].setdefault('gamma', 0.010)
                 self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
                 self._fix_sgn_pars_[ipdf].setdefault('mu', False)
                 self._fix_sgn_pars_[ipdf].setdefault('gamma', False)
                 self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('m', [0, 1.e6])
                 self._limits_sgn_pars_[ipdf].setdefault('gamma', [0., 1.e6])
                 self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
-                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
-                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
+                self._sgn_pars_[ipdf][f'{self._name_}_m_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_m_signal{ipdf}', self._init_sgn_pars_[ipdf]['m'],
+                    self._limits_sgn_pars_[ipdf]['m'][0], self._limits_sgn_pars_[ipdf]['m'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['m'])
                 self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_gamma_signal{ipdf}', self._init_sgn_pars_[ipdf]['gamma'],
                     self._limits_sgn_pars_[ipdf]['gamma'][0], self._limits_sgn_pars_[ipdf]['gamma'][1],
@@ -397,11 +405,171 @@ class F2MassFitter:
                     f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma'],
                     self._limits_sgn_pars_[ipdf]['sigma'][0], self._limits_sgn_pars_[ipdf]['sigma'][1],
                     floating=not self._fix_sgn_pars_[ipdf]['sigma'])
-                self._signal_pdf_[ipdf] = cpdf.Voigtian(
+                self._signal_pdf_[ipdf] = zfit.pdf.Voigt(
+                    obs=obs,
+                    m=self._sgn_pars_[ipdf][f'{self._name_}_m_signal{ipdf}'],
+                    sigma=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'],
+                    gamma=self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}']
+                )
+            elif pdf_name == 'gausexptail':
+                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
+                self._init_sgn_pars_[ipdf].setdefault('alpha', 1.e6)
+                self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
+                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
+                self._fix_sgn_pars_[ipdf].setdefault('alpha', False)
+                self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e10])
+                self._limits_sgn_pars_[ipdf].setdefault('alpha', [-1.e10, 1.e10])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
+                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
+                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
+                self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_alpha_signal{ipdf}', self._init_sgn_pars_[ipdf]['alpha'],
+                    self._limits_sgn_pars_[ipdf]['alpha'][0], self._limits_sgn_pars_[ipdf]['alpha'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['alpha'])
+                self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma'],
+                    self._limits_sgn_pars_[ipdf]['sigma'][0], self._limits_sgn_pars_[ipdf]['sigma'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['sigma'])
+                self._signal_pdf_[ipdf] = zfit.pdf.GaussExpTail(
                     obs=obs,
                     mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
                     sigma=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'],
-                    gamma=self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}']
+                    alpha=self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}']
+                )
+            elif pdf_name == 'genergausexptail':
+                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
+                self._init_sgn_pars_[ipdf].setdefault('alphar', 1.e6)
+                self._init_sgn_pars_[ipdf].setdefault('alphal', 1.e6)
+                self._init_sgn_pars_[ipdf].setdefault('sigmal', 0.010)
+                self._init_sgn_pars_[ipdf].setdefault('sigmar', 0.010)
+                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
+                self._fix_sgn_pars_[ipdf].setdefault('alphar', False)
+                self._fix_sgn_pars_[ipdf].setdefault('alphal', False)
+                self._fix_sgn_pars_[ipdf].setdefault('sigmar', False)
+                self._fix_sgn_pars_[ipdf].setdefault('sigmal', False)
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('alphar', [-1.e10, 1.e10])
+                self._limits_sgn_pars_[ipdf].setdefault('alphal', [-1.e10, 1.e10])
+                self._limits_sgn_pars_[ipdf].setdefault('sigmar', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('sigmal', [0., 1.e6])
+                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
+                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
+                self._sgn_pars_[ipdf][f'{self._name_}_alphar_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_alphar_signal{ipdf}', self._init_sgn_pars_[ipdf]['alphar'],
+                    self._limits_sgn_pars_[ipdf]['alphar'][0], self._limits_sgn_pars_[ipdf]['alphar'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['alphar'])
+                self._sgn_pars_[ipdf][f'{self._name_}_alphal_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_alphal_signal{ipdf}', self._init_sgn_pars_[ipdf]['alphal'],
+                    self._limits_sgn_pars_[ipdf]['alphal'][0], self._limits_sgn_pars_[ipdf]['alphal'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['alphal'])
+                self._sgn_pars_[ipdf][f'{self._name_}_sigmar_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_sigmar_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigmar'],
+                    self._limits_sgn_pars_[ipdf]['sigmar'][0], self._limits_sgn_pars_[ipdf]['sigmar'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['sigmar'])
+                self._sgn_pars_[ipdf][f'{self._name_}_sigmal_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_sigmal_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigmal'],
+                    self._limits_sgn_pars_[ipdf]['sigmal'][0], self._limits_sgn_pars_[ipdf]['sigmal'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['sigmal'])
+                self._signal_pdf_[ipdf] = zfit.pdf.GeneralizedGaussExpTail(
+                    obs=obs,
+                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
+                    sigmar=self._sgn_pars_[ipdf][f'{self._name_}_sigmar_signal{ipdf}'],
+                    sigmal=self._sgn_pars_[ipdf][f'{self._name_}_sigmal_signal{ipdf}'],
+                    alphar=self._sgn_pars_[ipdf][f'{self._name_}_alphar_signal{ipdf}'],
+                    alphal=self._sgn_pars_[ipdf][f'{self._name_}_alphal_signal{ipdf}']
+                )
+            elif pdf_name == 'bifurgaus':
+                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
+                self._init_sgn_pars_[ipdf].setdefault('sigmal', 0.010)
+                self._init_sgn_pars_[ipdf].setdefault('sigmar', 0.010)
+                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
+                self._fix_sgn_pars_[ipdf].setdefault('sigmar', False)
+                self._fix_sgn_pars_[ipdf].setdefault('sigmal', False)
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('sigmar', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('sigmal', [0., 1.e6])
+                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
+                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
+                self._sgn_pars_[ipdf][f'{self._name_}_sigmar_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_sigmar_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigmar'],
+                    self._limits_sgn_pars_[ipdf]['sigmar'][0], self._limits_sgn_pars_[ipdf]['sigmar'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['sigmar'])
+                self._sgn_pars_[ipdf][f'{self._name_}_sigmal_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_sigmal_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigmal'],
+                    self._limits_sgn_pars_[ipdf]['sigmal'][0], self._limits_sgn_pars_[ipdf]['sigmal'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['sigmal'])
+                self._signal_pdf_[ipdf] = zfit.pdf.BifurGauss(
+                    obs=obs,
+                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
+                    sigmar=self._sgn_pars_[ipdf][f'{self._name_}_sigmar_signal{ipdf}'],
+                    sigmal=self._sgn_pars_[ipdf][f'{self._name_}_sigmal_signal{ipdf}']
+                )
+            elif pdf_name == 'genercrystalball':
+                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
+                self._init_sgn_pars_[ipdf].setdefault('sigmar', 0.010)
+                self._init_sgn_pars_[ipdf].setdefault('sigmal', 0.010)
+                self._init_sgn_pars_[ipdf].setdefault('alphal', 0.5)
+                self._init_sgn_pars_[ipdf].setdefault('nl', 1.)
+                self._init_sgn_pars_[ipdf].setdefault('alphar', 0.5)
+                self._init_sgn_pars_[ipdf].setdefault('nr', 1.)
+                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
+                self._fix_sgn_pars_[ipdf].setdefault('sigmar', False)
+                self._fix_sgn_pars_[ipdf].setdefault('sigmal', False)
+                self._fix_sgn_pars_[ipdf].setdefault('alphal', False)
+                self._fix_sgn_pars_[ipdf].setdefault('nl', False)
+                self._fix_sgn_pars_[ipdf].setdefault('alphar', False)
+                self._fix_sgn_pars_[ipdf].setdefault('nr', False)
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('sigmar', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('sigmal', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('alphal', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('nl', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('alphar', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('nr', [0., 1.e6])
+                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
+                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
+                self._sgn_pars_[ipdf][f'{self._name_}_sigmal_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigmal'],
+                    self._limits_sgn_pars_[ipdf]['sigmal'][0], self._limits_sgn_pars_[ipdf]['sigmal'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['sigmal'])
+                self._sgn_pars_[ipdf][f'{self._name_}_sigmar_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_sigmar_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigmar'],
+                    self._limits_sgn_pars_[ipdf]['sigmar'][0], self._limits_sgn_pars_[ipdf]['sigmar'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['sigmar'])
+                self._sgn_pars_[ipdf][f'{self._name_}_alphal_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_alphal_signal{ipdf}', self._init_sgn_pars_[ipdf]['alphal'],
+                    self._limits_sgn_pars_[ipdf]['alphal'][0], self._limits_sgn_pars_[ipdf]['alphal'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['alphal'])
+                self._sgn_pars_[ipdf][f'{self._name_}_nl_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_nl_signal{ipdf}', self._init_sgn_pars_[ipdf]['nl'],
+                    self._limits_sgn_pars_[ipdf]['nl'][0], self._limits_sgn_pars_[ipdf]['nl'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['nl'])
+                self._sgn_pars_[ipdf][f'{self._name_}_alphar_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_alphar_signal{ipdf}', self._init_sgn_pars_[ipdf]['alphar'],
+                    self._limits_sgn_pars_[ipdf]['alphar'][0], self._limits_sgn_pars_[ipdf]['alphar'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['alphar'])
+                self._sgn_pars_[ipdf][f'{self._name_}_nr_signal{ipdf}'] = zfit.Parameter(
+                    f'{self._name_}_nr_signal{ipdf}', self._init_sgn_pars_[ipdf]['nr'],
+                    self._limits_sgn_pars_[ipdf]['nr'][0], self._limits_sgn_pars_[ipdf]['nr'][1],
+                    floating=not self._fix_sgn_pars_[ipdf]['nr'])
+                self._signal_pdf_[ipdf] = zfit.pdf.GeneralizedCB(
+                    obs=obs,
+                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
+                    sigmar=self._sgn_pars_[ipdf][f'{self._name_}_sigmar_signal{ipdf}'],
+                    sigmal=self._sgn_pars_[ipdf][f'{self._name_}_sigmal_signal{ipdf}'],
+                    alphal=self._sgn_pars_[ipdf][f'{self._name_}_alphal_signal{ipdf}'],
+                    nl=self._sgn_pars_[ipdf][f'{self._name_}_nl_signal{ipdf}'],
+                    alphar=self._sgn_pars_[ipdf][f'{self._name_}_alphar_signal{ipdf}'],
+                    nr=self._sgn_pars_[ipdf][f'{self._name_}_nr_signal{ipdf}']
                 )
             elif 'kde' in pdf_name:
                 if self._kde_signal_sample_[ipdf]:
@@ -1052,7 +1220,8 @@ class F2MassFitter:
                 sigma, sigma_unc = None, None
                 gamma, gamma_unc = None, None
                 rawyield, rawyield_err = self.get_raw_yield(idx=idx)
-                if self._name_signal_pdf_[idx] in ['gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
+                if self._name_signal_pdf_[idx] in [
+                    'gausexptail', 'gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
                     sigma, sigma_unc = self.get_sigma(idx)
                 if self._name_signal_pdf_[idx] in ['cauchy', 'voigtian']:
                     gamma, gamma_unc = self.get_signal_parameter(idx, 'gamma')
@@ -1493,7 +1662,7 @@ class F2MassFitter:
 
         if use_nsigma:
             if self._name_signal_pdf_[idx] not in [
-                'gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
+                'gaussian', 'gausexptail', 'crystalball', 'doublecb', 'voigtian', 'hist']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -1541,7 +1710,7 @@ class F2MassFitter:
             mass = np.average(centres, weights=counts)
             mass_err = 0.
         else:
-            mass_name = 'm' if self._name_signal_pdf_[idx] == 'cauchy' else 'mu'
+            mass_name = 'm' if self._name_signal_pdf_[idx] in ['cauchy', 'voigtian'] else 'mu'
             if self._fix_sgn_pars_[idx][mass_name]:
                 mass = self._init_sgn_pars_[idx][mass_name]
                 mass_err = 0.
@@ -1567,7 +1736,8 @@ class F2MassFitter:
         sigma_err: float
             The sigma error obtained from the fit
         """
-        if self._name_signal_pdf_[idx] not in ['gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
+        if self._name_signal_pdf_[idx] not in [
+            'gaussian', 'gausexptail', 'crystalball', 'doublecb', 'voigtian', 'hist']:
             Logger(f'Sigma parameter not defined for {self._name_signal_pdf_[idx]} pdf!', 'ERROR')
             return 0., 0.
 
@@ -1753,7 +1923,7 @@ class F2MassFitter:
 
         if use_nsigma:
             if self._name_signal_pdf_[idx] not in [
-                'gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
+                'gaussian', 'gausexptail', 'crystalball', 'doublecb', 'voigtian', 'hist']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -1847,7 +2017,7 @@ class F2MassFitter:
 
         if use_nsigma:
             if self._name_signal_pdf_[idx] not in [
-                'gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
+                'gaussian', 'gausexptail', 'crystalball', 'doublecb', 'voigtian', 'hist']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)

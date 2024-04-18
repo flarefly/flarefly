@@ -12,11 +12,11 @@ from flarefly.data_handler import DataHandler
 from flarefly.fitter import F2MassFitter
 
 FITTERBINNEDDPLUS, FITTERBINNEDDSTAR, FITTERBINNEDD0, FITRES, FIG, RAWYHIST, RAWYIN = ([] for _ in range(7))
-SGNPDFSDPLUS = ["gaussian", "crystalball", "doublegaus", "doublecb"]
+SGNPDFSDPLUS = ["gaussian", "crystalball", "doublegaus", "doublecb", "genercrystalball"]
 BKGPDFSDPLUS = ["expo", "chebpol1"]
 SGNPDFSDSTAR = ["gaussian", "voigtian"]
 BKGPDFSDSTAR = ["expopow", "powlaw", "expopowext"]
-SGNPDFSD0 = ["gaussian"]
+SGNPDFSD0 = ["gaussian", "gausexptail", "genergausexptail"]
 BKGPDFSD0 = ["expo"]
 
 # test all possible functions with D+
@@ -34,15 +34,17 @@ for bkg_pdf in BKGPDFSDPLUS:
         FITTERBINNEDDPLUS[-1].set_particle_mass(1, pdg_id=413, limits=[2.00, 2.02])
         FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "frac", 0.3, limits=[0.2, 0.4])
         FITTERBINNEDDPLUS[-1].set_signal_initpar(1, "frac", 0.05, limits=[0.01, 0.1])
-        if sgn_pdf in ["gaussian", "crystalball"]:
+        if sgn_pdf in ["gaussian", "crystalball", "doublecb"]:
             FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "sigma", 0.010)
-        elif sgn_pdf == "doublecb":
-            FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "sigma", 0.010)
+        if sgn_pdf in ["doublecb", "genercrystalball"]:
             FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "alphal", 2.)
             FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "nl", 1.)
             FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "alphar", 2.)
             FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "nr", 1.)
-        elif sgn_pdf == "doublegaus":
+        if sgn_pdf == "genercrystalball":
+            FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "sigmal", 0.010)
+            FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "sigmar", 0.010)
+        if sgn_pdf == "doublegaus":
             FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "sigma1", 0.010, limits=[0.008, 0.020])
             FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "sigma2", 0.100)
             FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "frac1", 0.99, limits=[0.97, 1.00])
@@ -101,9 +103,16 @@ for bkg_pdf in BKGPDFSD0:
                               name_background_pdf=[bkg_pdf],
                               name_refl_pdf=["hist"], name=f"dzero_{bkg_pdf}_{sgn_pdf}", tol=1.e-3))
         FITTERBINNEDD0[-1].set_reflection_template(0, REFLBINNEDD0, 0.294)
-        FITTERBINNEDD0[-1].set_particle_mass(0, pdg_id=421, fix=False)
+        FITTERBINNEDD0[-1].set_particle_mass(0, pdg_id=421, limits=[1.86, 1.90])
         FITTERBINNEDD0[-1].set_signal_initpar(0, "frac", 0.1, limits=[0., 1.])
         FITTERBINNEDD0[-1].set_signal_initpar(0, "sigma", 0.01, limits=[0.005, 0.03])
+        if sgn_pdf == "gausexptail":
+            FITTERBINNEDD0[-1].set_signal_initpar(0, "alpha", 1.e6, limits=[0., 1.e10], fix=True)
+        elif sgn_pdf == "genergausexptail":
+            FITTERBINNEDD0[-1].set_signal_initpar(0, "alphar", 1.e6, fix=True)
+            FITTERBINNEDD0[-1].set_signal_initpar(0, "alphal", 1.e6, fix=True)
+            FITTERBINNEDD0[-1].set_signal_initpar(0, "sigmar", 0.01, limits=[0.005, 0.03])
+            FITTERBINNEDD0[-1].set_signal_initpar(0, "sigmal", 0.01, limits=[0.005, 0.03])
         FITTERBINNEDD0[-1].set_background_initpar(0, "c0", 2.)
         FITTERBINNEDD0[-1].set_background_initpar(0, "c1", -0.293708)
         FITTERBINNEDD0[-1].set_background_initpar(0, "c2", 0.02)
