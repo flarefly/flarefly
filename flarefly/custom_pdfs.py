@@ -4,8 +4,6 @@ Module containing custom pdfs
 
 import zfit
 import tensorflow as tf
-from zfit import z
-from scipy import special
 
 # pylint: disable=too-many-ancestors
 # pylint: disable=arguments-differ
