@@ -667,7 +667,10 @@ class F2MassFitter:
         Helper function to compose the total pdf
         """
 
-        obs = self._data_handler_.get_obs()
+        if self._data_handler_.get_is_binned(): # we need unbinned pdfs to sum them
+            obs = self._data_handler_.get_unbinned_obs_from_binned_data()
+        else:
+            obs = self._data_handler_.get_obs()
 
         # order of the pdfs is signal, background
 
@@ -716,7 +719,8 @@ class F2MassFitter:
                     self._limits_bkg_pars_[ipdf]['frac'][1],
                     floating=not self._fix_bkg_pars_[ipdf]['frac'])
 
-        self._total_pdf_ = zfit.pdf.SumPDF(self._signal_pdf_+self._refl_pdf_+self._background_pdf_, self._fracs_)
+        self._total_pdf_ = zfit.pdf.SumPDF(self._signal_pdf_+self._refl_pdf_+self._background_pdf_,
+                                           self._fracs_)
 
     def __build_total_pdf_binned(self):
         """
@@ -886,7 +890,7 @@ class F2MassFitter:
             else:
                 loss = zfit.loss.BinnedNLL(self._total_pdf_binned_, self._data_handler_.get_binned_data())
         else:
-            loss = zfit.loss.UnbinnedNLL(model=self._total_pdf_, data=self._data_handler_.get_data())
+            loss = zfit.loss.UnbinnedNLL(model=self._total_pdf_binned_, data=self._data_handler_.get_data())
 
         self._fit_result_ = self._minimizer_.minimize(loss=loss)
         Logger(self._fit_result_, 'RESULT')
