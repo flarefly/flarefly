@@ -4,8 +4,6 @@ Module containing custom pdfs
 
 import zfit
 import tensorflow as tf
-from zfit import z
-from scipy import special
 
 # pylint: disable=too-many-ancestors
 # pylint: disable=arguments-differ
@@ -132,38 +130,3 @@ class ExpoPowExt(zfit.pdf.ZPDF):
         c2 = self.params['c2']
         c3 = self.params['c3']
         return tf.pow(x - mass, power) * tf.exp(c1 * (x - mass) + c2 * (x - mass)**2 + c3 * (x - mass)**3)
-
-class Voigtian(zfit.pdf.ZPDF):
-    """
-    Voigtian PDF defined starting from the scipy.special definition
-    See https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.voigt_profile.html
-    for more details
-
-    Parameters:
-
-        - mu: mass parameter
-
-        - sigma: sigma of the gaussian
-
-        - gamma: gamma of the cauchy
-    """
-
-    # override the name of the parameters
-    _PARAMS = ['mu', 'sigma', 'gamma']
-
-    def _unnormalized_pdf(self, x):
-        """
-        PDF 'unnormalized'.
-        See https://zfit.github.io/zfit/_modules/zfit/core/basepdf.html#BasePDF.unnormalized_pdf
-        for more details
-        """
-
-        x = zfit.z.unstack_x(x)
-        mass = self.params['mu']
-        gamma = self.params['gamma']
-        sigma = self.params['sigma']
-
-        # pylint: disable=no-member
-        voigt_tf = z.py_function(func=special.voigt_profile, inp=[x - mass, sigma, gamma], Tout=tf.float64)
-
-        return voigt_tf
