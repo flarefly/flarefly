@@ -110,23 +110,23 @@ class F2MassFitter:
                 - 'hist' (only for binned fits, requires to set the datasample)
 
             - name: str
-                Optional name for the fitter, 
+                Optional name for the fitter,
                 needed in case of multiple fitters defined in the same script
 
             - chi2_loss: bool
-                chi2 minimization if True, nll minmization else, 
+                chi2 minimization if True, nll minmization else,
                 default value to False
 
             - minuit_mode:
-                A number used by minuit to define the internal minimization strategy, either 0, 1 or 2. 
-                0 is the fastest, 2 is the slowest 
-                (see more details in 
+                A number used by minuit to define the internal minimization strategy, either 0, 1 or 2.
+                0 is the fastest, 2 is the slowest
+                (see more details in
                 https://zfit.readthedocs.io/en/latest/user_api/minimize/_generated/minimizers/zfit.minimize.Minuit.html#zfit.minimize.Minuit)
                 Default value to 0
 
             - tol: float
-                Termination value for the convergence/stopping criterion of the algorithm in order to determine 
-                if the minimum has been found. 
+                Termination value for the convergence/stopping criterion of the algorithm in order to determine
+                if the minimum has been found.
                 Default value to 0.001
 
             - verbosity: int
@@ -1098,7 +1098,7 @@ class F2MassFitter:
                         self._rawyield_err_[ipdf] = frac_err * norm
                     else:
                         self._rawyield_[ipdf] = norm
-                        self._rawyield_err_[ipdf] = np.sqrt(norm)                        
+                        self._rawyield_err_[ipdf] = np.sqrt(norm)
 
         return self._fit_result_
 
