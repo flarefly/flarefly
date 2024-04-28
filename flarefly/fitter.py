@@ -1088,13 +1088,17 @@ class F2MassFitter:
                         f'{self._name_}_frac_signal{ipdf}']['hesse']['error'] * norm
                 else:
                     frac, frac_err = 0., 0.
-                    for ipdf2 in range(len(self._signal_pdf_)-1):
-                        frac += self._fit_result_.params[
-                            f'{self._name_}_frac_signal{ipdf2}']['value']
-                        frac_err += np.sqrt(self._fit_result_.params[
-                            f'{self._name_}_frac_signal{ipdf2}']['hesse']['error'])
-                    self._rawyield_[ipdf] = frac * norm
-                    self._rawyield_err_[ipdf] = frac_err * norm
+                    if len(self._signal_pdf_) > 1:
+                        for ipdf2 in range(len(self._signal_pdf_)-1):
+                            frac += self._fit_result_.params[
+                                f'{self._name_}_frac_signal{ipdf2}']['value']
+                            frac_err += np.sqrt(self._fit_result_.params[
+                                f'{self._name_}_frac_signal{ipdf2}']['hesse']['error'])
+                        self._rawyield_[ipdf] = frac * norm
+                        self._rawyield_err_[ipdf] = frac_err * norm
+                    else:
+                        self._rawyield_[ipdf] = norm
+                        self._rawyield_err_[ipdf] = np.sqrt(norm)                        
 
         return self._fit_result_
 
