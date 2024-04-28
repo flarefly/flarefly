@@ -26,7 +26,7 @@ FITTER[0].dump_to_root("test.root")
 
 # test also nobkg case
 DATANOBKG = DataHandler(DATASGN, var_name=r'$M$ (GeV/$c^{2}$)', limits=LIMITS)
-FITTER.append(F2MassFitter(DATA, name_signal_pdf=['gaussian'],
+FITTER.append(F2MassFitter(DATANOBKG, name_signal_pdf=['gaussian'],
                            name_background_pdf=['nobkg'],
                            minuit_mode=1,
                            name="nobkg"))
