@@ -15,34 +15,47 @@ DATABKG = np.random.uniform(LIMITS[0], LIMITS[1], size=10000)
 DATA = DataHandler(np.concatenate((DATASGN, DATABKG), axis=0),
                    var_name=r'$M$ (GeV/$c^{2}$)', limits=LIMITS)
 
-FITTER = F2MassFitter(DATA, name_signal_pdf=['gaussian'],
-                      name_background_pdf=['expo'],
-                      minuit_mode=1)
-FITTER.set_background_initpar(0, 'lam', 0.1, limits=[-10., 10.], fix=False)
-FITRES = FITTER.mass_zfit()
-FIG = FITTER.plot_mass_fit(figsize=(10, 10))
-FITTER.dump_to_root("test.root")
+FITRES, FITTER, FIGS = [], [], []
+FITTER.append(F2MassFitter(DATA, name_signal_pdf=['gaussian'],
+                           name_background_pdf=['expo'],
+                           minuit_mode=1))
+FITTER[0].set_background_initpar(0, 'lam', 0.1, limits=[-10., 10.], fix=False)
+FITRES.append(FITTER[0].mass_zfit())
+FIGS.append(FITTER[0].plot_mass_fit(figsize=(10, 10)))
+FITTER[0].dump_to_root("test.root")
+
+# test also nobkg case
+DATANOBKG = DataHandler(DATASGN, var_name=r'$M$ (GeV/$c^{2}$)', limits=LIMITS)
+FITTER.append(F2MassFitter(DATA, name_signal_pdf=['gaussian'],
+                           name_background_pdf=['nobkg'],
+                           minuit_mode=1,
+                           name="nobkg"))
+FITRES.append(FITTER[1].mass_zfit())
+FIGS.append(FITTER[1].plot_mass_fit(figsize=(10, 10)))
 
 def test_fitter():
     """
     Test the mass fitter
     """
-    assert isinstance(FITRES, zfit.minimizers.fitresult.FitResult)
+    for res in FITRES:
+        assert isinstance(res, zfit.minimizers.fitresult.FitResult)
 
 def test_fitter_result():
     """
     Test the fitter output
     """
-    rawy, rawy_err = FITTER.get_raw_yield()
-    rawy_bc, rawy_bc_err = FITTER.get_raw_yield_bincounting()
-    assert np.isclose(10000, rawy, atol=3*rawy_err)
-    assert np.isclose(10000, rawy_bc, atol=3*rawy_bc_err)
+    for fit in FITTER:
+        rawy, rawy_err = fit.get_raw_yield()
+        rawy_bc, rawy_bc_err = fit.get_raw_yield_bincounting()
+        assert np.isclose(10000, rawy, atol=3*rawy_err)
+        assert np.isclose(10000, rawy_bc, atol=3*rawy_bc_err)
 
 def test_plot():
     """
     Test the mass fitter plot
     """
-    assert isinstance(FIG, matplotlib.figure.Figure)
+    for fig in FIGS:
+        assert isinstance(fig, matplotlib.figure.Figure)
 
 def test_dump():
     """
