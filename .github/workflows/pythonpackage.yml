@@ -37,8 +37,6 @@ jobs:
 
   build-macos-latest:
     runs-on: macOS-latest
-    using: 'node20'
-    main: 'main.js'
     strategy:
       max-parallel: 4
       matrix:
