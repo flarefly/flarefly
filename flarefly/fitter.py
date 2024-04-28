@@ -196,8 +196,11 @@ class F2MassFitter:
         self._chi2_loss_ = kwargs.get('chi2_loss', False)
         self._base_sgn_cmap_ = plt.cm.get_cmap('viridis', len(self._signal_pdf_) * 4)
         self._sgn_cmap_ = ListedColormap(self._base_sgn_cmap_(np.linspace(0.4, 0.65, len(self._signal_pdf_))))
-        self._base_bkg_cmap_ = plt.cm.get_cmap('Reds', len(self._background_pdf_) * 10)
-        self._bkg_cmap_ = ListedColormap(self._base_bkg_cmap_(np.linspace(0.8, 0.2, len(self._background_pdf_))))
+        n_bkg_colors = len(self._background_pdf_)
+        if len(self._background_pdf_) == 0:
+            n_bkg_colors = 1 # to avoid crash
+        self._base_bkg_cmap_ = plt.cm.get_cmap('Reds', n_bkg_colors * 10)
+        self._bkg_cmap_ = ListedColormap(self._base_bkg_cmap_(np.linspace(0.8, 0.2, n_bkg_colors)))
         self._base_refl_cmap_ = plt.cm.get_cmap('summer', len(self._refl_pdf_) * 2)
         self._refl_cmap_ = ListedColormap(self._base_refl_cmap_(np.linspace(0., 0.6, len(self._refl_pdf_))))
 
