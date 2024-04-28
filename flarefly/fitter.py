@@ -982,24 +982,29 @@ class F2MassFitter:
             obs = self._data_handler_.get_binned_obs_from_unbinned_data()
 
         # get background fractions
-        if len(self._background_pdf_) == 1:
-            signal_fracs, _, refl_fracs, _, _, _ = self.__get_all_fracs()
-            bkg_fracs = [1 - sum(signal_fracs) - sum(refl_fracs)]
+        if len(self._background_pdf_) > 0:
+            if len(self._background_pdf_) == 1:
+                signal_fracs, _, refl_fracs, _, _, _ = self.__get_all_fracs()
+                bkg_fracs = [1 - sum(signal_fracs) - sum(refl_fracs)]
+            else:
+                signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
+                bkg_fracs.append(1 - sum(bkg_fracs) - sum(signal_fracs) - sum(refl_fracs))
+            # access model predicted values for background
+            for ipdf, bkg_name in enumerate(self._name_background_pdf_):
+                background_pdf_binned_[ipdf] = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[ipdf], obs)
+                norm_bkg = norm
+                if "hist" in bkg_name:
+                    norm_bkg /= float(sum(background_pdf_binned_[ipdf].values()))
+                model_bkg_values[ipdf] = background_pdf_binned_[ipdf].values()*bkg_fracs[ipdf]*norm_bkg
+            # compute residuals
+            for ibin, data in enumerate(data_values):
+                self._raw_residuals_[ibin] = float(data)
+                for ipdf, _ in enumerate(self._name_background_pdf_):
+                    self._raw_residuals_[ibin] -= model_bkg_values[ipdf][ibin]
         else:
-            signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
-            bkg_fracs.append(1 - sum(bkg_fracs) - sum(signal_fracs) - sum(refl_fracs))
-        # access model predicted values for background
-        for ipdf, bkg_name in enumerate(self._name_background_pdf_):
-            background_pdf_binned_[ipdf] = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[ipdf], obs)
-            norm_bkg = norm
-            if "hist" in bkg_name:
-                norm_bkg /= float(sum(background_pdf_binned_[ipdf].values()))
-            model_bkg_values[ipdf] = background_pdf_binned_[ipdf].values()*bkg_fracs[ipdf]*norm_bkg
-        # compute residuals
-        for ibin, data in enumerate(data_values):
-            self._raw_residuals_[ibin] = float(data)
-            for ipdf, _ in enumerate(self._name_background_pdf_):
-                self._raw_residuals_[ibin] -= model_bkg_values[ipdf][ibin]
+            for ibin, data in enumerate(data_values):
+                self._raw_residuals_[ibin] = float(data)
+
 
     def __get_std_residuals(self):
         """
