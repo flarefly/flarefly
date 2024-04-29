@@ -110,23 +110,23 @@ class F2MassFitter:
                 - 'hist' (only for binned fits, requires to set the datasample)
 
             - name: str
-                Optional name for the fitter, 
+                Optional name for the fitter,
                 needed in case of multiple fitters defined in the same script
 
             - chi2_loss: bool
-                chi2 minimization if True, nll minmization else, 
+                chi2 minimization if True, nll minmization else,
                 default value to False
 
             - minuit_mode:
-                A number used by minuit to define the internal minimization strategy, either 0, 1 or 2. 
-                0 is the fastest, 2 is the slowest 
-                (see more details in 
+                A number used by minuit to define the internal minimization strategy, either 0, 1 or 2.
+                0 is the fastest, 2 is the slowest
+                (see more details in
                 https://zfit.readthedocs.io/en/latest/user_api/minimize/_generated/minimizers/zfit.minimize.Minuit.html#zfit.minimize.Minuit)
                 Default value to 0
 
             - tol: float
-                Termination value for the convergence/stopping criterion of the algorithm in order to determine 
-                if the minimum has been found. 
+                Termination value for the convergence/stopping criterion of the algorithm in order to determine
+                if the minimum has been found.
                 Default value to 0.001
 
             - verbosity: int
@@ -196,8 +196,11 @@ class F2MassFitter:
         self._chi2_loss_ = kwargs.get('chi2_loss', False)
         self._base_sgn_cmap_ = plt.cm.get_cmap('viridis', len(self._signal_pdf_) * 4)
         self._sgn_cmap_ = ListedColormap(self._base_sgn_cmap_(np.linspace(0.4, 0.65, len(self._signal_pdf_))))
-        self._base_bkg_cmap_ = plt.cm.get_cmap('Reds', len(self._background_pdf_) * 10)
-        self._bkg_cmap_ = ListedColormap(self._base_bkg_cmap_(np.linspace(0.8, 0.2, len(self._background_pdf_))))
+        n_bkg_colors = len(self._background_pdf_)
+        if len(self._background_pdf_) == 0:
+            n_bkg_colors = 1 # to avoid crash
+        self._base_bkg_cmap_ = plt.cm.get_cmap('Reds', n_bkg_colors * 10)
+        self._bkg_cmap_ = ListedColormap(self._base_bkg_cmap_(np.linspace(0.8, 0.2, n_bkg_colors)))
         self._base_refl_cmap_ = plt.cm.get_cmap('summer', len(self._refl_pdf_) * 2)
         self._refl_cmap_ = ListedColormap(self._base_refl_cmap_(np.linspace(0., 0.6, len(self._refl_pdf_))))
 
@@ -979,24 +982,29 @@ class F2MassFitter:
             obs = self._data_handler_.get_binned_obs_from_unbinned_data()
 
         # get background fractions
-        if len(self._background_pdf_) == 1:
-            signal_fracs, _, refl_fracs, _, _, _ = self.__get_all_fracs()
-            bkg_fracs = [1 - sum(signal_fracs) - sum(refl_fracs)]
+        if len(self._background_pdf_) > 0:
+            if len(self._background_pdf_) == 1:
+                signal_fracs, _, refl_fracs, _, _, _ = self.__get_all_fracs()
+                bkg_fracs = [1 - sum(signal_fracs) - sum(refl_fracs)]
+            else:
+                signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
+                bkg_fracs.append(1 - sum(bkg_fracs) - sum(signal_fracs) - sum(refl_fracs))
+            # access model predicted values for background
+            for ipdf, bkg_name in enumerate(self._name_background_pdf_):
+                background_pdf_binned_[ipdf] = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[ipdf], obs)
+                norm_bkg = norm
+                if "hist" in bkg_name:
+                    norm_bkg /= float(sum(background_pdf_binned_[ipdf].values()))
+                model_bkg_values[ipdf] = background_pdf_binned_[ipdf].values()*bkg_fracs[ipdf]*norm_bkg
+            # compute residuals
+            for ibin, data in enumerate(data_values):
+                self._raw_residuals_[ibin] = float(data)
+                for ipdf, _ in enumerate(self._name_background_pdf_):
+                    self._raw_residuals_[ibin] -= model_bkg_values[ipdf][ibin]
         else:
-            signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
-            bkg_fracs.append(1 - sum(bkg_fracs) - sum(signal_fracs) - sum(refl_fracs))
-        # access model predicted values for background
-        for ipdf, bkg_name in enumerate(self._name_background_pdf_):
-            background_pdf_binned_[ipdf] = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[ipdf], obs)
-            norm_bkg = norm
-            if "hist" in bkg_name:
-                norm_bkg /= float(sum(background_pdf_binned_[ipdf].values()))
-            model_bkg_values[ipdf] = background_pdf_binned_[ipdf].values()*bkg_fracs[ipdf]*norm_bkg
-        # compute residuals
-        for ibin, data in enumerate(data_values):
-            self._raw_residuals_[ibin] = float(data)
-            for ipdf, _ in enumerate(self._name_background_pdf_):
-                self._raw_residuals_[ibin] -= model_bkg_values[ipdf][ibin]
+            for ibin, data in enumerate(data_values):
+                self._raw_residuals_[ibin] = float(data)
+
 
     def __get_std_residuals(self):
         """
@@ -1080,13 +1088,17 @@ class F2MassFitter:
                         f'{self._name_}_frac_signal{ipdf}']['hesse']['error'] * norm
                 else:
                     frac, frac_err = 0., 0.
-                    for ipdf2 in range(len(self._signal_pdf_)-1):
-                        frac += self._fit_result_.params[
-                            f'{self._name_}_frac_signal{ipdf2}']['value']
-                        frac_err += np.sqrt(self._fit_result_.params[
-                            f'{self._name_}_frac_signal{ipdf2}']['hesse']['error'])
-                    self._rawyield_[ipdf] = frac * norm
-                    self._rawyield_err_[ipdf] = frac_err * norm
+                    if len(self._signal_pdf_) > 1:
+                        for ipdf2 in range(len(self._signal_pdf_)-1):
+                            frac += self._fit_result_.params[
+                                f'{self._name_}_frac_signal{ipdf2}']['value']
+                            frac_err += np.sqrt(self._fit_result_.params[
+                                f'{self._name_}_frac_signal{ipdf2}']['hesse']['error'])
+                        self._rawyield_[ipdf] = frac * norm
+                        self._rawyield_err_[ipdf] = frac_err * norm
+                    else:
+                        self._rawyield_[ipdf] = norm
+                        self._rawyield_err_[ipdf] = np.sqrt(norm)
 
         return self._fit_result_
 
