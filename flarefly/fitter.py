@@ -132,6 +132,10 @@ class F2MassFitter:
             - verbosity: int
                 verbosity level (from 0 to 10)
                 Default value to 0
+
+            - signal_at_threshold: list
+                list of booleans which indicate whether the signal PDFs are at threshold or not.
+                Each element corresponds to a signal pdf
         """
 
         self._data_handler_ = data_handler
@@ -209,6 +213,8 @@ class F2MassFitter:
         self._std_residuals_ = []
         self._std_residual_variances_ = []
 
+        self._signal_at_threshold = kwargs.get('signal_at_threshold', [False for _ in enumerate(name_signal_pdf)])
+
         zfit.settings.advanced_warnings.all = False
         zfit.settings.changed_warnings.all = False
 
@@ -218,7 +224,7 @@ class F2MassFitter:
         Helper function to compose the signal pdfs
         """
 
-        for ipdf, pdf_name in enumerate(self._name_signal_pdf_):
+        for ipdf, (pdf_name, at_threshold) in enumerate(zip(self._name_signal_pdf_, self._signal_at_threshold)):
             if pdf_name == 'nosignal':
                 Logger('Performing fit with no signal pdf', 'WARNING')
                 break
@@ -610,6 +616,22 @@ class F2MassFitter:
                     Logger(f'Missing datasample for histogram template of signal {ipdf}!', 'FATAL')
             else:
                 Logger(f'Signal pdf {pdf_name} not supported', 'FATAL')
+
+            if at_threshold:
+                 # pion mass as default
+                self._init_sgn_pars_[ipdf].setdefault('powerthr', 1.)
+                self._limits_sgn_pars_[ipdf].setdefault('massthr', [-1.e6, 1.e6])
+                self._fix_sgn_pars_[ipdf].setdefault('powerthr', False)
+                self._fix_sgn_pars_[ipdf].setdefault('massthr', True)
+                self._limits_sgn_pars_[ipdf].setdefault('powerthr', [0, 1.e6])
+                self._init_sgn_pars_[ipdf].setdefault('massthr', Particle.from_pdgid(211).mass*1e-3)
+                threshold_func = cpdf.Pow(
+                    obs=obs,
+                    mass=self._sgn_pars_[ipdf][f'{self._name_}_massthr_signal{ipdf}'],
+                    power=self._sgn_pars_[ipdf][f'{self._name_}_powerthr_signal{ipdf}']
+                )
+                self._signal_pdf_[ipdf] = zfit.pdf.ProductPDF([self._signal_pdf_[ipdf], threshold_func], obs=obs)
+
 
     def __build_background_pdfs(self, obs):
         """
