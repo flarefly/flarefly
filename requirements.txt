@@ -5,6 +5,6 @@ pandas>=2.2.0
 uproot>=5.0
 zfit>=0.20.2
 mplhep>=0.3.46
-matplotlib>=3.8
+matplotlib>=3.9
 particle>=0.23
 scipy>=1.13
