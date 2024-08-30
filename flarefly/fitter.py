@@ -136,11 +136,21 @@ class F2MassFitter:
             - signal_at_threshold: list
                 list of booleans which indicate whether the signal PDFs are at threshold or not.
                 Each element corresponds to a signal pdf
+
+            - label_signal_pdf: list
+                list of labels for signal pdfs
+
+            - label_bkg_pdf: list
+                list of labels for background pdfs
         """
 
         self._data_handler_ = data_handler
         self._name_signal_pdf_ = name_signal_pdf
         self._name_background_pdf_ = name_background_pdf
+        self.label_signal_pdf = kwargs.get(
+            'label_signal_pdf', [f'signal {idx}' for idx in range(len(name_signal_pdf))])
+        self.label_bkg_pdf = kwargs.get(
+            'label_bkg_pdf', [f'background {idx}' for idx in range(len(name_background_pdf))])
         if self._name_signal_pdf_[0] == 'nosignal':
             self._signal_pdf_ = []
             self._hist_signal_sample_ = []
@@ -1211,6 +1221,7 @@ class F2MassFitter:
         x_plot = np.linspace(limits[0], limits[1], num=num)
         total_func = zfit.run(self._total_pdf_.pdf(x_plot, norm_range=obs))
         signal_funcs, refl_funcs, bkg_funcs = ([] for _ in range(3))
+
         for signal_pdf in self._signal_pdf_:
             signal_funcs.append(zfit.run(signal_pdf.pdf(x_plot, norm_range=obs)))
         for refl_pdf in self._refl_pdf_:
@@ -1224,12 +1235,12 @@ class F2MassFitter:
         # first draw backgrounds
         for ibkg, (bkg_func, bkg_frac) in enumerate(zip(bkg_funcs, bkg_fracs)):
             plt.plot(x_plot, bkg_func * norm * bkg_frac,
-                     color=self._bkg_cmap_(ibkg), ls='--', label=f'background {ibkg}')
+                     color=self._bkg_cmap_(ibkg), ls='--', label=self.label_bkg_pdf[ibkg])
         # then draw signals
         for isgn, (signal_func, frac) in enumerate(zip(signal_funcs, signal_fracs)):
             plt.plot(x_plot, signal_func * norm * frac, color=self._sgn_cmap_(isgn))
             plt.fill_between(x_plot, signal_func * norm * frac, color=self._sgn_cmap_(isgn),
-                             alpha=0.5, label=f'signal {isgn}')
+                             alpha=0.5, label=self.label_signal_pdf[isgn])
 
         # finally draw reflected signals (if any)
         for irefl, (refl_func, frac) in enumerate(zip(refl_funcs, refl_fracs)):
@@ -1307,7 +1318,9 @@ class F2MassFitter:
             axs.add_artist(anchored_text_chi2)
             axs.add_artist(anchored_text_signal)
 
-        return fig
+        Logger('plot_mass_fit now returns a tuple (fig, axs) !', 'WARNING')
+
+        return fig, axs
 
     # pylint: disable=too-many-statements, too-many-locals
     def dump_to_root(self, filename, **kwargs):
@@ -1537,7 +1550,7 @@ class F2MassFitter:
         for isgn, (signal_func, frac) in enumerate(zip(signal_funcs, signal_fracs)):
             plt.plot(x_plot, signal_func * norm * frac, color=self._sgn_cmap_(isgn))
             plt.fill_between(x_plot, signal_func * norm * frac, color=self._sgn_cmap_(isgn),
-                             alpha=0.5, label=f'signal {isgn}')
+                             alpha=0.5, label=self.label_signal_pdf[isgn])
 
         # finally draw reflected signals (if any)
         is_there_refl = False
