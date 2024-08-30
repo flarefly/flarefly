@@ -55,7 +55,8 @@ def test_plot():
     Test the mass fitter plot
     """
     for fig in FIGS:
-        assert isinstance(fig, matplotlib.figure.Figure)
+        assert isinstance(fig[0], matplotlib.figure.Figure)
+        assert isinstance(fig[1], matplotlib.figure.Axes)
 
 def test_dump():
     """
