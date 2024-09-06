@@ -157,39 +157,41 @@ class F2MassFitter:
             self._kde_signal_sample_ = []
             self._kde_signal_option_ = []
         else:
-            self._signal_pdf_ = [None for _ in enumerate(name_signal_pdf)]
-            self._hist_signal_sample_ = [None for _ in enumerate(name_signal_pdf)]
-            self._kde_signal_sample_ = [None for _ in enumerate(name_signal_pdf)]
-            self._kde_signal_option_ = [None for _ in enumerate(name_signal_pdf)]
+            self._signal_pdf_ = [None for _ in name_signal_pdf]
+            self._hist_signal_sample_ = [None for _ in name_signal_pdf]
+            self._kde_signal_sample_ = [None for _ in name_signal_pdf]
+            self._kde_signal_option_ = [None for _ in name_signal_pdf]
         if self._name_background_pdf_[0] == 'nobkg':
             self._background_pdf_ = []
             self._hist_bkg_sample_ = []
             self._kde_bkg_sample_ = []
             self._kde_bkg_option_ = []
         else:
-            self._background_pdf_ = [None for _ in enumerate(name_background_pdf)]
-            self._hist_bkg_sample_ = [None for _ in enumerate(name_background_pdf)]
-            self._kde_bkg_sample_ = [None for _ in enumerate(name_background_pdf)]
-            self._kde_bkg_option_ = [None for _ in enumerate(name_background_pdf)]
-        self._name_refl_pdf_ = kwargs.get('name_refl_pdf', [None for _ in enumerate(name_signal_pdf)])
+            self._background_pdf_ = [None for _ in name_background_pdf]
+            self._hist_bkg_sample_ = [None for _ in name_background_pdf]
+            self._kde_bkg_sample_ = [None for _ in name_background_pdf]
+            self._kde_bkg_option_ = [None for _ in name_background_pdf]
+        self._name_refl_pdf_ = kwargs.get('name_refl_pdf', [None for _ in name_signal_pdf])
         if len(self._name_refl_pdf_) != len(self._name_signal_pdf_):
             Logger('List of pdfs for signals and reflections different! Exit', 'FATAL')
-        self._refl_pdf_ = [None for _ in enumerate(name_signal_pdf)]
-        self._hist_refl_sample_ = [None for _ in enumerate(name_signal_pdf)]
-        self._kde_refl_sample_ = [None for _ in enumerate(name_signal_pdf)]
-        self._kde_refl_option_ = [None for _ in enumerate(name_signal_pdf)]
-        self._refl_over_sgn_ = [0. for _ in enumerate(name_signal_pdf)]
+        if self._name_signal_pdf_[0] == 'nosignal':
+            self._name_refl_pdf_ = []
+        self._refl_pdf_ = [None for _ in self._name_refl_pdf_]
+        self._hist_refl_sample_ = [None for _ in self._name_refl_pdf_]
+        self._kde_refl_sample_ = [None for _ in self._name_refl_pdf_]
+        self._kde_refl_option_ = [None for _ in self._name_refl_pdf_]
+        self._refl_over_sgn_ = [0. for _ in self._name_refl_pdf_]
         self._total_pdf_ = None
         self._total_pdf_binned_ = None
         self._fit_result_ = None
-        self._init_sgn_pars_ = [{} for _ in enumerate(name_signal_pdf)]
-        self._init_bkg_pars_ = [{} for _ in enumerate(name_signal_pdf)]
-        self._limits_sgn_pars_ = [{} for _ in enumerate(name_signal_pdf)]
-        self._limits_bkg_pars_ = [{} for _ in enumerate(name_signal_pdf)]
-        self._fix_sgn_pars_ = [{} for _ in enumerate(name_signal_pdf)]
-        self._fix_bkg_pars_ = [{} for _ in enumerate(name_signal_pdf)]
-        self._sgn_pars_ = [{} for _ in enumerate(name_signal_pdf)]
-        self._bkg_pars_ = [{} for _ in enumerate(name_background_pdf)]
+        self._init_sgn_pars_ = [{} for _ in name_signal_pdf]
+        self._init_bkg_pars_ = [{} for _ in name_signal_pdf]
+        self._limits_sgn_pars_ = [{} for _ in name_signal_pdf]
+        self._limits_bkg_pars_ = [{} for _ in name_signal_pdf]
+        self._fix_sgn_pars_ = [{} for _ in name_signal_pdf]
+        self._fix_bkg_pars_ = [{} for _ in name_signal_pdf]
+        self._sgn_pars_ = [{} for _ in name_signal_pdf]
+        self._bkg_pars_ = [{} for _ in name_background_pdf]
         if self._name_signal_pdf_[0] != 'nosignal' and self._name_background_pdf_[0] == 'nobkg':
             self._fracs_ = [None for _ in range(2 * len(name_signal_pdf) - 1)]
         elif self._name_signal_pdf_[0] == 'nosignal' and self._name_background_pdf_[0] != 'nobkg':
@@ -198,8 +200,8 @@ class F2MassFitter:
             self._fracs_ = [None for _ in range(2 * len(name_signal_pdf) + len(name_background_pdf) - 1)]
         else:
             Logger('No signal nor background pdf defined', 'FATAL')
-        self._rawyield_ = [0. for _ in enumerate(name_signal_pdf)]
-        self._rawyield_err_ = [0. for _ in enumerate(name_signal_pdf)]
+        self._rawyield_ = [0. for _ in name_signal_pdf]
+        self._rawyield_err_ = [0. for _ in name_signal_pdf]
         self._minimizer_ = zfit.minimize.Minuit(
             verbosity=kwargs.get('verbosity', 7),
             mode=kwargs.get('minuit_mode', 0),
@@ -223,8 +225,8 @@ class F2MassFitter:
         self._std_residuals_ = []
         self._std_residual_variances_ = []
 
-        self._signal_at_threshold = kwargs.get('signal_at_threshold', [False for _ in enumerate(name_signal_pdf)])
-        self._signalthr_pdf_ = [None for _ in enumerate(name_signal_pdf)]
+        self._signal_at_threshold = kwargs.get('signal_at_threshold', [False for _ in name_signal_pdf])
+        self._signalthr_pdf_ = [None for _ in name_signal_pdf]
 
         zfit.settings.advanced_warnings.all = False
         zfit.settings.changed_warnings.all = False
