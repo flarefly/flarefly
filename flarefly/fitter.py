@@ -151,11 +151,15 @@ class F2MassFitter:
             'label_signal_pdf', [f'signal {idx}' for idx in range(len(name_signal_pdf))])
         self.label_bkg_pdf = kwargs.get(
             'label_bkg_pdf', [f'background {idx}' for idx in range(len(name_background_pdf))])
+        self._name_refl_pdf_ = kwargs.get('name_refl_pdf', [None for _ in name_signal_pdf])
+        if len(self._name_refl_pdf_) != len(self._name_signal_pdf_):
+            Logger('List of pdfs for signals and reflections different! Exit', 'FATAL')
         if self._name_signal_pdf_[0] == 'nosignal':
             self._signal_pdf_ = []
             self._hist_signal_sample_ = []
             self._kde_signal_sample_ = []
             self._kde_signal_option_ = []
+            self._name_refl_pdf_ = []
         else:
             self._signal_pdf_ = [None for _ in name_signal_pdf]
             self._hist_signal_sample_ = [None for _ in name_signal_pdf]
@@ -171,11 +175,7 @@ class F2MassFitter:
             self._hist_bkg_sample_ = [None for _ in name_background_pdf]
             self._kde_bkg_sample_ = [None for _ in name_background_pdf]
             self._kde_bkg_option_ = [None for _ in name_background_pdf]
-        self._name_refl_pdf_ = kwargs.get('name_refl_pdf', [None for _ in name_signal_pdf])
-        if len(self._name_refl_pdf_) != len(self._name_signal_pdf_):
-            Logger('List of pdfs for signals and reflections different! Exit', 'FATAL')
-        if self._name_signal_pdf_[0] == 'nosignal':
-            self._name_refl_pdf_ = []
+
         self._refl_pdf_ = [None for _ in self._name_refl_pdf_]
         self._hist_refl_sample_ = [None for _ in self._name_refl_pdf_]
         self._kde_refl_sample_ = [None for _ in self._name_refl_pdf_]
