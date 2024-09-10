@@ -23,7 +23,7 @@ class F2MassFitter:
     https://github.com/zfit/zfit
     """
 
-    # pylint: disable=too-many-statements
+    # pylint: disable=too-many-statements, too-many-branches
     def __init__(self, data_handler, name_signal_pdf, name_background_pdf, **kwargs):
         """
         Initialize the F2MassFitter class
@@ -124,6 +124,9 @@ class F2MassFitter:
                 https://zfit.readthedocs.io/en/latest/user_api/minimize/_generated/minimizers/zfit.minimize.Minuit.html#zfit.minimize.Minuit)
                 Default value to 0
 
+            - limits: list
+                list of fit limits to include in the fit
+
             - tol: float
                 Termination value for the convergence/stopping criterion of the algorithm in order to determine
                 if the minimum has been found.
@@ -207,6 +210,14 @@ class F2MassFitter:
             mode=kwargs.get('minuit_mode', 0),
             tol=kwargs.get('tol', 0.001)
         )
+        if 'limits' in kwargs and self._data_handler_.get_is_binned():
+            Logger('Restriction of fit limits is not yet implemented in binned fits!', 'FATAL')
+        if 'limits' in kwargs and 'nosignal' in self._name_signal_pdf_:
+            Logger('Using signal PDFs while restricting fit limits!', 'WARNING')
+        self._limits_ = kwargs.get(
+            'limits', self._data_handler_.get_limits())
+        if not isinstance(self._limits_[0], list):
+            self._limits_ = [self._limits_]
         self._name_ = kwargs.get('name', '')
         self._ndf_ = None
         self._chi2_loss_ = kwargs.get('chi2_loss', False)
@@ -895,10 +906,10 @@ class F2MassFitter:
 
         if len(self._signal_pdf_) + len(self._background_pdf_) == 1:
             if len(self._signal_pdf_) == 0:
-                self._total_pdf_ = self._background_pdf_[0]
+                self._total_pdf_ = self._background_pdf_[0].to_truncated(limits = self._limits_, obs = obs)
                 return
             if len(self._background_pdf_) == 0:
-                self._total_pdf_ = self._signal_pdf_[0]
+                self._total_pdf_ = self._signal_pdf_[0].to_truncated(limits = self._limits_, obs = obs)
                 return
 
         for ipdf, _ in enumerate(self._signal_pdf_):
@@ -935,7 +946,7 @@ class F2MassFitter:
                     floating=not self._fix_bkg_pars_[ipdf]['frac'])
 
         self._total_pdf_ = zfit.pdf.SumPDF(self._signal_pdf_+self._refl_pdf_+self._background_pdf_,
-                                           self._fracs_)
+                                           self._fracs_).to_truncated(limits = self._limits_, obs = obs, norm = obs)
 
     def __build_total_pdf_binned(self):
         """
@@ -949,7 +960,16 @@ class F2MassFitter:
         else:
             obs = self._data_handler_.get_binned_obs_from_unbinned_data()
 
-        self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._total_pdf_, obs)
+        if len(self._signal_pdf_) + len(self._background_pdf_) == 1:
+            if len(self._signal_pdf_) == 0:
+                self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[0], obs)
+                return
+            if len(self._background_pdf_) == 0:
+                self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._signal_pdf_[0], obs)
+                return
+
+        self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(zfit.pdf.SumPDF(
+                            self._signal_pdf_+self._refl_pdf_+self._background_pdf_, self._fracs_), obs)
 
     def __prefit(self):
         """
@@ -1002,6 +1022,30 @@ class F2MassFitter:
                 bkg_err_fracs.append(0.)
 
         return signal_fracs, bkg_fracs, refl_fracs, signal_err_fracs, bkg_err_fracs, refl_err_fracs
+
+    def __get_total_pdf_norm(self):
+        """
+        Get the normalization of the total pdf
+
+        Returns
+        -------------------------------------------------
+        norm_total_pdf: float
+            the normalization of the total pdf
+        """
+        limits = self._data_handler_.get_limits()
+        bins = self._data_handler_.get_nbins()
+        bin_sigma = (limits[1] - limits[0]) / bins
+
+        signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
+        fracs = signal_fracs + refl_fracs + bkg_fracs
+        fracs.append(1-sum(bkg_fracs)-sum(signal_fracs)-sum(refl_fracs))
+
+        sidebands_integral, total_integral = 0., 0.
+        for i_pdf, pdf in enumerate(self._signal_pdf_ + self._refl_pdf_ + self._background_pdf_):
+            sidebands_integral += float(sum(pdf.integrate(lim) * fracs[i_pdf] for lim in self._limits_))
+            total_integral += float(pdf.integrate(limits) * fracs[i_pdf])
+        norm_total_pdf = self._data_handler_.get_norm() * bin_sigma * sidebands_integral / total_integral
+        return norm_total_pdf
 
     def __get_raw_residuals(self):
         """
@@ -1110,7 +1154,7 @@ class F2MassFitter:
             else:
                 loss = zfit.loss.BinnedNLL(self._total_pdf_binned_, self._data_handler_.get_binned_data())
         else:
-            loss = zfit.loss.UnbinnedNLL(model=self._total_pdf_binned_, data=self._data_handler_.get_data())
+            loss = zfit.loss.UnbinnedNLL(model=self._total_pdf_, data=self._data_handler_.get_data())
 
         self._fit_result_ = self._minimizer_.minimize(loss=loss)
         Logger(self._fit_result_, 'RESULT')
@@ -1219,6 +1263,7 @@ class F2MassFitter:
         hdata.plot(yerr=True, color='black', histtype='errorbar', label='data')
         bin_sigma = (limits[1] - limits[0]) / bins
         norm = self._data_handler_.get_norm() * bin_sigma
+        norm_total_pdf = self.__get_total_pdf_norm()
 
         x_plot = np.linspace(limits[0], limits[1], num=num)
         total_func = zfit.run(self._total_pdf_.pdf(x_plot, norm_range=obs))
@@ -1252,7 +1297,7 @@ class F2MassFitter:
             plt.fill_between(x_plot, refl_func * norm * frac, color=self._refl_cmap_(irefl),
                              alpha=0.5, label=f'reflected signal {irefl}')
 
-        plt.plot(x_plot, total_func * norm, color='xkcd:blue', label='total fit')
+        plt.plot(x_plot, total_func * norm_total_pdf, color='xkcd:blue', label='total fit')
         plt.xlim(limits[0], limits[1])
         plt.xlabel(axis_title)
         plt.ylabel(rf'counts / {(limits[1]-limits[0])/bins*1000:0.1f} MeV/$c^2$')
@@ -1368,11 +1413,13 @@ class F2MassFitter:
 
         bin_sigma = (limits[1] - limits[0]) / bins
         norm = self._data_handler_.get_norm() * bin_sigma
+        norm_total_pdf = self.__get_total_pdf_norm()
+
         x_plot = np.linspace(limits[0], limits[1], num=num)
 
         total_func = zfit.run(self._total_pdf_.pdf(x_plot, norm_range=obs))
         # write total_func
-        self.__write_pdf(histname=f'total_func{suffix}', weight=total_func * norm, num=num,
+        self.__write_pdf(histname=f'total_func{suffix}', weight=total_func * norm_total_pdf, num=num,
                          filename=filename, option='update')
 
         signal_funcs, bkg_funcs, refl_funcs = ([] for _ in range(3))
@@ -1444,7 +1491,8 @@ class F2MassFitter:
         """
 
         chi2 = 0
-        norm = self._data_handler_.get_norm()
+        norm_total_pdf = self.__get_total_pdf_norm()
+
         if self._data_handler_.get_is_binned():
             # for chi2 loss, just retrieve loss value in fit result
             if self._chi2_loss_:
@@ -1456,7 +1504,7 @@ class F2MassFitter:
             data_values = binned_data.values()
             data_variances = binned_data.variances()
             # access model predicted values
-            model_values = self._total_pdf_binned_.values()*norm
+            model_values = self._total_pdf_binned_.values()*norm_total_pdf
             # compute chi2
             for (data, model, data_variance) in zip(data_values, model_values, data_variances):
                 chi2 += (data - model)**2/data_variance
@@ -1465,7 +1513,7 @@ class F2MassFitter:
         # for unbinned data
         data_values = self._data_handler_.get_binned_data_from_unbinned_data()
         # access model predicted values
-        model_values = self._total_pdf_binned_.values()*norm
+        model_values = self._total_pdf_binned_.values()*norm_total_pdf
         # compute chi2
         for (data, model) in zip(data_values, model_values):
             chi2 += (data - model)**2/data
