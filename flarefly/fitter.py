@@ -8,7 +8,7 @@ from matplotlib.colors import ListedColormap
 from matplotlib.offsetbox import AnchoredText
 
 import os
-os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1"
+os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1" # pylint: disable=wrong-import-position
 import zfit
 import uproot
 from hist import Hist
