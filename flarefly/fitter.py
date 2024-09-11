@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from matplotlib.offsetbox import AnchoredText
 
+import os
+os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1"
 import zfit
 import uproot
 from hist import Hist
