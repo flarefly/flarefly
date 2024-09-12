@@ -1,7 +1,8 @@
 """
 Module containing the class used to perform mass fits
 """
-
+import os
+os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1" # pylint: disable=wrong-import-position
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
