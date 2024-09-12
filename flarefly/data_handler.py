@@ -1,7 +1,8 @@
 """
 Simple module with a class to manage the data used in the analysis
 """
-
+import os
+os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1" # pylint: disable=wrong-import-position
 import numpy as np
 import zfit
 import pandas as pd
