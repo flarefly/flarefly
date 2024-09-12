@@ -947,7 +947,10 @@ class F2MassFitter:
                     floating=not self._fix_bkg_pars_[ipdf]['frac'])
 
         self._total_pdf_ = zfit.pdf.SumPDF(self._signal_pdf_+self._refl_pdf_+self._background_pdf_,
-                                           self._fracs_).to_truncated(limits = self._limits_, obs = obs, norm = obs)
+                                           self._fracs_)
+
+        if not self._data_handler_.get_is_binned():
+            self._total_pdf_ = self._total_pdf_.to_truncated(limits = self._limits_, obs = obs, norm = obs)
 
     def __build_total_pdf_binned(self):
         """
@@ -967,10 +970,7 @@ class F2MassFitter:
                 return
             if len(self._background_pdf_) == 0:
                 self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._signal_pdf_[0], obs)
-                return
-
-        self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(zfit.pdf.SumPDF(
-                            self._signal_pdf_+self._refl_pdf_+self._background_pdf_, self._fracs_), obs)
+        self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._total_pdf_, obs)
 
     def __prefit(self):
         """
