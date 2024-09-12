@@ -2,8 +2,6 @@
 Module containing the class used to perform mass fits
 """
 
-import os
-os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1" # pylint: disable=wrong-import-position
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
@@ -1274,8 +1272,7 @@ class F2MassFitter:
         for signal_pdf in self._signal_pdf_:
             signal_funcs.append(zfit.run(signal_pdf.pdf(x_plot, norm_range=obs)))
         for refl_pdf in self._refl_pdf_:
-            refl_pdf_pdf = refl_pdf.pdf(x_plot, norm_range=obs)
-            refl_funcs.append(zfit.run(refl_pdf_pdf))
+            refl_funcs.append(zfit.run(refl_pdf.pdf(x_plot, norm_range=obs)))
         for bkg_pdf in self._background_pdf_:
             bkg_funcs.append(zfit.run(bkg_pdf.pdf(x_plot, norm_range=obs)))
 
