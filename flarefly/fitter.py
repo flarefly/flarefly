@@ -970,7 +970,10 @@ class F2MassFitter:
                 return
             if len(self._background_pdf_) == 0:
                 self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._signal_pdf_[0], obs)
-        self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._total_pdf_, obs)
+                return
+
+        self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(zfit.pdf.SumPDF(
+            self._signal_pdf_+self._refl_pdf_+self._background_pdf_, self._fracs_), obs)
 
     def __prefit(self):
         """
@@ -1112,6 +1115,8 @@ class F2MassFitter:
             data_values = binned_data.values()
             variances = binned_data.variances()
         else:
+            if self._limits_ != [self._data_handler_.get_limits()]: # restricted fit limits
+                Logger('Standard residuals not yet implemented with restricted fit limits', 'FATAL')
             data_values = self._data_handler_.get_binned_data_from_unbinned_data()
             variances = data_values # poissonian errors
 
@@ -1511,6 +1516,8 @@ class F2MassFitter:
                 chi2 += (data - model)**2/data_variance
             return chi2
 
+        if self._limits_ != [self._data_handler_.get_limits()]: # restricted fit limits
+            Logger('chi2 not yet implemented with restricted fit limits', 'FATAL')
         # for unbinned data
         data_values = self._data_handler_.get_binned_data_from_unbinned_data()
         # access model predicted values
