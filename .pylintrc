@@ -15,4 +15,5 @@ disable=useless-object-inheritance
 
 [DESIGN]
 max-args=10
+max-positional-arguments=8
 max-locals=100
