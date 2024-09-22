@@ -189,11 +189,11 @@ class F2MassFitter:
         self._total_pdf_binned_ = None
         self._fit_result_ = None
         self._init_sgn_pars_ = [{} for _ in name_signal_pdf]
-        self._init_bkg_pars_ = [{} for _ in name_signal_pdf]
+        self._init_bkg_pars_ = [{} for _ in name_background_pdf]
         self._limits_sgn_pars_ = [{} for _ in name_signal_pdf]
-        self._limits_bkg_pars_ = [{} for _ in name_signal_pdf]
+        self._limits_bkg_pars_ = [{} for _ in name_background_pdf]
         self._fix_sgn_pars_ = [{} for _ in name_signal_pdf]
-        self._fix_bkg_pars_ = [{} for _ in name_signal_pdf]
+        self._fix_bkg_pars_ = [{} for _ in name_background_pdf]
         self._sgn_pars_ = [{} for _ in name_signal_pdf]
         self._bkg_pars_ = [{} for _ in name_background_pdf]
         if self._name_signal_pdf_[0] != 'nosignal' and self._name_background_pdf_[0] == 'nobkg':
