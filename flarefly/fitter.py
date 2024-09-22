@@ -1498,6 +1498,10 @@ class F2MassFitter:
 
         chi2 = 0
         norm_total_pdf = self.__get_total_pdf_norm()
+        limits = self._data_handler_.get_limits()
+        bins = self._data_handler_.get_nbins()
+        bin_sigma = (limits[1] - limits[0]) / bins
+        norm_total_pdf /= bin_sigma
 
         if self._data_handler_.get_is_binned():
             # for chi2 loss, just retrieve loss value in fit result
