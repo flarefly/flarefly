@@ -2156,7 +2156,7 @@ class F2MassFitter:
         for idx2, bkg in enumerate(self._background_pdf_):
 
             if idx2 == len(self._background_pdf_) - 1:
-                frac = 1. - sum(signal_fracs) - sum(refl_fracs)
+                frac = 1. - sum(signal_fracs) - sum(refl_fracs) - sum(bkg_fracs)
                 frac_err = np.sqrt(sum(list(err**2 for err in signal_err_fracs)))
             else:
                 frac = bkg_fracs[idx2]
