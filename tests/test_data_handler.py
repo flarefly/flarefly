@@ -3,6 +3,7 @@ Test for flarefly.DataHandler
 """
 
 import os
+os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1" # pylint: disable=wrong-import-position
 import zfit
 import numpy as np
 import pandas as pd

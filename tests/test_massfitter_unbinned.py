@@ -3,6 +3,7 @@ Test for unbinned fit with flarefly.F2MassFitter
 """
 
 import os
+os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1" # pylint: disable=wrong-import-position
 import zfit
 import numpy as np
 import matplotlib
