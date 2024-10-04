@@ -193,6 +193,10 @@ class F2MassFitter:
         self._limits_sgn_pars_ = [{} for _ in name_signal_pdf]
         self._limits_bkg_pars_ = [{} for _ in name_background_pdf]
         self._fix_sgn_pars_ = [{} for _ in name_signal_pdf]
+        self._fix_sgn_frac_to_sgn_ = [None for _ in name_signal_pdf]
+        self._fix_sgn_frac_to_bkg_ = [None for _ in name_signal_pdf]
+        self._fix_bkg_frac_to_sgn_ = [None for _ in name_background_pdf]
+        self._fix_bkg_frac_to_bkg_ = [None for _ in name_background_pdf]
         self._fix_bkg_pars_ = [{} for _ in name_background_pdf]
         self._sgn_pars_ = [{} for _ in name_signal_pdf]
         self._bkg_pars_ = [{} for _ in name_background_pdf]
@@ -889,6 +893,79 @@ class F2MassFitter:
             else:
                 Logger(f'Reflection pdf {pdf_name} not supported', 'FATAL')
 
+    def __get_constrained_frac_par(self, frac_par, value_par, refl=False):
+        """
+        Helper function to create a parameter constrained to a value
+        """
+
+        def par_func(par, factor):
+            return par * factor
+
+        if refl:
+            name_composed_param = f'{self._name_}_{value_par.name.replace("factor", "frac_refl")}'
+        else:
+            name_composed_param = f'{self._name_}_{value_par.name.replace("factor", "frac")}'
+
+        frac_par_constrained = zfit.ComposedParameter(name_composed_param,
+                                                      par_func,
+                                                      params=[frac_par, value_par],
+                                                      unpack_params=True
+                                                      )
+        return frac_par_constrained
+
+    def __set_frac_constraints(self):
+        for ipdf, _ in enumerate(self._signal_pdf_):
+            if self._fix_sgn_frac_to_sgn_[ipdf] is not None:
+                self._fracs_[ipdf] = self.__get_constrained_frac_par(
+                    self._fracs_[self._fix_sgn_frac_to_sgn_[ipdf][0]],
+                    self._fix_sgn_frac_to_sgn_[ipdf][1]
+                )
+            if self._fix_sgn_frac_to_bkg_[ipdf] is not None:
+                self._fracs_[ipdf] = self.__get_constrained_frac_par(
+                    self._fracs_[self._fix_sgn_frac_to_bkg_[ipdf][0] + 2 * len(self._signal_pdf_)],
+                    self._fix_sgn_frac_to_bkg_[ipdf][1]
+                )
+            # also set for reflections
+            if self._fix_sgn_frac_to_sgn_[ipdf] is not None:
+                fix_factor = zfit.Parameter(
+                    self._fix_sgn_frac_to_sgn_[ipdf][1].name.replace('factor', 'factor_refl'),
+                    float(
+                        self._fix_sgn_frac_to_sgn_[ipdf][1].value()
+                    ) * self._refl_over_sgn_[ipdf],
+                    floating=False
+                )
+                self._fracs_[ipdf + len(self._signal_pdf_)] = self.__get_constrained_frac_par(
+                    self._fracs_[self._fix_sgn_frac_to_sgn_[ipdf][0]],
+                    fix_factor,
+                    refl=True
+                )
+            if self._fix_sgn_frac_to_bkg_[ipdf] is not None:
+                fix_factor = zfit.Parameter(
+                    self._fix_sgn_frac_to_bkg_[ipdf][1].name.replace('factor', 'factor_refl'),
+                    float(
+                        self._fix_sgn_frac_to_bkg_[ipdf][1].value()
+                    ) * self._refl_over_sgn_[ipdf],
+                    floating=False
+                )
+                self._fracs_[ipdf + len(self._signal_pdf_)] = self.__get_constrained_frac_par(
+                    self._fracs_[self._fix_sgn_frac_to_bkg_[ipdf][0] + 2 * len(self._signal_pdf_)],
+                    fix_factor,
+                    refl=True
+                )
+
+        if len(self._background_pdf_) > 1:
+            for ipdf, _ in enumerate(self._background_pdf_[:-1]):
+                if self._fix_bkg_frac_to_sgn_[ipdf] is not None:
+                    self._fracs_[ipdf + 2 * len(self._signal_pdf_)] = self.__get_constrained_frac_par(
+                        self._fracs_[self._fix_bkg_frac_to_sgn_[ipdf][0]],
+                        self._fix_bkg_frac_to_sgn_[ipdf][1]
+                    )
+                if self._fix_bkg_frac_to_bkg_[ipdf] is not None:
+                    self._fracs_[ipdf + 2 * len(self._signal_pdf_)] = self.__get_constrained_frac_par(
+                        self._fracs_[self._fix_bkg_frac_to_bkg_[ipdf][0] + 2 * len(self._signal_pdf_)],
+                        self._fix_bkg_frac_to_bkg_[ipdf][1]
+                    )
+
     def __build_total_pdf(self):
         """
         Helper function to compose the total pdf
@@ -945,6 +1022,8 @@ class F2MassFitter:
                     self._limits_bkg_pars_[ipdf]['frac'][0],
                     self._limits_bkg_pars_[ipdf]['frac'][1],
                     floating=not self._fix_bkg_pars_[ipdf]['frac'])
+
+        self.__set_frac_constraints()
 
         self._total_pdf_ = zfit.pdf.SumPDF(self._signal_pdf_+self._refl_pdf_+self._background_pdf_,
                                            self._fracs_)
@@ -1008,14 +1087,31 @@ class F2MassFitter:
                 continue
             par_name = frac_par.name
             if f'{self._name_}_frac_signal' in par_name:
-                signal_fracs.append(self._fit_result_.params[par_name]['value'])
-                signal_err_fracs.append(self._fit_result_.params[par_name]['hesse']['error'])
-                isgn = int(par_name.split(sep=f'{self._name_}_frac_signal')[-1])
+                if 'constrained' in par_name:
+                    split_par_name = par_name.split(sep='_constrained_to_')
+                    target_frac_name = split_par_name[0].replace(split_par_name[0].split('_')[-1], split_par_name[1])
+                    target_frac = self._fit_result_.params[target_frac_name]['value']
+                    target_err = self._fit_result_.params[target_frac_name]['hesse']['error']
+                    signal_fracs.append(target_frac * float(frac_par.params['param_1'].value()))
+                    signal_err_fracs.append(target_err * float(frac_par.params['param_1'].value()))
+                    isgn = int(split_par_name[0][-1])
+                else:
+                    signal_fracs.append(self._fit_result_.params[par_name]['value'])
+                    signal_err_fracs.append(self._fit_result_.params[par_name]['hesse']['error'])
+                    isgn = int(par_name.split(sep=f'{self._name_}_frac_signal')[-1])
                 refl_fracs.append(signal_fracs[-1] * self._refl_over_sgn_[isgn])
                 refl_err_fracs.append(signal_err_fracs[-1] * self._refl_over_sgn_[isgn])
             elif f'{self._name_}_frac_bkg' in par_name:
-                bkg_fracs.append(self._fit_result_.params[par_name]['value'])
-                bkg_err_fracs.append(self._fit_result_.params[par_name]['hesse']['error'])
+                if 'constrained' in par_name:
+                    split_par_name = par_name.split(sep='_constrained_to_')
+                    target_frac_name = split_par_name[0].replace(split_par_name[0].split('_')[-1], split_par_name[1])
+                    target_frac = self._fit_result_.params[target_frac_name]['value']
+                    target_err = self._fit_result_.params[target_frac_name]['hesse']['error']
+                    bkg_fracs.append(target_frac * float(frac_par.params['param_1'].value()))
+                    bkg_err_fracs.append(target_err * float(frac_par.params['param_1'].value()))
+                else:
+                    bkg_fracs.append(self._fit_result_.params[par_name]['value'])
+                    bkg_err_fracs.append(self._fit_result_.params[par_name]['hesse']['error'])
 
         if len(signal_fracs) == len(bkg_fracs) == len(refl_fracs) == 0:
             if len(self._background_pdf_) == 0:
@@ -1129,6 +1225,7 @@ class F2MassFitter:
             self._std_residuals_[ibin] = float((data - model)/np.sqrt(variance))
             self._std_residual_variances_[ibin] = float(variance/np.sqrt(variance))
 
+    # pylint: disable=too-many-nested-blocks
     def mass_zfit(self):
         """
         Perform a mass fit with the zfit library
@@ -1169,6 +1266,10 @@ class F2MassFitter:
             if self._fit_result_.hesse(method='hesse_np') == {}:
                 Logger('Impossible to compute hesse error', 'FATAL')
 
+        print("---------------------------------")
+        print(self._fracs_)
+        print("---------------------------------")
+
         norm = self._data_handler_.get_norm()
         if len(self._fracs_) == 0:
             self._rawyield_ = self._data_handler_.get_norm()
@@ -1176,20 +1277,40 @@ class F2MassFitter:
         else:
             for ipdf, _ in enumerate(self._signal_pdf_):
                 if len(self._background_pdf_) > 0 or ipdf < len(self._signal_pdf_) - 1:
+                    if self._fix_sgn_frac_to_sgn_[ipdf] is not None:
+                        idx_frac_pdf = self._fix_sgn_frac_to_sgn_[ipdf][0]
+                        factor = self._fix_sgn_frac_to_sgn_[ipdf][1].value()
+                    elif self._fix_sgn_frac_to_bkg_[ipdf] is not None:
+                        idx_frac_pdf = self._fix_sgn_frac_to_bkg_[ipdf][0]
+                        factor = self._fix_sgn_frac_to_bkg_[ipdf][1].value()
+                    else:
+                        idx_frac_pdf = ipdf
+                        factor = 1.
                     self._rawyield_[ipdf] = self._fit_result_.params[
-                        f'{self._name_}_frac_signal{ipdf}']['value'] * norm
+                        f'{self._name_}_frac_signal{idx_frac_pdf}']['value'] * factor * norm
                     self._rawyield_err_[ipdf] = self._fit_result_.params[
-                        f'{self._name_}_frac_signal{ipdf}']['hesse']['error'] * norm
+                        f'{self._name_}_frac_signal{idx_frac_pdf}']['hesse']['error'] * factor * norm
+
                 else:
                     frac, frac_err = 0., 0.
                     if len(self._signal_pdf_) > 1:
                         for ipdf2 in range(len(self._signal_pdf_)-1):
+                            if self._fix_sgn_frac_to_sgn_[ipdf] is not None:
+                                idx_frac_pdf = self._fix_sgn_frac_to_sgn_[ipdf][0]
+                                factor = self._fix_sgn_frac_to_sgn_[ipdf][1].value()
+                            elif self._fix_sgn_frac_to_bkg_[ipdf] is not None:
+                                idx_frac_pdf = self._fix_sgn_frac_to_bkg_[ipdf][0]
+                                factor = self._fix_sgn_frac_to_bkg_[ipdf][1].value()
+                            else:
+                                idx_frac_pdf = ipdf2
+                                factor = 1.
+
                             frac += self._fit_result_.params[
-                                f'{self._name_}_frac_signal{ipdf2}']['value']
+                                f'{self._name_}_frac_signal{idx_frac_pdf}']['value']
                             frac_err += np.sqrt(self._fit_result_.params[
-                                f'{self._name_}_frac_signal{ipdf2}']['hesse']['error'])
-                        self._rawyield_[ipdf] = frac * norm
-                        self._rawyield_err_[ipdf] = frac_err * norm
+                                f'{self._name_}_frac_signal{idx_frac_pdf}']['hesse']['error'])
+                        self._rawyield_[ipdf] = frac * factor * norm
+                        self._rawyield_err_[ipdf] = frac_err * factor * norm
                     else:
                         self._rawyield_[ipdf] = norm
                         self._rawyield_err_[ipdf] = np.sqrt(norm)
@@ -2360,6 +2481,129 @@ class F2MassFitter:
             self._limits_bkg_pars_[idx][par_name] = kwargs['limits']
         if 'fix' in kwargs:
             self._fix_bkg_pars_[idx][par_name] = kwargs['fix']
+
+    def __get_parameter_fix_frac(self, factor, name):
+        """
+        Get the parameter fix for the fraction
+
+        Parameters
+        -------------------------------------------------
+        idx_pdf: int
+            Index of the pdf
+        target_pdf: int
+            Index of the target pdf
+        factor: float
+            Factor to multiply the fraction parameter
+        """
+        return zfit.Parameter(name, factor, floating=False)
+
+    def __check_consistency_fix_frac(self, idx_pdf, target_pdf, idx_pdf_type, target_pdf_type):
+        """
+        Checks the consistency of fixing the fraction between PDFs.
+
+        Parameters
+        -------------------------------------------------
+        idx_pdf: int
+            The index of the PDF to check.
+        target_pdf: int
+            The target PDF to compare against.
+        idx_pdf_type: 'signal' or 'bkg'
+            The type of the PDF to check.
+        target_pdf_type: 'signal' or 'bkg'
+            The type of the target PDF to compare against.
+        """
+        if idx_pdf_type == target_pdf_type and idx_pdf == target_pdf:
+            Logger(
+                f'Index {idx_pdf} is the same as {target_pdf},'
+                'cannot constrain the fraction to itself',
+                'FATAL'
+            )
+        if target_pdf_type == 'signal' and target_pdf > len(self._signal_pdf_):
+            Logger(
+                f'Target signal index {target_pdf} is out of range',
+                'FATAL'
+            )
+        if target_pdf_type == 'bkg' and target_pdf > len(self._background_pdf_):
+            Logger(
+                f'Target background index {target_pdf} is out of range',
+                'FATAL'
+            )
+
+    def fix_signal_frac_to_signal_pdf(self, idx_pdf, target_pdf, factor=1):
+        """
+        Fix the frac parameter of a signal to the frac parameter of another signal
+
+        Parameters
+        -------------------------------------------------
+        idx_pdf: int
+            Index of the signal fraction to be fixed
+        target_pdf: int
+            Index of the signal fraction to be used as reference
+        factor: float
+            Factor to multiply the frac parameter of the target signal
+        """
+        self.__check_consistency_fix_frac(idx_pdf, target_pdf, 'signal', 'signal')
+        factor_par = self.__get_parameter_fix_frac(
+            factor, f'factor_signal{idx_pdf}_constrained_to_signal{target_pdf}'
+        )
+        self._fix_sgn_frac_to_sgn_[idx_pdf] = (target_pdf, factor_par)
+
+    def fix_signal_frac_to_bkg_pdf(self, idx_pdf, target_pdf, factor=1):
+        """
+        Fix the frac parameter of a signal to the frac parameter of a background
+
+        Parameters
+        -------------------------------------------------
+        idx_pdf: int
+            Index of the signal fraction to be fixed
+        target_pdf: int
+            Index of the background fraction to be used as reference
+        factor: float
+            Factor to multiply the frac parameter of the target background
+        """
+        self.__check_consistency_fix_frac(idx_pdf, target_pdf, 'signal', 'bkg')
+        factor_par = self.__get_parameter_fix_frac(
+            factor, f'factor_signal{idx_pdf}_constrained_to_bkg{target_pdf}'
+        )
+        self._fix_sgn_frac_to_bkg_[idx_pdf] = (target_pdf, factor_par)
+
+    def fix_bkg_frac_to_signal_pdf(self, idx_pdf, target_pdf, factor=1):
+        """
+        Fix the frac parameter of a background to the frac parameter of a signal
+
+        Parameters
+        -------------------------------------------------
+        idx_pdf: int
+            Index of the background fraction to be fixed
+        target_pdf: int
+            Index of the signal fraction to be used as reference
+        factor: float
+            Factor to multiply the frac parameter of the target signal
+        """
+        self.__check_consistency_fix_frac(idx_pdf, target_pdf, 'bkg', 'signal')
+        factor_par = self.__get_parameter_fix_frac(
+            factor, f'factor_bkg{idx_pdf}_constrained_to_signal{target_pdf}'
+        )
+        self._fix_bkg_frac_to_sgn_[idx_pdf] = (target_pdf, factor_par)
+
+    def fix_bkg_frac_to_bkg_pdf(self, idx_pdf, target_pdf, factor=1):
+        """
+        Fix the frac parameter of a background to the frac parameter of another background
+
+        Parameters
+        -------------------------------------------------
+        idx_pdf: int
+            Index of the background fraction to be fixed
+        target_pdf: int
+            Index of the background fraction to be used as reference
+        factor: float
+            Factor to multiply the frac parameter of the target background
+        """
+        self.__check_consistency_fix_frac(idx_pdf, target_pdf, 'bkg', 'bkg')
+        factor_par = self.__get_parameter_fix_frac(
+            factor, f'factor_bkg{idx_pdf}_constrained_to_bkg{target_pdf}'
+        )
+        self._fix_bkg_frac_to_bkg_[idx_pdf] = (target_pdf, factor_par)
 
     # pylint: disable=line-too-long
     def set_signal_template(self, idx, sample):
