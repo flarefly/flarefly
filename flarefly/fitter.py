@@ -928,11 +928,12 @@ class F2MassFitter:
                         ) * self._refl_over_sgn_[frac_fix_info['fixed_pdf_idx']],
                         floating=False
                     )
-                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + len(self._signal_pdf_)] = self.__get_constrained_frac_par(
-                        self._fracs_[frac_fix_info['target_pdf_idx']],
-                        fix_factor,
-                        refl=True
-                    )
+                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + len(self._signal_pdf_)] = \
+                        self.__get_constrained_frac_par(
+                            self._fracs_[frac_fix_info['target_pdf_idx']],
+                            fix_factor,
+                            refl=True
+                        )
                 else: # fix to background PDF
                     self._fracs_[frac_fix_info['fixed_pdf_idx']] = self.__get_constrained_frac_par(
                         self._fracs_[frac_fix_info['target_pdf_idx'] + 2 * len(self._signal_pdf_)],
@@ -946,22 +947,25 @@ class F2MassFitter:
                         ) * self._refl_over_sgn_[frac_fix_info['fixed_pdf_idx']],
                         floating=False
                     )
-                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + len(self._signal_pdf_)] = self.__get_constrained_frac_par(
-                        self._fracs_[frac_fix_info['target_pdf_idx'] + 2 * len(self._signal_pdf_)],
-                        fix_factor,
-                        refl=True
-                    )
+                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + len(self._signal_pdf_)] = \
+                        self.__get_constrained_frac_par(
+                            self._fracs_[frac_fix_info['target_pdf_idx'] + 2 * len(self._signal_pdf_)],
+                            fix_factor,
+                            refl=True
+                        )
             else: # fix background fraction
                 if frac_fix_info['target_pdf_type'] == 'signal':
-                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + 2 * len(self._signal_pdf_)] = self.__get_constrained_frac_par(
-                        self._fracs_[frac_fix_info['target_pdf_idx']],
-                        frac_fix_info['factor']
-                    )
+                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + 2 * len(self._signal_pdf_)] = \
+                        self.__get_constrained_frac_par(
+                            self._fracs_[frac_fix_info['target_pdf_idx']],
+                            frac_fix_info['factor']
+                        )
                 else: # fix to background PDF
-                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + 2 * len(self._signal_pdf_)] = self.__get_constrained_frac_par(
-                        self._fracs_[frac_fix_info['target_pdf_idx'] + 2 * len(self._signal_pdf_)],
-                        frac_fix_info['factor']
-                    )
+                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + 2 * len(self._signal_pdf_)] = \
+                        self.__get_constrained_frac_par(
+                            self._fracs_[frac_fix_info['target_pdf_idx'] + 2 * len(self._signal_pdf_)],
+                            frac_fix_info['factor']
+                        )
 
     def __build_total_pdf(self):
         """
@@ -1064,18 +1068,31 @@ class F2MassFitter:
             split_par_name = par_name.split(sep='_constrained_to_')
             target_frac_name = split_par_name[0].replace(split_par_name[0].split('_')[-1], split_par_name[1])
             # find the parameter containing target_frac_name
-            target_par_name, target_par = [(par.name, par) for par in self._fracs_ if target_frac_name in par.name][0]
+            target_par_name, target_par = [
+                (par.name, par) for par in self._fracs_ if target_frac_name in par.name
+            ][0]
 
             if 'constrained' in target_par_name:
                 frac_temp, err_temp, isgn = self.__get_frac_and_err(target_par_name, target_par)
-                return frac_temp * float(frac_par.params['param_1'].value()), err_temp * float(frac_par.params['param_1'].value()), isgn
+                return (
+                    frac_temp * float(frac_par.params['param_1'].value()),
+                    err_temp * float(frac_par.params['param_1'].value()),
+                    isgn
+                )
+            frac = self._fit_result_.params[target_frac_name]['value']
+            frac_err = self._fit_result_.params[target_frac_name]['hesse']['error']
 
-            return (self._fit_result_.params[target_frac_name]['value'] * float(frac_par.params['param_1'].value()),
-                self._fit_result_.params[target_frac_name]['hesse']['error'] * float(frac_par.params['param_1'].value()),
+            return (
+                frac * float(frac_par.params['param_1'].value()),
+                frac_err * float(frac_par.params['param_1'].value()),
                 int(split_par_name[0][-1])
             )
 
-        return self._fit_result_.params[par_name]['value'], self._fit_result_.params[par_name]['hesse']['error'], int(par_name.split(sep=f'{self._name_}_frac_signal')[-1])
+        return (
+            self._fit_result_.params[par_name]['value'],
+            self._fit_result_.params[par_name]['hesse']['error'],
+            int(par_name.split(sep=f'{self._name_}_frac_signal')[-1])
+        )
 
     def __get_all_fracs(self):
         """
@@ -1280,7 +1297,7 @@ class F2MassFitter:
                     idx_frac_pdf = ipdf
                     # if the fraction of the signal PDF is fixed to another PDF
                     # we take the frac of the target PDF and multiply by the corresponding factor
-                    for i, d in enumerate(self._fix_fracs_to_pdfs_):
+                    for d in self._fix_fracs_to_pdfs_:
                         if d["fixed_pdf_idx"] == ipdf and d["fixed_pdf_type"] == 'signal':
                             factor = d["factor"]
                             idx_frac_pdf = d["target_pdf_idx"]
@@ -1295,7 +1312,7 @@ class F2MassFitter:
                         for ipdf2 in range(len(self._signal_pdf_)-1):
                             factor = 1.
                             idx_frac_pdf = ipdf2
-                            for i, d in enumerate(self._fix_fracs_to_pdfs_):
+                            for d in self._fix_fracs_to_pdfs_:
                                 if d["fixed_pdf_idx"] == ipdf and d["fixed_pdf_type"] == 'bkg':
                                     factor = d["factor"]
                                     idx_frac_pdf = d["target_pdf_idx"]
