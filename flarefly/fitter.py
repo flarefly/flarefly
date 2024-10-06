@@ -1063,7 +1063,7 @@ class F2MassFitter:
         #TODO: implement me
         Logger('Prefit step to be implemented', 'WARNING')
 
-    def __get_frac_and_err(self, par_name, frac_par):
+    def __get_frac_and_err(self, par_name, frac_par, frac_type):
         if 'constrained' in par_name:
             split_par_name = par_name.split(sep='_constrained_to_')
             target_frac_name = split_par_name[0].replace(split_par_name[0].split('_')[-1], split_par_name[1])
@@ -1073,7 +1073,11 @@ class F2MassFitter:
             ][0]
 
             if 'constrained' in target_par_name:
-                frac_temp, err_temp, isgn = self.__get_frac_and_err(target_par_name, target_par)
+                if f'{self._name_}_frac_signal' in target_par_name:
+                    frac_type = 'signal'
+                else:
+                    frac_type = 'bkg'
+                frac_temp, err_temp, isgn = self.__get_frac_and_err(target_par_name, target_par, frac_type)
                 return (
                     frac_temp * float(frac_par.params['param_1'].value()),
                     err_temp * float(frac_par.params['param_1'].value()),
@@ -1091,7 +1095,7 @@ class F2MassFitter:
         return (
             self._fit_result_.params[par_name]['value'],
             self._fit_result_.params[par_name]['hesse']['error'],
-            int(par_name.split(sep=f'{self._name_}_frac_signal')[-1])
+            int(par_name.split(sep=f'{self._name_}_frac_{frac_type}')[-1])
         )
 
     def __get_all_fracs(self):
@@ -1119,13 +1123,13 @@ class F2MassFitter:
                 continue
             par_name = frac_par.name
             if f'{self._name_}_frac_signal' in par_name:
-                signal_frac, signal_err, isgn = self.__get_frac_and_err(par_name, frac_par)
+                signal_frac, signal_err, isgn = self.__get_frac_and_err(par_name, frac_par, 'signal')
                 signal_fracs.append(signal_frac)
                 signal_err_fracs.append(signal_err)
                 refl_fracs.append(signal_frac * self._refl_over_sgn_[isgn])
                 refl_err_fracs.append(signal_err * self._refl_over_sgn_[isgn])
             elif f'{self._name_}_frac_bkg' in par_name:
-                bkg_frac, bkg_err, isgn = self.__get_frac_and_err(par_name, frac_par)
+                bkg_frac, bkg_err, isgn = self.__get_frac_and_err(par_name, frac_par, 'bkg')
                 bkg_fracs.append(bkg_frac)
                 bkg_err_fracs.append(bkg_err)
 
