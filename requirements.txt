@@ -3,8 +3,9 @@ dutil
 numpy<1.25
 pandas>=2.2.0
 uproot>=5.0
-zfit>=0.20.2
+zfit>=0.22.0
 mplhep>=0.3.46
 matplotlib>=3.9
 particle>=0.23
 scipy>=1.13
+hepstats>=0.8.1

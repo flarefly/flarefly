@@ -89,7 +89,7 @@ SETUP = Setup(
     install_requires=[
         "psutil", "dutil", "prophet>=1.0.1", "numpy<1.25", "pandas>=2.2", "uproot>=5.0",
         "ipython>=7.16.1", "jedi>=0.17.2", "zfit>=0.20.2", "mplhep>=0.3.46", "matplotlib>=3.9",
-        "particle>=0.23", "scipy>=1.13"
+        "particle>=0.23", "scipy>=1.13", "hepstats>=0.8.1"
     ],
     python_requires=">=3.8",
 
