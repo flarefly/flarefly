@@ -12,6 +12,7 @@ import zfit
 import uproot
 from hist import Hist
 import mplhep
+from hepstats.splot import compute_sweights
 from particle import Particle
 from flarefly.utils import Logger
 import flarefly.custom_pdfs as cpdf
@@ -2393,6 +2394,60 @@ class F2MassFitter:
                 bkg[0]/sig_plus_bkg) * signal[1]**2 / signal[0]**2)
 
         return significance, significance_err
+
+    def get_sweights(self):
+        """
+        Calculate sWeights for signal and background components.
+
+        Returns:
+            dict: A dictionary containing sWeights for 'signal' and 'bkg' components.
+        """
+
+        signal_pdf_extended = []
+        refl_pdf_extended = []
+        bkg_pdf_extended = []
+
+        norm = self._data_handler_.get_norm()
+
+        signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
+        bkg_fracs.append(1-sum(bkg_fracs)-sum(signal_fracs)-sum(refl_fracs))
+
+        total_signal_yields = 0.
+        total_bkg_yields = 0.
+        for pdf, frac in zip(self._signal_pdf_, signal_fracs):
+            signal_pdf_extended.append(pdf.create_extended(frac * norm))
+            total_signal_yields += frac * norm
+        for pdf, frac in zip(self._refl_pdf_, refl_fracs):
+            refl_pdf_extended.append(pdf.create_extended(frac * norm))
+            total_signal_yields += frac * norm
+        for pdf, frac in zip(self._background_pdf_, bkg_fracs):
+            bkg_pdf_extended.append(pdf.create_extended(frac * norm))
+            total_bkg_yields += frac * norm
+
+        total_signal_yields_par = zfit.Parameter('signal_yield', total_signal_yields)
+        total_bkg_yields_par = zfit.Parameter('bkg_yield', total_bkg_yields)
+
+        if len(signal_pdf_extended + refl_pdf_extended) > 1:
+            signal_pdf_for_sweights = zfit.pdf.SumPDF(
+                signal_pdf_extended + refl_pdf_extended,
+                extended=total_signal_yields_par
+            )
+        else:
+            signal_pdf_for_sweights = signal_pdf_extended[0]
+
+        if len(bkg_pdf_extended) > 1:
+            bkg_pdf_for_sweights = zfit.pdf.SumPDF(
+                bkg_pdf_extended,
+                extended=total_bkg_yields_par
+            )
+        else:
+            bkg_pdf_for_sweights = bkg_pdf_extended[0]
+
+        total_pdf_for_sweights = zfit.pdf.SumPDF([signal_pdf_for_sweights, bkg_pdf_for_sweights])
+        sweights = compute_sweights(total_pdf_for_sweights, self._data_handler_.get_data())
+        sweights_labels = list(sweights.keys())
+
+        return {'signal': sweights[sweights_labels[0]], 'bkg': sweights[sweights_labels[1]]}
 
     def set_particle_mass(self, idx, **kwargs):
         """
