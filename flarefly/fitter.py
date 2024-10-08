@@ -912,9 +912,7 @@ class F2MassFitter:
         return frac_par_constrained
 
     def __set_frac_constraints(self):
-        print('self._fix_fracs_to_pdfs_', self._fix_fracs_to_pdfs_)
         for frac_fix_info in self._fix_fracs_to_pdfs_:
-            print('frac_fix_info', frac_fix_info)
             if frac_fix_info['fixed_pdf_type'] == 'signal':
                 if frac_fix_info['target_pdf_type'] == 'signal':
                     self._fracs_[frac_fix_info['fixed_pdf_idx']] = self.__get_constrained_frac_par(
@@ -1055,14 +1053,6 @@ class F2MassFitter:
 
         self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(zfit.pdf.SumPDF(
             self._signal_pdf_+self._refl_pdf_+self._background_pdf_, self._fracs_), obs)
-
-    def __prefit(self):
-        """
-        Helper function to perform a prefit to the sidebands
-        """
-        # pylint: disable=fixme
-        #TODO: implement me
-        Logger('Prefit step to be implemented', 'WARNING')
 
     def __get_frac_and_err(self, par_name, frac_par, frac_type):
         if 'constrained' in par_name:
@@ -1246,10 +1236,97 @@ class F2MassFitter:
             self._std_residuals_[ibin] = float((data - model)/np.sqrt(variance))
             self._std_residual_variances_[ibin] = float(variance/np.sqrt(variance))
 
+    def __prefit(self, excluded_regions):
+        """
+        Perform a prefit to the background distributions with the zfit library.
+        The expected signal regions must be provided.
+
+        Parameters
+        -------------------------------------------------
+        excluded_regions: list
+            List or list of lists with limits for the excluded regions
+
+        """
+
+        if self._name_background_pdf_[0] == "nobkg":
+            Logger('Prefit cannot be performed in case of no background, skip', 'WARNING')
+            return
+
+        if self._data_handler_.get_is_binned():
+            Logger('Prefit not yet implemented for binned fits, skip', 'WARNING')
+            return
+
+        if len(self._limits_) > 1:
+            Logger('Prefit not supported for fits on disjoint intervals, skip', 'WARNING')
+            return
+
+        obs = self._data_handler_.get_obs()
+
+        # we build the limits
+        if not isinstance(excluded_regions[0], list):
+            excluded_regions = [excluded_regions]
+
+        # check if excluded regions overlap
+        limits_sb = []
+        if excluded_regions[0][0] > self._limits_[0][0]:
+            limits_sb.append([self._limits_[0][0], excluded_regions[0][0]])
+        for iregion, region in enumerate(excluded_regions[:-1]):
+            if region[1] > self._limits_[0][0] and \
+                excluded_regions[iregion+1][0] < self._limits_[-1][-1] and \
+                    region[1] < excluded_regions[iregion+1][0]:
+                limits_sb.append([region[1], excluded_regions[iregion+1][0]])
+        if excluded_regions[-1][1] < self._limits_[-1][-1]:
+            limits_sb.append([excluded_regions[-1][1], self._limits_[-1][-1]])
+
+        if len(limits_sb) == 0:
+            Logger('Cannot perform prefit with the excluded regions set since no sidebands left, skip', 'WARNING')
+            return
+
+        fracs_bkg_prefit = []
+        for ipdf, _ in enumerate(self._background_pdf_):
+            fracs_bkg_prefit.append(zfit.Parameter(f'{self._name_}_frac_bkg{ipdf}_prefit', 0.1, 0., 1.))
+
+        prefit_background_pdf = None
+        if len(self._background_pdf_) > 1:
+            prefit_background_pdf = zfit.pdf.SumPDF(self._background_pdf_, fracs_bkg_prefit).to_truncated(
+                limits = limits_sb, obs = obs, norm = obs)
+        else:
+            prefit_background_pdf = self._background_pdf_[0].to_truncated(
+                limits = limits_sb, obs = obs, norm = obs)
+
+        prefit_loss = zfit.loss.UnbinnedNLL(model=prefit_background_pdf,
+                                            data=self._data_handler_.get_data())
+
+        Logger("Performing background only PREFIT", "INFO")
+        res_prefit = self._minimizer_.minimize(loss=prefit_loss)
+        Logger(res_prefit, 'RESULT')
+
+        # re-initialise the parameters from those obtained in the prefit
+        for par in res_prefit.params:
+            which_pdf = int(par.name[-1])
+            self._bkg_pars_[which_pdf][par.name].set_value(res_prefit.params[par.name]['value'])
+
+
     # pylint: disable=too-many-nested-blocks
-    def mass_zfit(self):
+    def mass_zfit(self, do_prefit=False, **kwargs):
         """
         Perform a mass fit with the zfit library
+
+        Parameters
+        -------------------------------------------------
+        do_prefit: bool
+            Flag to enable prefit to background only (supported for unbinned fits only)
+            The expected signal regions must be provided.
+
+        **kwargs: dict
+            Additional optional arguments:
+
+            - prefit_excluded_regions: list
+                List or list of lists with limits for the excluded regions
+
+            - prefit_exclude_nsigma:
+                Alternative argument to prefit_excluded_regions that excludes the regions around the signals,
+                using the initialised mean and sigma parameters
 
         Returns
         -------------------------------------------------
@@ -1267,8 +1344,32 @@ class F2MassFitter:
 
         self.__build_total_pdf()
         self.__build_total_pdf_binned()
-        # pylint: disable=fixme
-        self.__prefit() #TODO: implement me
+
+        # do prefit
+        if do_prefit:
+            skip_prefit = False
+            excluded_regions = []
+            exclude_signals_nsigma = kwargs.get('prefit_exclude_nsigma', None)
+            if exclude_signals_nsigma is not None:
+                for ipdf, pdf_name in enumerate(self._name_signal_pdf_):
+                    if pdf_name not in ['gaussian', 'cauchy', 'voigtian']:
+                        Logger(f"Sigma parameter not defined for {pdf_name}, "
+                               "cannot use nsigma for excluded regions in prefit", "Error")
+                        skip_prefit = True
+                    else:
+                        mass_name = 'm' if pdf_name in ['cauchy', 'voigtian'] else 'mu'
+                        mass = self._init_sgn_pars_[ipdf][mass_name]
+                        sigma = self._init_sgn_pars_[ipdf]['sigma']
+                        excluded_regions.append(
+                            [mass - exclude_signals_nsigma * sigma, mass + exclude_signals_nsigma * sigma])
+            else:
+                excluded_regions = kwargs.get('prefit_excluded_regions', None)
+                if excluded_regions is None:
+                    Logger("To perform the prefit, you should set the excluded regions, skip", "Error")
+                    skip_prefit = True
+
+            if not skip_prefit:
+                self.__prefit(excluded_regions)
 
         if self._data_handler_.get_is_binned():
             # chi2 loss
@@ -1280,16 +1381,13 @@ class F2MassFitter:
         else:
             loss = zfit.loss.UnbinnedNLL(model=self._total_pdf_, data=self._data_handler_.get_data())
 
+        Logger("Performing FIT", "INFO")
         self._fit_result_ = self._minimizer_.minimize(loss=loss)
         Logger(self._fit_result_, 'RESULT')
 
         if self._fit_result_.hesse() == {}:
             if self._fit_result_.hesse(method='hesse_np') == {}:
                 Logger('Impossible to compute hesse error', 'FATAL')
-
-        print("---------------------------------")
-        print(self._fracs_)
-        print("---------------------------------")
 
         norm = self._data_handler_.get_norm()
         if len(self._fracs_) == 0:

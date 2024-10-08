@@ -22,7 +22,7 @@ FITTER.append(F2MassFitter(DATA, name_signal_pdf=['gaussian'],
                            name_background_pdf=['expo'],
                            minuit_mode=1))
 FITTER[0].set_background_initpar(0, 'lam', 0.1, limits=[-10., 10.], fix=False)
-FITRES.append(FITTER[0].mass_zfit())
+FITRES.append(FITTER[0].mass_zfit(True, prefit_excluded_regions=[1.8, 1.95]))
 FIGS.append(FITTER[0].plot_mass_fit(figsize=(10, 10)))
 FITTER[0].dump_to_root("test.root")
 
@@ -43,10 +43,10 @@ FITTER.append(F2MassFitter(DATA2, name_signal_pdf=['gaussian', 'gaussian'],
                            minuit_mode=1))
 FITTER[2].set_particle_mass(0, mass=1.8)
 FITTER[2].set_particle_mass(1, mass=2.0)
-FITTER[2].set_signal_initpar(0, 'sigma', 0.05)
-FITTER[2].set_signal_initpar(1, 'sigma', 0.05)
+FITTER[2].set_signal_initpar(0, 'sigma', 0.01)
+FITTER[2].set_signal_initpar(1, 'sigma', 0.01)
 FITTER[2].fix_signal_frac_to_signal_pdf(1, 0, 2)
-FITRES.append(FITTER[2].mass_zfit())
+FITRES.append(FITTER[2].mass_zfit(True, prefit_exclude_nsigma=3.))
 FIGS.append(FITTER[2].plot_mass_fit(figsize=(10, 10)))
 
 def test_fitter():
