@@ -41,10 +41,10 @@ DATA2 = DataHandler(np.concatenate((DATASGN, DATASGN2, DATABKG), axis=0),
 FITTER.append(F2MassFitter(DATA2, name_signal_pdf=['gaussian', 'gaussian'],
                            name_background_pdf=['chebpol1'],
                            minuit_mode=1))
-FITTER[2].set_particle_mass(0, mass=1.8)
-FITTER[2].set_particle_mass(1, mass=2.0)
-FITTER[2].set_signal_initpar(0, 'sigma', 0.01)
-FITTER[2].set_signal_initpar(1, 'sigma', 0.01)
+FITTER[2].set_particle_mass(0, mass=1.85, limits=[1.84, 1.88])
+FITTER[2].set_particle_mass(1, mass=1.95, limits=[1.94, 1.98])
+FITTER[2].set_signal_initpar(0, 'sigma', 0.01, limits=[0.005, 0.03])
+FITTER[2].set_signal_initpar(1, 'sigma', 0.01, limits=[0.005, 0.03])
 FITTER[2].fix_signal_frac_to_signal_pdf(1, 0, 2)
 FITRES.append(FITTER[2].mass_zfit(True, prefit_exclude_nsigma=3.))
 FIGS.append(FITTER[2].plot_mass_fit(figsize=(10, 10)))
