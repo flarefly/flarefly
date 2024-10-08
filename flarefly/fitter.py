@@ -843,13 +843,13 @@ class F2MassFitter:
             if pdf_name is None: # by default we put a dummy pdf
                 low = zfit.Parameter(f'{self._name_}_low_refl{ipdf}',
                                      self._data_handler_.get_limits()[0],
-                                     self._data_handler_.get_limits()[0]*0.99,
-                                     self._data_handler_.get_limits()[0]*1.01,
+                                     self._data_handler_.get_limits()[0] - 0.01,
+                                     self._data_handler_.get_limits()[0] + 0.01,
                                      floating=False)
                 high = zfit.Parameter(f'{self._name_}_high_refl{ipdf}',
                                       self._data_handler_.get_limits()[1],
-                                      self._data_handler_.get_limits()[1]*0.99,
-                                      self._data_handler_.get_limits()[1]*1.01,
+                                      self._data_handler_.get_limits()[1] - 0.01,
+                                      self._data_handler_.get_limits()[1] + 0.01,
                                       floating=False)
                 self._refl_pdf_[ipdf] = zfit.pdf.Uniform(obs=obs, low=low, high=high)
             elif 'kde' in pdf_name:
