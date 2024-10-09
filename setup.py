@@ -87,7 +87,7 @@ SETUP = Setup(
     # installed. For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        "psutil", "dutil", "prophet>=1.0.1", "numpy<1.25", "pandas>=2.2", "uproot>=5.0",
+        "psutil", "dutil", "prophet>=1.0.1", "numpy<2.0.0", "pandas>=2.2", "uproot>=5.0",
         "ipython>=7.16.1", "jedi>=0.17.2", "zfit>=0.20.2", "mplhep>=0.3.46", "matplotlib>=3.9",
         "particle>=0.23", "scipy>=1.13", "hepstats>=0.8.1"
     ],
