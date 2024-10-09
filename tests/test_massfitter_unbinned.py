@@ -12,6 +12,7 @@ from flarefly.data_handler import DataHandler
 from flarefly.fitter import F2MassFitter
 
 LIMITS = [1.75, 2.1]
+np.random.seed(42)
 DATASGN = np.random.normal(1.865, 0.010, size=10000)
 DATASGN2 = np.random.normal(1.968, 0.010, size=20000)
 DATABKG = np.random.exponential(scale=0.1, size=30000) + LIMITS[0]
@@ -42,7 +43,7 @@ FITTER.append(F2MassFitter(DATANOBKG2,
                            name_signal_pdf=['gaussian', 'gaussian'],
                            name_background_pdf=['nobkg'],
                            minuit_mode=1,
-                           name="nobkg"))
+                           name="nobkg_2signals"))
 FITRES.append(FITTER[2].mass_zfit())
 FIGS.append(FITTER[2].plot_mass_fit(figsize=(10, 10)))
 
@@ -51,25 +52,27 @@ DATA2 = DataHandler(np.concatenate((DATASGN, DATASGN2, DATABKG), axis=0),
                     var_name=r'$M$ (GeV/$c^{2}$)', limits=LIMITS)
 FITTER.append(F2MassFitter(DATA2, name_signal_pdf=['gaussian', 'gaussian'],
                            name_background_pdf=['expo'],
-                           minuit_mode=1))
+                           minuit_mode=1,
+                           name="fix_frac"))
 FITTER[3].set_background_initpar(0, 'lam', -10, limits=[-15., -5.], fix=False)
 FITTER[3].set_particle_mass(0, mass=1.85, limits=[1.84, 1.88])
 FITTER[3].set_particle_mass(1, mass=1.95, limits=[1.94, 1.98])
 FITTER[3].set_signal_initpar(0, 'sigma', 0.01, limits=[0.005, 0.03])
 FITTER[3].set_signal_initpar(1, 'sigma', 0.01, limits=[0.005, 0.03])
 FITTER[3].fix_signal_frac_to_signal_pdf(1, 0, 2)
-FITRES.append(FITTER[3].mass_zfit(True, prefit_exclude_nsigma=3.))
+FITRES.append(FITTER[3].mass_zfit(True, prefit_exclude_nsigma=5.))
 FIGS.append(FITTER[3].plot_mass_fit(figsize=(10, 10)))
 
 # test truncated pdfs
 FITTER.append(F2MassFitter(DATA2, name_signal_pdf=['gaussian'],
                            name_background_pdf=['expo'],
                            limits=[[1.75, 1.92], [2.02, 2.1]],
-                           minuit_mode=1))
+                           minuit_mode=1,
+                           name="truncated"))
 FITTER[4].set_background_initpar(0, 'lam', -10, limits=[-15., -5.], fix=False)
 FITTER[4].set_particle_mass(0, mass=1.85, limits=[1.84, 1.88])
 FITTER[4].set_signal_initpar(0, 'sigma', 0.01, limits=[0.005, 0.03])
-FITRES.append(FITTER[4].mass_zfit(True, prefit_exclude_nsigma=3.))
+FITRES.append(FITTER[4].mass_zfit())
 FIGS.append(FITTER[4].plot_mass_fit(figsize=(10, 10)))
 
 def test_fitter():
