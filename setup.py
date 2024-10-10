@@ -56,7 +56,7 @@ SETUP = Setup(
     name="flarefly",
 
     # LAST-TAG is a placeholder. Automatically replaced at deploy time with the right tag
-    version="0.0.12",
+    version="0.0.13",
     description="FLexible And REliable Fitting LibrarY for particle physics analysis",
     url="https://github.com/flarefly/flarefly",
     author="flarefly-developers",
@@ -69,8 +69,6 @@ SETUP = Setup(
         "Intended Audience :: Developers",
         "Topic :: Scientific/Engineering :: Physics",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11"
@@ -91,7 +89,7 @@ SETUP = Setup(
         "ipython>=7.16.1", "jedi>=0.17.2", "zfit>=0.20.2", "mplhep>=0.3.46", "matplotlib>=3.9",
         "particle>=0.23", "scipy>=1.13", "hepstats>=0.8.1"
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.9",
 
     # List additional groups of dependencies here (e.g. development dependencies). You can install
     # these using the following syntax, for example:
