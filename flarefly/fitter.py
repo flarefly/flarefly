@@ -1464,6 +1464,9 @@ class F2MassFitter:
             - extra_info_loc: list
                 location of extra info (one for chi2 and one for other info)
 
+            - legend_loc: str
+                location of the legend
+
             - num: int
                 number of bins to plot pdfs converted into histograms
 
@@ -1483,7 +1486,8 @@ class F2MassFitter:
         mass_range = kwargs.get('extra_info_massrange', None)
         nhwhm = kwargs.get('extra_info_massnhwhm', None)
         nsigma = kwargs.get('extra_info_massnsigma', 3)
-        loc = kwargs.get('extra_info_loc', ['upper left', 'lower right'])
+        info_loc = kwargs.get('extra_info_loc', ['lower right', 'upper left'])
+        legend_loc = kwargs.get('legend_loc', 'best')
 
         mplhep.style.use(style)
 
@@ -1538,7 +1542,6 @@ class F2MassFitter:
         plt.xlim(limits[0], limits[1])
         plt.xlabel(axis_title)
         plt.ylabel(rf'counts / {(limits[1]-limits[0])/bins*1000:0.1f} MeV/$c^2$')
-        plt.legend(loc='best')
         if logy:
             plt.yscale('log')
             plt.ylim(min(total_func) * norm_total_pdf / 5, max(total_func) * norm_total_pdf * 5)
@@ -1550,7 +1553,7 @@ class F2MassFitter:
             chi2 = self.get_chi2()
             ndf = self.get_ndf()
             anchored_text_chi2 = AnchoredText(fr'$\chi^2 / \mathrm{{ndf}} =${chi2:.2f} / {ndf}',
-                                              loc=loc[0],
+                                              loc=info_loc[0],
                                               frameon=False)
             # signal and background info for all signals
             text = []
@@ -1598,10 +1601,12 @@ class F2MassFitter:
                     extra_info += fr'  Signif.$({nsigma}\sigma)=${signif:.1f} $\pm$ {signif_err:.1f}'
                 text.append(extra_info)
             concatenated_text = '\n'.join(text)
-            anchored_text_signal = AnchoredText(concatenated_text, loc=loc[1], frameon=False)
+            anchored_text_signal = AnchoredText(concatenated_text, loc=info_loc[1], frameon=False)
 
             axs.add_artist(anchored_text_chi2)
             axs.add_artist(anchored_text_signal)
+
+        plt.legend(loc=legend_loc)
 
         Logger('plot_mass_fit now returns a tuple (fig, axs) !', 'WARNING')
 
