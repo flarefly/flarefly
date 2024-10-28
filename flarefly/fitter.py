@@ -13,7 +13,7 @@ import uproot
 from hist import Hist
 import mplhep
 from hepstats.splot import compute_sweights
-from particle import Particle
+import pdg
 from flarefly.utils import Logger
 import flarefly.custom_pdfs as cpdf
 
@@ -248,6 +248,7 @@ class F2MassFitter:
 
         zfit.settings.advanced_warnings.all = False
         zfit.settings.changed_warnings.all = False
+        self.pdg_api = pdg.connect()
 
     # pylint: disable=too-many-branches, too-many-statements
     def __build_signal_pdfs(self, obs):
@@ -655,7 +656,7 @@ class F2MassFitter:
                 self._fix_sgn_pars_[ipdf].setdefault('powerthr', False)
                 self._fix_sgn_pars_[ipdf].setdefault('massthr', True)
                 self._limits_sgn_pars_[ipdf].setdefault('powerthr', [0, 1.e6])
-                self._init_sgn_pars_[ipdf].setdefault('massthr', Particle.from_pdgid(211).mass*1e-3)
+                self._init_sgn_pars_[ipdf].setdefault('massthr', self.pdg_api.get_particle_by_mcid(211).mass)
                 self._sgn_pars_[ipdf][f'{self._name_}_massthr_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_massthr_signal{ipdf}', self._init_sgn_pars_[ipdf]['massthr'],
                     self._limits_sgn_pars_[ipdf]['massthr'][0], self._limits_sgn_pars_[ipdf]['massthr'][1],
@@ -709,7 +710,8 @@ class F2MassFitter:
                               for deg in range(1, pol_degree + 1)]
                 self._background_pdf_[ipdf] = zfit.pdf.Chebyshev(obs=obs, coeffs=bkg_coeffs, coeff0=coeff0)
             elif 'powlaw' in pdf_name:
-                self._init_bkg_pars_[ipdf].setdefault('mass', Particle.from_pdgid(211).mass*1e-3) # pion mass as default
+                # pion mass as default
+                self._init_bkg_pars_[ipdf].setdefault('mass', self.pdg_api.get_particle_by_mcid(211).mass)
                 self._init_bkg_pars_[ipdf].setdefault('power', 1.)
                 self._limits_bkg_pars_[ipdf].setdefault('mass', [0., 1.e6])
                 self._limits_bkg_pars_[ipdf].setdefault('power', [-1.e6, 1.e6])
@@ -732,7 +734,8 @@ class F2MassFitter:
                     power=self._bkg_pars_[ipdf][f'{self._name_}_power_bkg{ipdf}']
                 )
             elif 'expopowext' in pdf_name:
-                self._init_bkg_pars_[ipdf].setdefault('mass', Particle.from_pdgid(211).mass*1e-3) # pion mass as default
+                # pion mass as default
+                self._init_bkg_pars_[ipdf].setdefault('mass', self.pdg_api.get_particle_by_mcid(211).mass)
                 self._init_bkg_pars_[ipdf].setdefault('c1', -0.1)
                 self._init_bkg_pars_[ipdf].setdefault('c2', 0.)
                 self._init_bkg_pars_[ipdf].setdefault('c3', 0.)
@@ -779,7 +782,8 @@ class F2MassFitter:
                     c3=self._bkg_pars_[ipdf][f'{self._name_}_c3_bkg{ipdf}']
                 )
             elif 'expopow' in pdf_name:
-                self._init_bkg_pars_[ipdf].setdefault('mass', Particle.from_pdgid(211).mass*1e-3) # pion mass as default
+                # pion mass as default
+                self._init_bkg_pars_[ipdf].setdefault('mass', self.pdg_api.get_particle_by_mcid(211).mass)
                 self._init_bkg_pars_[ipdf].setdefault('lam', 0.1)
                 self._limits_bkg_pars_[ipdf].setdefault('mass', [0., 1.e6])
                 self._limits_bkg_pars_[ipdf].setdefault('lam', [-1.e6, 1.e6])
@@ -2561,9 +2565,9 @@ class F2MassFitter:
         if 'mass' in kwargs:
             mass = kwargs['mass']
         elif 'pdg_id' in kwargs:
-            mass = Particle.from_pdgid(kwargs['pdg_id']).mass*1e-3
+            mass = self.pdg_api.get_particle_by_mcid(kwargs['pdg_id']).mass
         elif 'pdg_name' in kwargs:
-            mass = Particle.from_name(kwargs['pdg_name']).mass*1e-3
+            mass = self.pdg_api.get_particle_by_name(kwargs['pdg_name']).mass
         else:
             Logger(f'"mass", "pdg_id", and "pdg_name" not provided, mass value for signal {idx} will not be set',
                    'ERROR')
