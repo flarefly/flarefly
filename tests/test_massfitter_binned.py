@@ -8,9 +8,11 @@ import zfit
 import uproot
 import numpy as np
 import matplotlib
-from particle import Particle
+import pdg
 from flarefly.data_handler import DataHandler
 from flarefly.fitter import F2MassFitter
+
+pdg_api = pdg.connect()
 
 FITTERBINNEDDPLUS, FITTERBINNEDDSTAR, FITTERBINNEDD0, FITRES, FIG, RAWYHIST, RAWYIN = ([] for _ in range(7))
 SGNPDFSDPLUS = ["gaussian", "crystalball", "doublegaus", "doublecb", "genercrystalball"]
@@ -68,7 +70,7 @@ for bkg_pdf in BKGPDFSDPLUS:
 # test also bkg functions for D*
 INFILEDSTAR = os.path.join(os.getcwd(), "tests/histos_dstar.root")
 DATABINNEDDSTAR = DataHandler(INFILEDSTAR, var_name=r"$M_\mathrm{K\pi\pi}-M_\mathrm{K\pi}$ (GeV/$c^{2}$)",
-                              histoname="hMass_40_60", limits=[Particle.from_pdgid(211).mass*1e-3, 0.155], rebin=4,
+                              histoname="hMass_40_60", limits=[pdg_api.get_particle_by_mcid(211).mass, 0.155], rebin=4,
                               tol=1.e-3)
 for bkg_pdf in BKGPDFSDSTAR:
     for sgn_pdf in SGNPDFSDSTAR:
