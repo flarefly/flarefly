@@ -3,7 +3,7 @@ Test for binned fit with flarefly.F2MassFitter
 """
 
 import os
-os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1" # pylint: disable=wrong-import-position
+os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1"  # pylint: disable=wrong-import-position
 import zfit
 import uproot
 import numpy as np
@@ -74,15 +74,17 @@ DATABINNEDDSTAR = DataHandler(INFILEDSTAR, var_name=r"$M_\mathrm{K\pi\pi}-M_\mat
                               tol=1.e-3)
 for bkg_pdf in BKGPDFSDSTAR:
     for sgn_pdf in SGNPDFSDSTAR:
-        FITTERBINNEDDSTAR.append(F2MassFitter(DATABINNEDDSTAR,
-                                        name_signal_pdf=[sgn_pdf],
-                                        name_background_pdf=[bkg_pdf],
-                                        name=f"dstar_{bkg_pdf}_{sgn_pdf}"))
+        FITTERBINNEDDSTAR.append(F2MassFitter(
+            DATABINNEDDSTAR,
+            name_signal_pdf=[sgn_pdf],
+            name_background_pdf=[bkg_pdf],
+            name=f"dstar_{bkg_pdf}_{sgn_pdf}"
+        ))
         FITTERBINNEDDSTAR[-1].set_particle_mass(0, mass=0.1455, fix=True)
         if sgn_pdf in ["gaussian", "voigtian"]:
             FITTERBINNEDDSTAR[-1].set_signal_initpar(0, "sigma", 0.0007, limits=[0.0001, 0.0015])
         elif sgn_pdf == "voigtian":
-            FITTERBINNEDDSTAR[-1].set_signal_initpar(0, "gamma", 70.e-6) # 70 keV
+            FITTERBINNEDDSTAR[-1].set_signal_initpar(0, "gamma", 70.e-6)  # 70 keV
         FITRES.append(FITTERBINNEDDSTAR[-1].mass_zfit())
         if FITRES[-1].converged:
             FIG.append(FITTERBINNEDDSTAR[-1].plot_mass_fit(style="ATLAS"))
@@ -123,11 +125,12 @@ for bkg_pdf in BKGPDFSD0:
         if FITRES[-1].converged:
             FIG.append(FITTERBINNEDD0[-1].plot_mass_fit(style="ATLAS"))
             RAWYHIST.append(uproot.open(INFILED0)["hSignal"].to_numpy())
-            RAWYIN.append(RAWYHIST[-1][0][2]) # we do not have it, to be fixed
+            RAWYIN.append(RAWYHIST[-1][0][2])  # we do not have it, to be fixed
         else:
             FIG.append(None)
             RAWYHIST.append(None)
             RAWYIN.append(None)
+
 
 def test_fitter():
     """
@@ -136,6 +139,7 @@ def test_fitter():
     for fitres in FITRES:
         assert isinstance(fitres, zfit.minimizers.fitresult.FitResult)
 
+
 def test_fitter_result():
     """
     Test the fitter output
@@ -143,9 +147,10 @@ def test_fitter_result():
     for ifit, (fitterbinned, raw_in) in enumerate(zip(FITTERBINNEDDPLUS+FITTERBINNEDDSTAR+FITTERBINNEDD0, RAWYIN)):
         rawy, rawy_err = fitterbinned.get_raw_yield()
         assert np.isclose(raw_in, rawy, atol=5*rawy_err)
-        if ifit == 0: # only test bin counting with Gaussian functions for simplicity
+        if ifit == 0:  # only test bin counting with Gaussian functions for simplicity
             rawy_bc, rawy_bc_err = fitterbinned.get_raw_yield_bincounting()
             assert np.isclose(raw_in, rawy_bc, atol=5*rawy_bc_err)
+
 
 def test_plot():
     """

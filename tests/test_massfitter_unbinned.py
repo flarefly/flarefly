@@ -3,7 +3,7 @@ Test for unbinned fit with flarefly.F2MassFitter
 """
 
 import os
-os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1" # pylint: disable=wrong-import-position
+os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1"  # pylint: disable=wrong-import-position
 import zfit
 import uproot
 import numpy as np
@@ -75,12 +75,14 @@ FITTER[4].set_signal_initpar(0, 'sigma', 0.01, limits=[0.005, 0.03])
 FITRES.append(FITTER[4].mass_zfit())
 FIGS.append(FITTER[4].plot_mass_fit(figsize=(10, 10)))
 
+
 def test_fitter():
     """
     Test the mass fitter
     """
     for res in FITRES:
         assert isinstance(res, zfit.minimizers.fitresult.FitResult)
+
 
 def test_fitter_result():
     """
@@ -96,13 +98,14 @@ def test_fitter_result():
             rawy2_bc, rawy2_bc_err = fit.get_raw_yield_bincounting(1)
             assert np.isclose(20000, rawy2, atol=3*rawy2_err)
             assert np.isclose(20000, rawy2_bc, atol=3*rawy2_bc_err)
-        if i_fit not in (1, 2): # test the cases with background
+        if i_fit not in (1, 2):  # test the cases with background
             bkg_fit, bkg_fit_err = fit.get_background(min=1.8, max=1.95)
             true_bkg = np.count_nonzero(DATABKG[(DATABKG > 1.8) & (DATABKG < 1.95)])
             assert np.isclose(true_bkg, bkg_fit, atol=5*bkg_fit_err)
         if i_fit != 4:
             chi2_ndf = fit.get_chi2_ndf()
             assert chi2_ndf < 2
+
 
 def test_plot():
     """
@@ -111,6 +114,7 @@ def test_plot():
     for fig in FIGS:
         assert isinstance(fig[0], matplotlib.figure.Figure)
         assert isinstance(fig[1], matplotlib.figure.Axes)
+
 
 def test_dump():
     """
