@@ -4,6 +4,7 @@ Simple module with a class to manage the data used in the analysis
 
 import sys
 
+
 # pylint: disable=too-few-public-methods
 class Logger:
     """

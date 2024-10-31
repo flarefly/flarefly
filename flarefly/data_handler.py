@@ -2,13 +2,14 @@
 Simple module with a class to manage the data used in the analysis
 """
 import os
-os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1" # pylint: disable=wrong-import-position
+os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1"  # pylint: disable=wrong-import-position
 import numpy as np
 import zfit
 import pandas as pd
 import uproot
 from hist import Hist
 from flarefly.utils import Logger
+
 
 # pylint: disable=too-many-instance-attributes,too-many-statements,too-many-branches
 class DataHandler:
@@ -68,7 +69,7 @@ class DataHandler:
                     if 'histoname' in kwargs:
                         hist = uproot.open(data)[kwargs['histoname']]
                         hist = hist.to_hist()
-                        hist = eval(f"hist[::{self._rebin_}j]") # pylint: disable=eval-used
+                        hist = eval(f"hist[::{self._rebin_}j]")  # pylint: disable=eval-used
                         hist_array = hist.to_numpy()
                         if limits is None:
                             self._binned_data_ = zfit.data.BinnedData.from_hist(hist)
@@ -133,7 +134,7 @@ class DataHandler:
             elif isinstance(data, uproot.behaviors.TH1.Histogram):
                 self.__format__ = 'uproot'
                 hist = data.to_hist()
-                hist = eval(f"hist[::{self._rebin_}j]") # pylint: disable=eval-used
+                hist = eval(f"hist[::{self._rebin_}j]")  # pylint: disable=eval-used
                 hist_array = hist.to_numpy()
                 if limits is None:
                     self._binned_data_ = zfit.data.BinnedData.from_hist(hist)

@@ -8,6 +8,7 @@ import tensorflow as tf
 # pylint: disable=too-many-ancestors
 # pylint: disable=arguments-differ
 
+
 class DoubleGauss(zfit.pdf.ZPDF):
     """
     PDF composed by the sum of two gaussians sharing the same mean parameter
@@ -94,6 +95,7 @@ class ExpoPow(zfit.pdf.ZPDF):
         mass = self.params['mass']
         lam = self.params['lam']
         return tf.sqrt(x - mass) * tf.exp(-lam * (x - mass))
+
 
 class ExpoPowExt(zfit.pdf.ZPDF):
     """

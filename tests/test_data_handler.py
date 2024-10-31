@@ -3,7 +3,7 @@ Test for flarefly.DataHandler
 """
 
 import os
-os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1" # pylint: disable=wrong-import-position
+os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1"  # pylint: disable=wrong-import-position
 import zfit
 import numpy as np
 import pandas as pd
@@ -16,11 +16,13 @@ DATA = DataHandler(DATANP, axis=0, var_name='x', limits=[1.75, 2.0])
 DATAUPROOT = uproot.open(os.path.join(os.getcwd(), "tests/histos_dplus.root"))["hMass_20_40"]
 DATABINNED = DataHandler(DATAUPROOT, axis=0, var_name='x', limits=[1.75, 2.0], rebin=2)
 
+
 def test_data():
     """
     Test the get_data() function
     """
     assert isinstance(DATA.get_data(), zfit.core.data.Data)
+
 
 def test_data_binned():
     """
@@ -28,11 +30,13 @@ def test_data_binned():
     """
     assert isinstance(DATABINNED.get_binned_data(), zfit.data.BinnedData)
 
+
 def test_obs():
     """
     Test the get_obs() function
     """
     assert isinstance(DATA.get_obs(), zfit.core.space.Space)
+
 
 def test_obs_binned():
     """
@@ -40,11 +44,13 @@ def test_obs_binned():
     """
     assert isinstance(DATABINNED.get_obs(), zfit.core.space.Space)
 
+
 def test_pandas_conversion():
     """
     Test the to_pandas() function
     """
     assert isinstance(DATA.to_pandas(), pd.DataFrame)
+
 
 def test_histo_conversion():
     """

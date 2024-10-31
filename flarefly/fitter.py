@@ -2,7 +2,7 @@
 Module containing the class used to perform mass fits
 """
 import os
-os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1" # pylint: disable=wrong-import-position
+os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1"  # pylint: disable=wrong-import-position
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
@@ -232,7 +232,7 @@ class F2MassFitter:
         self._sgn_cmap_ = ListedColormap(self._base_sgn_cmap_(np.linspace(0.4, 0.65, len(self._signal_pdf_))))
         n_bkg_colors = len(self._background_pdf_)
         if len(self._background_pdf_) == 0:
-            n_bkg_colors = 1 # to avoid crash
+            n_bkg_colors = 1  # to avoid crash
         self._base_bkg_cmap_ = plt.colormaps.get_cmap('Reds')
         self._bkg_cmap_ = ListedColormap(self._base_bkg_cmap_(np.linspace(0.8, 0.2, n_bkg_colors)))
         self._base_refl_cmap_ = plt.colormaps.get_cmap('summer')
@@ -650,7 +650,7 @@ class F2MassFitter:
                 Logger(f'Signal pdf {pdf_name} not supported', 'FATAL')
 
             if at_threshold:
-                 # pion mass as default
+                # pion mass as default
                 self._init_sgn_pars_[ipdf].setdefault('powerthr', 1.)
                 self._limits_sgn_pars_[ipdf].setdefault('massthr', [-1.e6, 1.e6])
                 self._fix_sgn_pars_[ipdf].setdefault('powerthr', False)
@@ -672,7 +672,6 @@ class F2MassFitter:
                 )
                 self._signal_pdf_[ipdf] = zfit.pdf.ProductPDF(
                     [self._signal_pdf_[ipdf], self._signalthr_pdf_[ipdf]], obs=obs)
-
 
     def __build_background_pdfs(self, obs):
         """
@@ -850,7 +849,7 @@ class F2MassFitter:
         """
 
         for ipdf, pdf_name in enumerate(self._name_refl_pdf_):
-            if pdf_name is None: # by default we put a dummy pdf
+            if pdf_name is None:  # by default we put a dummy pdf
                 low = zfit.Parameter(f'{self._name_}_low_refl{ipdf}',
                                      self._data_handler_.get_limits()[0],
                                      self._data_handler_.get_limits()[0] - 0.01,
@@ -941,7 +940,7 @@ class F2MassFitter:
                             fix_factor,
                             refl=True
                         )
-                else: # fix to background PDF
+                else:  # fix to background PDF
                     self._fracs_[frac_fix_info['fixed_pdf_idx']] = self.__get_constrained_frac_par(
                         self._fracs_[frac_fix_info['target_pdf_idx'] + 2 * len(self._signal_pdf_)],
                         frac_fix_info['factor']
@@ -960,14 +959,14 @@ class F2MassFitter:
                             fix_factor,
                             refl=True
                         )
-            else: # fix background fraction
+            else:  # fix background fraction
                 if frac_fix_info['target_pdf_type'] == 'signal':
                     self._fracs_[frac_fix_info['fixed_pdf_idx'] + 2 * len(self._signal_pdf_)] = \
                         self.__get_constrained_frac_par(
                             self._fracs_[frac_fix_info['target_pdf_idx']],
                             frac_fix_info['factor']
                         )
-                else: # fix to background PDF
+                else:  # fix to background PDF
                     self._fracs_[frac_fix_info['fixed_pdf_idx'] + 2 * len(self._signal_pdf_)] = \
                         self.__get_constrained_frac_par(
                             self._fracs_[frac_fix_info['target_pdf_idx'] + 2 * len(self._signal_pdf_)],
@@ -979,7 +978,7 @@ class F2MassFitter:
         Helper function to compose the total pdf
         """
 
-        if self._data_handler_.get_is_binned(): # we need unbinned pdfs to sum them
+        if self._data_handler_.get_is_binned():  # we need unbinned pdfs to sum them
             obs = self._data_handler_.get_unbinned_obs_from_binned_data()
         else:
             obs = self._data_handler_.get_obs()
@@ -997,10 +996,10 @@ class F2MassFitter:
 
         if len(self._signal_pdf_) + len(self._background_pdf_) == 1:
             if len(self._signal_pdf_) == 0:
-                self._total_pdf_ = self._background_pdf_[0].to_truncated(limits = self._limits_, obs = obs)
+                self._total_pdf_ = self._background_pdf_[0].to_truncated(limits=self._limits_, obs=obs)
                 return
             if len(self._background_pdf_) == 0:
-                self._total_pdf_ = self._signal_pdf_[0].to_truncated(limits = self._limits_, obs = obs)
+                self._total_pdf_ = self._signal_pdf_[0].to_truncated(limits=self._limits_, obs=obs)
                 return
 
         for ipdf, _ in enumerate(self._signal_pdf_):
@@ -1021,8 +1020,8 @@ class F2MassFitter:
                     return params['ros'] * params['s']
                 self._fracs_[ipdf + len(self._signal_pdf_)] = zfit.ComposedParameter(
                     f'{self._name_}_frac_refl{ipdf}',
-                    func_mult, params={'ros' : self._refl_over_sgn_[ipdf],
-                                       's' : self._fracs_[ipdf]}
+                    func_mult, params={'ros': self._refl_over_sgn_[ipdf],
+                                       's': self._fracs_[ipdf]}
                 )
 
         if len(self._background_pdf_) > 1:
@@ -1043,7 +1042,7 @@ class F2MassFitter:
                                            self._fracs_)
 
         if not self._data_handler_.get_is_binned():
-            self._total_pdf_ = self._total_pdf_.to_truncated(limits = self._limits_, obs = obs, norm = obs)
+            self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs, norm=obs)
 
     def __build_total_pdf_binned(self):
         """
@@ -1204,7 +1203,7 @@ class F2MassFitter:
             obs = self._data_handler_.get_obs()
         else:
             data_values = self._data_handler_.get_binned_data_from_unbinned_data()
-            self._raw_residual_variances_ = data_values # poissonian errors
+            self._raw_residual_variances_ = data_values  # poissonian errors
             obs = self._data_handler_.get_binned_obs_from_unbinned_data()
 
         # get background fractions
@@ -1230,7 +1229,6 @@ class F2MassFitter:
             for ibin, data in enumerate(data_values):
                 self._raw_residuals_[ibin] = float(data)
 
-
     def __get_std_residuals(self):
         """
         Get the standardized residuals
@@ -1248,10 +1246,10 @@ class F2MassFitter:
             data_values = binned_data.values()
             variances = binned_data.variances()
         else:
-            if self._limits_ != [self._data_handler_.get_limits()]: # restricted fit limits
+            if self._limits_ != [self._data_handler_.get_limits()]:  # restricted fit limits
                 Logger('Standard residuals not yet implemented with restricted fit limits', 'FATAL')
             data_values = self._data_handler_.get_binned_data_from_unbinned_data()
-            variances = data_values # poissonian errors
+            variances = data_values  # poissonian errors
 
         # access model predicted values for background
         self.__build_total_pdf_binned()
@@ -1315,10 +1313,10 @@ class F2MassFitter:
         prefit_background_pdf = None
         if len(self._background_pdf_) > 1:
             prefit_background_pdf = zfit.pdf.SumPDF(self._background_pdf_, fracs_bkg_prefit).to_truncated(
-                limits = limits_sb, obs = obs, norm = obs)
+                limits=limits_sb, obs=obs, norm=obs)
         else:
             prefit_background_pdf = self._background_pdf_[0].to_truncated(
-                limits = limits_sb, obs = obs, norm = obs)
+                limits=limits_sb, obs=obs, norm=obs)
 
         prefit_loss = zfit.loss.UnbinnedNLL(model=prefit_background_pdf,
                                             data=self._data_handler_.get_data())
@@ -1331,7 +1329,6 @@ class F2MassFitter:
         for par in res_prefit.params:
             which_pdf = int(par.name[-1])
             self._bkg_pars_[which_pdf][par.name].set_value(res_prefit.params[par.name]['value'])
-
 
     # pylint: disable=too-many-nested-blocks
     def mass_zfit(self, do_prefit=False, **kwargs):
@@ -1553,7 +1550,7 @@ class F2MassFitter:
             chi2 = self.get_chi2()
             ndf = self.get_ndf()
             anchored_text_chi2 = AnchoredText(fr'$\chi^2 / \mathrm{{ndf}} =${chi2:.2f} / {ndf}',
-                                              loc = loc[0],
+                                              loc=loc[0],
                                               frameon=False)
             # signal and background info for all signals
             text = []
@@ -1563,7 +1560,7 @@ class F2MassFitter:
                 gamma, gamma_unc = None, None
                 rawyield, rawyield_err = self.get_raw_yield(idx=idx)
                 if self._name_signal_pdf_[idx] in [
-                    'gausexptail', 'gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
+                        'gausexptail', 'gaussian', 'crystalball', 'doublecb', 'voigtian', 'hist']:
                     sigma, sigma_unc = self.get_sigma(idx)
                 if self._name_signal_pdf_[idx] in ['cauchy', 'voigtian']:
                     gamma, gamma_unc = self.get_signal_parameter(idx, 'gamma')
@@ -1601,7 +1598,7 @@ class F2MassFitter:
                     extra_info += fr'  Signif.$({nsigma}\sigma)=${signif:.1f} $\pm$ {signif_err:.1f}'
                 text.append(extra_info)
             concatenated_text = '\n'.join(text)
-            anchored_text_signal = AnchoredText(concatenated_text, loc = loc[1], frameon=False)
+            anchored_text_signal = AnchoredText(concatenated_text, loc=loc[1], frameon=False)
 
             axs.add_artist(anchored_text_chi2)
             axs.add_artist(anchored_text_signal)
@@ -1674,21 +1671,21 @@ class F2MassFitter:
         # first write backgrounds
         for ibkg, (bkg_func, bkg_frac) in enumerate(zip(bkg_funcs, bkg_fracs)):
             self.__write_pdf(histname=f'bkg_{ibkg}{suffix}',
-                           weight=bkg_func * norm * bkg_frac / self._ratio_truncated_,
-                           num=num, filename=filename, option='update')
+                             weight=bkg_func * norm * bkg_frac / self._ratio_truncated_,
+                             num=num, filename=filename, option='update')
         # then write signals
         for isgn, (frac, signal_func) in enumerate(zip(signal_funcs, signal_fracs)):
             self.__write_pdf(histname=f'signal_{isgn}{suffix}',
-                           weight=signal_func * norm * frac / self._ratio_truncated_,
-                           num=num, filename=filename, option='update')
+                             weight=signal_func * norm * frac / self._ratio_truncated_,
+                             num=num, filename=filename, option='update')
 
         # finally write reflected signals
         for irefl, (frac, refl_func) in enumerate(zip(refl_funcs, refl_fracs)):
             if self._name_refl_pdf_[irefl] is None:
                 continue
             self.__write_pdf(histname=f'refl_{irefl}{suffix}',
-                           weight=refl_func * norm * frac / self._ratio_truncated_,
-                           num=num, filename=filename, option='update')
+                             weight=refl_func * norm * frac / self._ratio_truncated_,
+                             num=num, filename=filename, option='update')
 
     @property
     def get_fit_result(self):
@@ -1714,7 +1711,7 @@ class F2MassFitter:
             The number of degrees of freedom
         """
         nbins = self._data_handler_.get_nbins()
-        nfreeparams =  len(self._fit_result_.params)
+        nfreeparams = len(self._fit_result_.params)
         self._ndf_ = nbins - nfreeparams - 1
         return self._ndf_
 
@@ -1748,7 +1745,7 @@ class F2MassFitter:
                 chi2 += (data - model)**2/data_variance
             return chi2
 
-        if self._limits_ != [self._data_handler_.get_limits()]: # restricted fit limits
+        if self._limits_ != [self._data_handler_.get_limits()]:  # restricted fit limits
             Logger('chi2 not yet implemented with restricted fit limits', 'FATAL')
         # for unbinned data
         data_values = self._data_handler_.get_binned_data_from_unbinned_data()
@@ -1816,15 +1813,15 @@ class F2MassFitter:
         plt.errorbar(
             self._data_handler_.get_bin_center(),
             self._raw_residuals_,
-            xerr = None,
-            yerr = np.sqrt(self._raw_residual_variances_),
-            linestyle = "None",
-            elinewidth = 1,
-            capsize = 0,
-            color = "black",
-            marker = "o",
-            markersize = 5,
-            label = "residuals"
+            xerr=None,
+            yerr=np.sqrt(self._raw_residual_variances_),
+            linestyle="None",
+            elinewidth=1,
+            capsize=0,
+            color="black",
+            marker="o",
+            markersize=5,
+            label="residuals"
         )
         bins = self._data_handler_.get_nbins()
         bin_sigma = (limits[1] - limits[0]) / bins
@@ -1858,10 +1855,9 @@ class F2MassFitter:
         # draw signal + reflected signals (if any)
         if is_there_refl:
             for isgn, (signal_func, refl_func, frac_sgn, frac_refl) in enumerate(
-                zip(signal_funcs, refl_funcs, signal_fracs, refl_fracs)):
+                    zip(signal_funcs, refl_funcs, signal_fracs, refl_fracs)):
                 plt.plot(x_plot, (signal_func * frac_sgn + frac_refl * refl_func) * norm / self._ratio_truncated_,
-                        color='xkcd:blue', label='total - bkg')
-
+                         color='xkcd:blue', label='total - bkg')
 
         plt.xlim(limits[0], limits[1])
         plt.xlabel(axis_title)
@@ -1911,15 +1907,15 @@ class F2MassFitter:
         # draw residuals
         plt.errorbar(bin_center,
                      self._std_residuals_,
-                     xerr = None,
-                     yerr = np.sqrt(self._std_residual_variances_),
-                     linestyle = "None",
-                     elinewidth = 1,
-                     capsize = 0,
-                     color = "black",
-                     marker = "o",
-                     markersize = 5,
-                     label = None)
+                     xerr=None,
+                     yerr=np.sqrt(self._std_residual_variances_),
+                     linestyle="None",
+                     elinewidth=1,
+                     capsize=0,
+                     color="black",
+                     marker="o",
+                     markersize=5,
+                     label=None)
 
         # line at 0
         plt.plot([bin_center[0], bin_center[-1]], [0., 0.], lw=2, color='xkcd:blue')
@@ -1952,7 +1948,6 @@ class F2MassFitter:
             The raw yield error obtained from the fit
         """
         return self._rawyield_[idx], self._rawyield_err_[idx]
-
 
     def get_raw_yield_bincounting(self, idx=0, **kwargs):
         """
@@ -2012,7 +2007,7 @@ class F2MassFitter:
 
         if use_nsigma:
             if self._name_signal_pdf_[idx] not in [
-                'gaussian', 'gausexptail', 'crystalball', 'doublecb', 'voigtian', 'hist']:
+                    'gaussian', 'gausexptail', 'crystalball', 'doublecb', 'voigtian', 'hist']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -2087,7 +2082,7 @@ class F2MassFitter:
             The sigma error obtained from the fit
         """
         if self._name_signal_pdf_[idx] not in [
-            'gaussian', 'gausexptail', 'crystalball', 'doublecb', 'voigtian', 'hist']:
+                'gaussian', 'gausexptail', 'crystalball', 'doublecb', 'voigtian', 'hist']:
             Logger(f'Sigma parameter not defined for {self._name_signal_pdf_[idx]} pdf!', 'ERROR')
             return 0., 0.
 
@@ -2273,7 +2268,7 @@ class F2MassFitter:
 
         if use_nsigma:
             if self._name_signal_pdf_[idx] not in [
-                'gaussian', 'gausexptail', 'crystalball', 'doublecb', 'voigtian', 'hist']:
+                    'gaussian', 'gausexptail', 'crystalball', 'doublecb', 'voigtian', 'hist']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -2367,7 +2362,7 @@ class F2MassFitter:
 
         if use_nsigma:
             if self._name_signal_pdf_[idx] not in [
-                'gaussian', 'gausexptail', 'crystalball', 'doublecb', 'voigtian', 'hist']:
+                    'gaussian', 'gausexptail', 'crystalball', 'doublecb', 'voigtian', 'hist']:
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -2603,7 +2598,6 @@ class F2MassFitter:
                    ' for more info check the Cauchy pdf defined here '
                    'https://zfit.readthedocs.io/en/latest/user_api/pdf/_generated/basic/zfit.pdf.Cauchy.html',
                    'WARNING')
-
 
         self._init_sgn_pars_[idx][par_name] = init_value
         if 'limits' in kwargs:
@@ -2877,7 +2871,7 @@ class F2MassFitter:
         limits_bkg = sample.get_limits()
         limits_data = self._data_handler_.get_limits()
         if not np.isclose(limits_bkg[0], limits_data[0], rtol=1e-05, atol=1e-08, equal_nan=False) or \
-            not np.isclose(limits_bkg[1], limits_data[1], rtol=1e-05, atol=1e-08, equal_nan=False):
+                not np.isclose(limits_bkg[1], limits_data[1], rtol=1e-05, atol=1e-08, equal_nan=False):
             Logger(f'The data and the background template {idx} have different limits:'
                    f' \n       -> background template: {limits_bkg}, data -> {limits_data}', 'FATAL')
 
