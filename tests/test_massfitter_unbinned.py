@@ -19,13 +19,15 @@ DATABKG = np.random.exponential(scale=0.1, size=30000) + LIMITS[0]
 DATA = DataHandler(np.concatenate((DATASGN, DATABKG), axis=0),
                    var_name=r'$M$ (GeV/$c^{2}$)', limits=LIMITS)
 
-FITRES, FITTER, FIGS = [], [], []
+FITRES, FITTER, FIGS, FIGSRAWRES, FIGSSTDRES = [], [], [], [], []
 FITTER.append(F2MassFitter(DATA, name_signal_pdf=['gaussian'],
                            name_background_pdf=['expo'],
                            minuit_mode=1))
 FITTER[0].set_background_initpar(0, 'lam', -10, limits=[-15., -5.], fix=False)
 FITRES.append(FITTER[0].mass_zfit(True, prefit_excluded_regions=[1.8, 1.95]))
 FIGS.append(FITTER[0].plot_mass_fit(figsize=(10, 10)))
+FIGSRAWRES.append(FITTER[0].plot_raw_residuals(figsize=(10, 10)))
+FIGSSTDRES.append(FITTER[0].plot_std_residuals(figsize=(10, 10)))
 FITTER[0].dump_to_root("test.root", num=100)
 
 # test also nobkg case
@@ -36,6 +38,8 @@ FITTER.append(F2MassFitter(DATANOBKG, name_signal_pdf=['gaussian'],
                            name="nobkg"))
 FITRES.append(FITTER[1].mass_zfit())
 FIGS.append(FITTER[1].plot_mass_fit(figsize=(10, 10)))
+FIGSRAWRES.append(FITTER[1].plot_raw_residuals(figsize=(10, 10)))
+FIGSSTDRES.append(FITTER[1].plot_std_residuals(figsize=(10, 10)))
 
 DATANOBKG2 = DataHandler(np.concatenate((DATASGN, DATASGN2), axis=0),
                          var_name=r'$M$ (GeV/$c^{2}$)', limits=LIMITS)
@@ -46,6 +50,8 @@ FITTER.append(F2MassFitter(DATANOBKG2,
                            name="nobkg_2signals"))
 FITRES.append(FITTER[2].mass_zfit())
 FIGS.append(FITTER[2].plot_mass_fit(figsize=(10, 10)))
+FIGSRAWRES.append(FITTER[2].plot_raw_residuals(figsize=(10, 10)))
+FIGSSTDRES.append(FITTER[2].plot_std_residuals(figsize=(10, 10)))
 
 # test fixing the relative pdf fractions
 DATA2 = DataHandler(np.concatenate((DATASGN, DATASGN2, DATABKG), axis=0),
@@ -62,6 +68,8 @@ FITTER[3].set_signal_initpar(1, 'sigma', 0.01, limits=[0.005, 0.03])
 FITTER[3].fix_signal_frac_to_signal_pdf(1, 0, 2)
 FITRES.append(FITTER[3].mass_zfit(True, prefit_exclude_nsigma=5.))
 FIGS.append(FITTER[3].plot_mass_fit(figsize=(10, 10)))
+FIGSRAWRES.append(FITTER[3].plot_raw_residuals(figsize=(10, 10)))
+FIGSSTDRES.append(FITTER[3].plot_std_residuals(figsize=(10, 10)))
 
 # test truncated pdfs
 FITTER.append(F2MassFitter(DATA2, name_signal_pdf=['gaussian'],
@@ -74,6 +82,8 @@ FITTER[4].set_particle_mass(0, mass=1.85, limits=[1.84, 1.88])
 FITTER[4].set_signal_initpar(0, 'sigma', 0.01, limits=[0.005, 0.03])
 FITRES.append(FITTER[4].mass_zfit())
 FIGS.append(FITTER[4].plot_mass_fit(figsize=(10, 10)))
+FIGSRAWRES.append(FITTER[4].plot_raw_residuals(figsize=(10, 10)))
+FIGSSTDRES.append(FITTER[4].plot_std_residuals(figsize=(10, 10)))
 
 
 def test_fitter():
@@ -114,6 +124,10 @@ def test_plot():
     for fig in FIGS:
         assert isinstance(fig[0], matplotlib.figure.Figure)
         assert isinstance(fig[1], matplotlib.figure.Axes)
+    for fig in FIGSRAWRES:
+        assert isinstance(fig, matplotlib.figure.Figure)
+    for fig in FIGSSTDRES:
+        assert isinstance(fig, matplotlib.figure.Figure)
 
 
 def test_dump():
