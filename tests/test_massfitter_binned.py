@@ -14,15 +14,11 @@ from flarefly.fitter import F2MassFitter
 
 pdg_api = pdg.connect()
 
-FITTERBINNEDDPLUS, FITTERBINNEDDSTAR, FITTERBINNEDD0, FITRES = ([] for _ in range(4))
-FITTERBINNEDDPLUSTRUNC, FITTERBINNEDDSTARTRUNC, FITTERBINNEDD0TRUNC = ([] for _ in range(3))
-RAWYHIST, BKGHIST, MEANHIST, SIGMAHIST, RAWYIN, BKGYIN, MEANIN, SIGMAIN = ([] for _ in range(8))
-FIG, FIGRAWRES, FIGSTDRES = ([] for _ in range(3))
+FITTERBINNEDDPLUS, FITTERBINNEDDSTAR, FITTERBINNEDD0, FITRES, FIG, RAWYHIST, RAWYIN = ([] for _ in range(7))
 SGNPDFSDPLUS = ["gaussian", "crystalball", "doublegaus", "doublecb", "genercrystalball"]
-BKGPDFSDPLUS = ["expo", "chebpol2"]
+BKGPDFSDPLUS = ["expo", "chebpol1"]
 SGNPDFSDSTAR = ["gaussian", "voigtian"]
 BKGPDFSDSTAR = ["expopow", "powlaw", "expopowext"]
-BKGPDFSDSTARTRUNC = ["expopow"]
 SGNPDFSD0 = ["gaussian", "gausexptail", "genergausexptail"]
 BKGPDFSD0 = ["expo"]
 
@@ -59,17 +55,11 @@ for bkg_pdf in BKGPDFSDPLUS:
         if bkg_pdf == "chebpol1":
             FITTERBINNEDDPLUS[-1].set_background_initpar(0, "c0", -4.6)
             FITTERBINNEDDPLUS[-1].set_background_initpar(0, "c1", 1.6)
-        elif bkg_pdf == "chebpol2":
-            FITTERBINNEDDPLUS[-1].set_background_initpar(0, "c0", -4.6)
-            FITTERBINNEDDPLUS[-1].set_background_initpar(0, "c1", 1.6)
-            FITTERBINNEDDPLUS[-1].set_background_initpar(0, "c2", 0.002)
         elif bkg_pdf == "expo":
             FITTERBINNEDDPLUS[-1].set_background_initpar(0, "lam", -1.46)
         FITRES.append(FITTERBINNEDDPLUS[-1].mass_zfit())
         if FITRES[-1].converged:
             FIG.append(FITTERBINNEDDPLUS[-1].plot_mass_fit(style="ATLAS"))
-            FIGRAWRES.append(FITTERBINNEDDPLUS[-1].plot_raw_residuals(style="ATLAS"))
-            FIGSTDRES.append(FITTERBINNEDDPLUS[-1].plot_std_residuals(style="ATLAS"))
             RAWYHIST.append(uproot.open(INFILEDPLUS)["hRawYields"].to_numpy())
             RAWYIN.append(RAWYHIST[-1][0][4])
         else:
@@ -82,7 +72,6 @@ INFILEDSTAR = os.path.join(os.getcwd(), "tests/histos_dstar.root")
 DATABINNEDDSTAR = DataHandler(INFILEDSTAR, var_name=r"$M_\mathrm{K\pi\pi}-M_\mathrm{K\pi}$ (GeV/$c^{2}$)",
                               histoname="hMass_40_60", limits=[pdg_api.get_particle_by_mcid(211).mass, 0.155], rebin=4,
                               tol=1.e-3)
-
 for bkg_pdf in BKGPDFSDSTAR:
     for sgn_pdf in SGNPDFSDSTAR:
         FITTERBINNEDDSTAR.append(F2MassFitter(
@@ -105,38 +94,6 @@ for bkg_pdf in BKGPDFSDSTAR:
             FIG.append(None)
             RAWYHIST.append(None)
             RAWYIN.append(None)
-
-for bkg_pdf in BKGPDFSDSTARTRUNC:
-    FITTERBINNEDDSTARTRUNC.append(F2MassFitter(DATABINNEDDSTAR,
-                                  name_signal_pdf=["nosignal"],
-                                  name_background_pdf=[bkg_pdf],
-                                  name=f"dstar_{bkg_pdf}_trunc",
-                                  limits=[[pdg_api.get_particle_by_mcid(211).mass, 0.143], [0.148,  0.155]],
-                                  chi2_loss=True, tol=1.e-3))
-    FITTERBINNEDDSTARTRUNC[-1].set_particle_mass(0, pdg_id=413, limits=[2.00, 2.02])
-    FITTERBINNEDDSTARTRUNC[-1].set_signal_initpar(0, "frac", 0.05, limits=[0.01, 0.1])
-    FITTERBINNEDDSTARTRUNC[-1].set_signal_initpar(0, "sigma", 0.015, limits=[0.01, 0.03])
-    if bkg_pdf == "chebpol1":
-        FITTERBINNEDDSTARTRUNC[-1].set_background_initpar(0, "c0", -4.6)
-        FITTERBINNEDDSTARTRUNC[-1].set_background_initpar(0, "c1", 1.6)
-    elif bkg_pdf == "expo":
-        FITTERBINNEDDSTARTRUNC[-1].set_background_initpar(0, "lam", -1.46)
-    FITRES.append(FITTERBINNEDDSTARTRUNC[-1].mass_zfit())
-    if FITRES[-1].converged:
-        FIG.append(FITTERBINNEDDSTARTRUNC[-1].plot_mass_fit(style="ATLAS"))
-        FIGRAWRES.append(FITTERBINNEDDSTARTRUNC[-1].plot_raw_residuals(style="ATLAS"))
-        FIGSTDRES.append(FITTERBINNEDDSTARTRUNC[-1].plot_std_residuals(style="ATLAS"))
-        BKGHIST.append(uproot.open(INFILEDSTAR)["hRawYieldsBkg"].to_numpy())
-        MEANHIST.append(uproot.open(INFILEDSTAR)["hRawYieldsMean"].to_numpy())
-        SIGMAHIST.append(uproot.open(INFILEDSTAR)["hRawYieldsSigma"].to_numpy())
-        BKGYIN.append(BKGHIST[-1][0][1])
-        MEANIN.append(MEANHIST[-1][0][1])
-        SIGMAIN.append(SIGMAHIST[-1][0][1])
-    else:
-        FIG.append(None)
-        BKGYIN.append(None)
-        MEANIN.append(None)
-        SIGMAIN.append(None)
 
 # test also D0 reflections
 INFILED0 = os.path.join(os.getcwd(), "tests/histos_dzero.root")
@@ -193,14 +150,6 @@ def test_fitter_result():
         if ifit == 0:  # only test bin counting with Gaussian functions for simplicity
             rawy_bc, rawy_bc_err = fitterbinned.get_raw_yield_bincounting()
             assert np.isclose(raw_in, rawy_bc, atol=5*rawy_bc_err)
-    for ifit, (fitterbinned, bkg_in, mean_in, sigma_in) in enumerate(zip(
-            FITTERBINNEDDPLUSTRUNC+FITTERBINNEDDSTARTRUNC+FITTERBINNEDD0TRUNC,
-            BKGYIN, MEANIN, SIGMAIN)):
-        min_for_bkg = mean_in - 3 * sigma_in
-        max_for_bkg = mean_in + 3 * sigma_in
-        # bkg err = 0 when only one function is used
-        bkg, _ = fitterbinned.get_background(min=min_for_bkg, max=max_for_bkg)
-        assert np.isclose(bkg_in, bkg, rtol=0.05)
 
 
 def test_plot():

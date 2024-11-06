@@ -17,7 +17,7 @@ class DataHandler:
     Class for storing and managing the data of (ROOT tree, TH1, numpy array, etc.)
     """
 
-    def __init__(self, data=None, var_name='xaxis', limits=None, use_zfit=True, **kwargs):
+    def __init__(self, data=None, var_name='', limits=None, use_zfit=True, **kwargs):
         """
         Initialize the DataHandler class
 
@@ -88,9 +88,9 @@ class DataHandler:
                             self._nbins_,
                             self._limits_[0],
                             self._limits_[1],
-                            name=self._var_name_
+                            name="xaxis"
                         )
-                        self._obs_ = zfit.Space(self._var_name_, binning=binning)
+                        self._obs_ = zfit.Space("xaxis", binning=binning)
                         self._binned_data_ = zfit.data.BinnedData.from_tensor(
                             self._obs_, hist.values()[idx_min:idx_max], hist.variances()[idx_min:idx_max])
                         self._isbinned_ = True
@@ -153,9 +153,9 @@ class DataHandler:
                     self._nbins_,
                     self._limits_[0],
                     self._limits_[1],
-                    name=self._var_name_
+                    name="xaxis"
                 )
-                self._obs_ = zfit.Space(self._var_name_, binning=binning)
+                self._obs_ = zfit.Space("xaxis", binning=binning)
                 self._binned_data_ = zfit.data.BinnedData.from_tensor(
                     self._obs_, hist.values()[idx_min:idx_max], hist.variances()[idx_min:idx_max])
                 self._isbinned_ = True
@@ -262,7 +262,7 @@ class DataHandler:
             The observation space for binned data converted to unbinned data
         """
         limits = self.get_limits()
-        obs = zfit.Space(self._var_name_, lower=limits[0], upper=limits[1])
+        obs = zfit.Space("xaxis", lower=limits[0], upper=limits[1])
 
         return obs
 
@@ -277,40 +277,6 @@ class DataHandler:
         """
 
         return self._norm_
-
-    def get_n_events(self, min_value=None, max_value=None):
-        """
-        Get the number of events in a given range
-
-        Parameters
-        ------------------------------------------------
-        min_value: float
-            Lower edge of the range
-
-        max_value: float
-            Upper edge of the range
-
-        Returns
-        -------------------------------------------------
-        n_events: float
-            The number of events in the given range
-        """
-        if min_value is None:
-            min_value = self.get_limits()[0]
-        if max_value is None:
-            max_value = self.get_limits()[1]
-
-        if not self.get_is_binned():
-            obs = self._obs_.with_limits([min_value, max_value])
-            return float(self._data_.with_obs(obs).n_events)
-
-        # Binned case
-        bin_edges = self.get_bin_edges()
-        idx_min = np.argmin(np.abs(np.array(bin_edges) - min_value))
-        idx_max = np.argmin(np.abs(np.array(bin_edges) - max_value))
-        min_value = bin_edges[idx_min]
-        max_value = bin_edges[idx_max]
-        return sum(self._binned_data_.values()[idx_min:idx_max])
 
     def get_bin_center(self):
         """
@@ -329,25 +295,6 @@ class DataHandler:
         for bin_ in binning:
             bin_center.append((bin_[0] + bin_[1])/2)
         return bin_center
-
-    def get_bin_edges(self):
-        """
-        Get the edges of the bins
-
-        Returns
-        -------------------------------------------------
-        binning: array
-            The bin edges
-        """
-        if self.get_is_binned():
-            binning = self.get_obs().binning[0]
-        else:
-            binning = self.get_binned_obs_from_unbinned_data().binning[0]
-        bin_edges = []
-        for bin_ in binning:
-            bin_edges.append(bin_[0])
-        bin_edges.append(binning[-1][1])
-        return bin_edges
 
     def get_nbins(self):
         """
