@@ -217,17 +217,30 @@ class F2MassFitter:
             mode=kwargs.get('minuit_mode', 0),
             tol=kwargs.get('tol', 0.001)
         )
-        if 'limits' in kwargs and self._data_handler_.get_is_binned():
-            Logger('Restriction of fit limits is not yet implemented in binned fits!', 'FATAL')
+        self._chi2_loss_ = kwargs.get('chi2_loss', False)
         if 'limits' in kwargs and 'nosignal' in self._name_signal_pdf_:
             Logger('Using signal PDFs while restricting fit limits!', 'WARNING')
         self._limits_ = kwargs.get(
             'limits', self._data_handler_.get_limits())
         if not isinstance(self._limits_[0], list):
             self._limits_ = [self._limits_]
+        if self._data_handler_.get_is_binned() and self._limits_ != [self._data_handler_.get_limits()]:
+            if not self._chi2_loss_:
+                Logger(
+                    'Restriction of fit limits only implemented with chi2 '
+                    'loss, changing loss function...', 'WARNING'
+                )
+                self._chi2_loss_ = True
+        # Enforce fit limits to be bin edges
+        if self._data_handler_.get_is_binned():
+            bin_edges = self._data_handler_.get_bin_edges()
+            for lim in self._limits_:
+                idx_min = np.argmin(np.abs(np.array(bin_edges) - lim[0]))
+                idx_max = np.argmin(np.abs(np.array(bin_edges) - lim[1]))
+                lim[0] = bin_edges[idx_min]
+                lim[1] = bin_edges[idx_max]
         self._name_ = kwargs.get('name', '')
         self._ndf_ = None
-        self._chi2_loss_ = kwargs.get('chi2_loss', False)
         self._base_sgn_cmap_ = plt.colormaps.get_cmap('viridis')
         self._sgn_cmap_ = ListedColormap(self._base_sgn_cmap_(np.linspace(0.4, 0.65, len(self._signal_pdf_))))
         n_bkg_colors = len(self._background_pdf_)
@@ -1041,8 +1054,7 @@ class F2MassFitter:
         self._total_pdf_ = zfit.pdf.SumPDF(self._signal_pdf_+self._refl_pdf_+self._background_pdf_,
                                            self._fracs_)
 
-        if not self._data_handler_.get_is_binned():
-            self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs, norm=obs)
+        self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs, norm=obs)
 
     def __build_total_pdf_binned(self):
         """
@@ -1056,16 +1068,7 @@ class F2MassFitter:
         else:
             obs = self._data_handler_.get_binned_obs_from_unbinned_data()
 
-        if len(self._signal_pdf_) + len(self._background_pdf_) == 1:
-            if len(self._signal_pdf_) == 0:
-                self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[0], obs)
-                return
-            if len(self._background_pdf_) == 0:
-                self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._signal_pdf_[0], obs)
-                return
-
-        self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(zfit.pdf.SumPDF(
-            self._signal_pdf_+self._refl_pdf_+self._background_pdf_, self._fracs_), obs)
+        self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._total_pdf_, obs)
 
     def __get_frac_and_err(self, par_name, frac_par, frac_type):
         if 'constrained' in par_name:
@@ -1160,14 +1163,9 @@ class F2MassFitter:
         """
         Get the normalization of the total pdf
         """
-        if self._data_handler_.get_is_binned():
-            self._total_pdf_norm_ = float(self._data_handler_.get_norm())
-            return
-
         norm_total_pdf = 0.
         for lim in self._limits_:
-            norm_obs = self._data_handler_.get_obs().with_limits(lim)
-            norm_total_pdf += float(self._data_handler_.get_data().with_obs(norm_obs).n_events)
+            norm_total_pdf += self._data_handler_.get_n_events(lim[0], lim[1])
         self._total_pdf_norm_ = norm_total_pdf
 
     def __get_ratio_truncated(self):
@@ -1175,10 +1173,10 @@ class F2MassFitter:
         Get the ratio of the sidebands integral over the total integral
         """
         signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
-        fracs = signal_fracs + refl_fracs + bkg_fracs
+        fracs = signal_fracs + bkg_fracs + refl_fracs
         limits = self._data_handler_.get_limits()
         sidebands_integral, total_integral = 0., 0.
-        for i_pdf, pdf in enumerate(self._signal_pdf_ + self._refl_pdf_ + self._background_pdf_):
+        for i_pdf, pdf in enumerate(self._signal_pdf_ + self._background_pdf_ + self._refl_pdf_):
             sidebands_integral += float(sum(pdf.integrate(lim) * fracs[i_pdf] for lim in self._limits_))
             total_integral += float(pdf.integrate(limits) * fracs[i_pdf])
 
@@ -1246,8 +1244,6 @@ class F2MassFitter:
             data_values = binned_data.values()
             variances = binned_data.variances()
         else:
-            if self._limits_ != [self._data_handler_.get_limits()]:  # restricted fit limits
-                Logger('Standard residuals not yet implemented with restricted fit limits', 'FATAL')
             data_values = self._data_handler_.get_binned_data_from_unbinned_data()
             variances = data_values  # poissonian errors
 
@@ -1274,10 +1270,6 @@ class F2MassFitter:
 
         if self._name_background_pdf_[0] == "nobkg":
             Logger('Prefit cannot be performed in case of no background, skip', 'WARNING')
-            return
-
-        if self._data_handler_.get_is_binned():
-            Logger('Prefit not yet implemented for binned fits, skip', 'WARNING')
             return
 
         if len(self._limits_) > 1:
@@ -1745,8 +1737,6 @@ class F2MassFitter:
                 chi2 += (data - model)**2/data_variance
             return chi2
 
-        if self._limits_ != [self._data_handler_.get_limits()]:  # restricted fit limits
-            Logger('chi2 not yet implemented with restricted fit limits', 'FATAL')
         # for unbinned data
         data_values = self._data_handler_.get_binned_data_from_unbinned_data()
         # access model predicted values
