@@ -225,7 +225,7 @@ class F2MassFitter:
             'limits', self._data_handler_.get_limits())
         if not isinstance(self._limits_[0], list):
             self._limits_ = [self._limits_]
-        self._name_ = kwargs.get('name', '')
+        self._name_ = kwargs.get('name', 'fitter')
         self._ndf_ = None
         self._chi2_loss_ = kwargs.get('chi2_loss', False)
         self._base_sgn_cmap_ = plt.colormaps.get_cmap('viridis')
@@ -2966,3 +2966,47 @@ class F2MassFitter:
         else:
             with uproot.update(filename) as ofile:
                 ofile[histname] = histo
+
+    def get_name_signal_pdf(self):
+        """
+        Return the signal pdf names
+        """
+        return self._name_signal_pdf_.copy()
+
+    def get_name_background_pdf(self):
+        """
+        Return the background pdf names
+        """
+        return self._name_background_pdf_.copy()
+
+    def get_name_refl_pdf(self):
+        """
+        Return the reflection pdf names
+        """
+        return self._name_refl_pdf_.copy()
+
+    def get_signal_pars(self):
+        """
+        Return the signal parameters
+        """
+        signal_pars = []
+        for i_sgn, sgn_par in enumerate(self._sgn_pars_):
+            signal_pars.append({})
+            for key, value in sgn_par.items():
+                par_name = key.split(f'{self._name_}_')[-1]
+                par_name = par_name.split(f'_signal{i_sgn}')[0]
+                signal_pars[-1][par_name] = value.numpy()
+        return signal_pars
+
+    def get_bkg_pars(self):
+        """
+        Return the background parameters
+        """
+        bkg_pars = []
+        for i_bkg, bkg_par in enumerate(self._bkg_pars_):
+            bkg_pars.append({})
+            for key, value in bkg_par.items():
+                par_name = key.split(f'{self._name_}_')[-1]
+                par_name = par_name.split(f'_bkg{i_bkg}')[0]
+                bkg_pars[-1][par_name] = value.numpy()
+        return bkg_pars
