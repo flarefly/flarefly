@@ -2984,6 +2984,7 @@ class F2MassFitter:
         """
         Return the signal parameters
         """
+        fracs = self.__get_all_fracs()
         signal_pars = []
         for i_sgn, sgn_par in enumerate(self._sgn_pars_):
             signal_pars.append({})
@@ -2991,12 +2992,14 @@ class F2MassFitter:
                 par_name = key.split(f'{self._name_}_')[-1]
                 par_name = par_name.split(f'_signal{i_sgn}')[0]
                 signal_pars[-1][par_name] = value.numpy()
+            signal_pars[-1]['frac'] = fracs[0][i_sgn]
         return signal_pars
 
     def get_bkg_pars(self):
         """
         Return the background parameters
         """
+        fracs = self.__get_all_fracs()
         bkg_pars = []
         for i_bkg, bkg_par in enumerate(self._bkg_pars_):
             bkg_pars.append({})
@@ -3004,4 +3007,5 @@ class F2MassFitter:
                 par_name = key.split(f'{self._name_}_')[-1]
                 par_name = par_name.split(f'_bkg{i_bkg}')[0]
                 bkg_pars[-1][par_name] = value.numpy()
+            bkg_pars[-1]['frac'] = fracs[1][i_bkg]
         return bkg_pars
