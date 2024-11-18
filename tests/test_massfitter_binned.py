@@ -53,8 +53,8 @@ for bkg_pdf in BKGPDFSDPLUS:
             FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "frac1", 0.99, limits=[0.97, 1.00])
         FITTERBINNEDDPLUS[-1].set_signal_initpar(1, "sigma", 0.015, limits=[0.01, 0.03])
         if bkg_pdf == "chebpol1":
-            FITTERBINNEDDPLUS[-1].set_background_initpar(0, "c0", -4.6, limits=[-1.e-6, 1.e6])
-            FITTERBINNEDDPLUS[-1].set_background_initpar(0, "c1", 1.6, limits=[-1.e-6, 1.e6])
+            FITTERBINNEDDPLUS[-1].set_background_initpar(0, "c0", -4.6, limits=[-1.e6, 1.e6])
+            FITTERBINNEDDPLUS[-1].set_background_initpar(0, "c1", 1.6, limits=[-1.e6, 1.e6])
         elif bkg_pdf == "expo":
             FITTERBINNEDDPLUS[-1].set_background_initpar(0, "lam", -1.46, limits=[-1.e6, 1.e6])
         FITRES.append(FITTERBINNEDDPLUS[-1].mass_zfit())
@@ -118,9 +118,9 @@ for bkg_pdf in BKGPDFSD0:
             FITTERBINNEDD0[-1].set_signal_initpar(0, "alphal", 1.e6, fix=True)
             FITTERBINNEDD0[-1].set_signal_initpar(0, "sigmar", 0.01, limits=[0.005, 0.03])
             FITTERBINNEDD0[-1].set_signal_initpar(0, "sigmal", 0.01, limits=[0.005, 0.03])
-        FITTERBINNEDD0[-1].set_background_initpar(0, "c0", 2., limits=[1.e-6, 1.e6])
-        FITTERBINNEDD0[-1].set_background_initpar(0, "c1", -0.293708, limits=[1.e-6, 1.e6])
-        FITTERBINNEDD0[-1].set_background_initpar(0, "c2", 0.02, limits=[1.e-6, 1.e6])
+        FITTERBINNEDD0[-1].set_background_initpar(0, "c0", 2., limits=[-1.e6, 1.e6])
+        FITTERBINNEDD0[-1].set_background_initpar(0, "c1", -0.293708, limits=[-1.e6, 1.e6])
+        FITTERBINNEDD0[-1].set_background_initpar(0, "c2", 0.02, limits=[-1.e6, 1.e6])
         FITRES.append(FITTERBINNEDD0[-1].mass_zfit())
         if FITRES[-1].converged:
             FIG.append(FITTERBINNEDD0[-1].plot_mass_fit(style="ATLAS"))
