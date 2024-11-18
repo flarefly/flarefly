@@ -53,8 +53,8 @@ for bkg_pdf in BKGPDFSDPLUS:
             FITTERBINNEDDPLUS[-1].set_signal_initpar(0, "frac1", 0.99, limits=[0.97, 1.00])
         FITTERBINNEDDPLUS[-1].set_signal_initpar(1, "sigma", 0.015, limits=[0.01, 0.03])
         if bkg_pdf == "chebpol1":
-            FITTERBINNEDDPLUS[-1].set_background_initpar(0, "c0", -4.6, limits=[1.e-6, 1.e6])
-            FITTERBINNEDDPLUS[-1].set_background_initpar(0, "c1", 1.6, limits=[1.e-6, 1.e6])
+            FITTERBINNEDDPLUS[-1].set_background_initpar(0, "c0", -4.6, limits=[-1.e-6, 1.e6])
+            FITTERBINNEDDPLUS[-1].set_background_initpar(0, "c1", 1.6, limits=[-1.e-6, 1.e6])
         elif bkg_pdf == "expo":
             FITTERBINNEDDPLUS[-1].set_background_initpar(0, "lam", -1.46, limits=[-1.e6, 1.e6])
         FITRES.append(FITTERBINNEDDPLUS[-1].mass_zfit())
