@@ -265,8 +265,8 @@ class F2MassFitter:
                 self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
                 self._fix_sgn_pars_[ipdf].setdefault('mu', False)
                 self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0., None])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., None])
                 self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
                     self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
@@ -289,9 +289,9 @@ class F2MassFitter:
                 self._fix_sgn_pars_[ipdf].setdefault('sigma1', False)
                 self._fix_sgn_pars_[ipdf].setdefault('sigma2', False)
                 self._fix_sgn_pars_[ipdf].setdefault('frac1', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma1', [0., 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma2', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, None])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma1', [0., None])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma2', [0., None])
                 self._limits_sgn_pars_[ipdf].setdefault('frac1', [0., 1.])
                 self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
@@ -325,10 +325,10 @@ class F2MassFitter:
                 self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
                 self._fix_sgn_pars_[ipdf].setdefault('alpha', False)
                 self._fix_sgn_pars_[ipdf].setdefault('n', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('alpha', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('n', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, None])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., None])
+                self._limits_sgn_pars_[ipdf].setdefault('alpha', [None, None])
+                self._limits_sgn_pars_[ipdf].setdefault('n', [0., None])
                 self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
                     self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
@@ -365,12 +365,12 @@ class F2MassFitter:
                 self._fix_sgn_pars_[ipdf].setdefault('nl', False)
                 self._fix_sgn_pars_[ipdf].setdefault('alphar', False)
                 self._fix_sgn_pars_[ipdf].setdefault('nr', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('alphal', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('nl', [0., 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('alphar', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('nr', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, None])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., None])
+                self._limits_sgn_pars_[ipdf].setdefault('alphal', [None, None])
+                self._limits_sgn_pars_[ipdf].setdefault('nl', [0., None])
+                self._limits_sgn_pars_[ipdf].setdefault('alphar', [None, None])
+                self._limits_sgn_pars_[ipdf].setdefault('nr', [0., None])
                 self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
                     self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
@@ -409,8 +409,8 @@ class F2MassFitter:
                 self._init_sgn_pars_[ipdf].setdefault('gamma', 0.010)
                 self._fix_sgn_pars_[ipdf].setdefault('m', False)
                 self._fix_sgn_pars_[ipdf].setdefault('gamma', False)
-                self._limits_sgn_pars_[ipdf].setdefault('m', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('gamma', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('m', [0, None])
+                self._limits_sgn_pars_[ipdf].setdefault('gamma', [0., None])
                 self._sgn_pars_[ipdf][f'{self._name_}_m_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_m_signal{ipdf}', self._init_sgn_pars_[ipdf]['m'],
                     self._limits_sgn_pars_[ipdf]['m'][0], self._limits_sgn_pars_[ipdf]['m'][1],
@@ -431,9 +431,9 @@ class F2MassFitter:
                 self._fix_sgn_pars_[ipdf].setdefault('m', False)
                 self._fix_sgn_pars_[ipdf].setdefault('gamma', False)
                 self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
-                self._limits_sgn_pars_[ipdf].setdefault('m', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('gamma', [0., 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('m', [0, None])
+                self._limits_sgn_pars_[ipdf].setdefault('gamma', [0., None])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., None])
                 self._sgn_pars_[ipdf][f'{self._name_}_m_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_m_signal{ipdf}', self._init_sgn_pars_[ipdf]['m'],
                     self._limits_sgn_pars_[ipdf]['m'][0], self._limits_sgn_pars_[ipdf]['m'][1],
@@ -459,9 +459,9 @@ class F2MassFitter:
                 self._fix_sgn_pars_[ipdf].setdefault('mu', False)
                 self._fix_sgn_pars_[ipdf].setdefault('alpha', False)
                 self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e10])
-                self._limits_sgn_pars_[ipdf].setdefault('alpha', [-1.e10, 1.e10])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, None])
+                self._limits_sgn_pars_[ipdf].setdefault('alpha', [None, None])
+                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., None])
                 self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
                     self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
@@ -491,11 +491,11 @@ class F2MassFitter:
                 self._fix_sgn_pars_[ipdf].setdefault('alphal', False)
                 self._fix_sgn_pars_[ipdf].setdefault('sigmar', False)
                 self._fix_sgn_pars_[ipdf].setdefault('sigmal', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('alphar', [-1.e10, 1.e10])
-                self._limits_sgn_pars_[ipdf].setdefault('alphal', [-1.e10, 1.e10])
-                self._limits_sgn_pars_[ipdf].setdefault('sigmar', [0., 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('sigmal', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, None])
+                self._limits_sgn_pars_[ipdf].setdefault('alphar', [None, None])
+                self._limits_sgn_pars_[ipdf].setdefault('alphal', [None, None])
+                self._limits_sgn_pars_[ipdf].setdefault('sigmar', [0., None])
+                self._limits_sgn_pars_[ipdf].setdefault('sigmal', [0., None])
                 self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
                     self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
@@ -531,9 +531,9 @@ class F2MassFitter:
                 self._fix_sgn_pars_[ipdf].setdefault('mu', False)
                 self._fix_sgn_pars_[ipdf].setdefault('sigmar', False)
                 self._fix_sgn_pars_[ipdf].setdefault('sigmal', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('sigmar', [0., 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('sigmal', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, None])
+                self._limits_sgn_pars_[ipdf].setdefault('sigmar', [0., None])
+                self._limits_sgn_pars_[ipdf].setdefault('sigmal', [0., None])
                 self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
                     self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
@@ -567,13 +567,13 @@ class F2MassFitter:
                 self._fix_sgn_pars_[ipdf].setdefault('nl', False)
                 self._fix_sgn_pars_[ipdf].setdefault('alphar', False)
                 self._fix_sgn_pars_[ipdf].setdefault('nr', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('sigmar', [0., 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('sigmal', [0., 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('alphal', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('nl', [0., 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('alphar', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('nr', [0., 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, None])
+                self._limits_sgn_pars_[ipdf].setdefault('sigmar', [0., None])
+                self._limits_sgn_pars_[ipdf].setdefault('sigmal', [0., None])
+                self._limits_sgn_pars_[ipdf].setdefault('alphal', [0, None])
+                self._limits_sgn_pars_[ipdf].setdefault('nl', [0., None])
+                self._limits_sgn_pars_[ipdf].setdefault('alphar', [0, None])
+                self._limits_sgn_pars_[ipdf].setdefault('nr', [0., None])
                 self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
                     self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
@@ -652,10 +652,10 @@ class F2MassFitter:
             if at_threshold:
                 # pion mass as default
                 self._init_sgn_pars_[ipdf].setdefault('powerthr', 1.)
-                self._limits_sgn_pars_[ipdf].setdefault('massthr', [-1.e6, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('massthr', [None, None])
                 self._fix_sgn_pars_[ipdf].setdefault('powerthr', False)
                 self._fix_sgn_pars_[ipdf].setdefault('massthr', True)
-                self._limits_sgn_pars_[ipdf].setdefault('powerthr', [0, 1.e6])
+                self._limits_sgn_pars_[ipdf].setdefault('powerthr', [None, None])
                 self._init_sgn_pars_[ipdf].setdefault('massthr', self.pdg_api.get_particle_by_mcid(211).mass)
                 self._sgn_pars_[ipdf][f'{self._name_}_massthr_signal{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_massthr_signal{ipdf}', self._init_sgn_pars_[ipdf]['massthr'],
@@ -684,7 +684,7 @@ class F2MassFitter:
                 break
             if pdf_name == 'expo':
                 self._init_bkg_pars_[ipdf].setdefault('lam', 0.1)
-                self._limits_bkg_pars_[ipdf].setdefault('lam', [-1.e6, 1.e6])
+                self._limits_bkg_pars_[ipdf].setdefault('lam', [None, None])
                 self._fix_bkg_pars_[ipdf].setdefault('lam', False)
                 self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}'] = zfit.Parameter(
                     f'{self._name_}_lam_bkg{ipdf}', self._init_bkg_pars_[ipdf]['lam'],
@@ -698,7 +698,7 @@ class F2MassFitter:
                 pol_degree = int(pdf_name.split('chebpol')[1])
                 for deg in range(pol_degree + 1):
                     self._init_bkg_pars_[ipdf].setdefault(f'c{deg}', 0.1)
-                    self._limits_bkg_pars_[ipdf].setdefault(f'c{deg}', [-1.e6, 1.e6])
+                    self._limits_bkg_pars_[ipdf].setdefault(f'c{deg}', [None, None])
                     self._fix_bkg_pars_[ipdf].setdefault(f'c{deg}', False)
                     self._bkg_pars_[ipdf][f'{self._name_}_c{deg}_bkg{ipdf}'] = zfit.Parameter(
                         f'{self._name_}_c{deg}_bkg{ipdf}', self._init_bkg_pars_[ipdf][f'c{deg}'],
@@ -712,8 +712,8 @@ class F2MassFitter:
                 # pion mass as default
                 self._init_bkg_pars_[ipdf].setdefault('mass', self.pdg_api.get_particle_by_mcid(211).mass)
                 self._init_bkg_pars_[ipdf].setdefault('power', 1.)
-                self._limits_bkg_pars_[ipdf].setdefault('mass', [0., 1.e6])
-                self._limits_bkg_pars_[ipdf].setdefault('power', [-1.e6, 1.e6])
+                self._limits_bkg_pars_[ipdf].setdefault('mass', [0., None])
+                self._limits_bkg_pars_[ipdf].setdefault('power', [None, None])
                 self._fix_bkg_pars_[ipdf].setdefault('mass', True)
                 self._fix_bkg_pars_[ipdf].setdefault('power', False)
                 if self._data_handler_.get_limits()[0] < self._init_bkg_pars_[ipdf]["mass"]:
@@ -739,11 +739,11 @@ class F2MassFitter:
                 self._init_bkg_pars_[ipdf].setdefault('c2', 0.)
                 self._init_bkg_pars_[ipdf].setdefault('c3', 0.)
                 self._init_bkg_pars_[ipdf].setdefault('power', 1./2)
-                self._limits_bkg_pars_[ipdf].setdefault('mass', [0., 1.e6])
-                self._limits_bkg_pars_[ipdf].setdefault('c1', [-1.e6, 1.e6])
-                self._limits_bkg_pars_[ipdf].setdefault('c2', [-1.e6, 1.e6])
-                self._limits_bkg_pars_[ipdf].setdefault('c3', [-1.e6, 1.e6])
-                self._limits_bkg_pars_[ipdf].setdefault('power', [0., 1.e6])
+                self._limits_bkg_pars_[ipdf].setdefault('mass', [0., None])
+                self._limits_bkg_pars_[ipdf].setdefault('c1', [None, None])
+                self._limits_bkg_pars_[ipdf].setdefault('c2', [None, None])
+                self._limits_bkg_pars_[ipdf].setdefault('c3', [None, None])
+                self._limits_bkg_pars_[ipdf].setdefault('power', [None, None])
                 self._fix_bkg_pars_[ipdf].setdefault('mass', True)
                 self._fix_bkg_pars_[ipdf].setdefault('c1', False)
                 self._fix_bkg_pars_[ipdf].setdefault('c2', False)
@@ -784,8 +784,8 @@ class F2MassFitter:
                 # pion mass as default
                 self._init_bkg_pars_[ipdf].setdefault('mass', self.pdg_api.get_particle_by_mcid(211).mass)
                 self._init_bkg_pars_[ipdf].setdefault('lam', 0.1)
-                self._limits_bkg_pars_[ipdf].setdefault('mass', [0., 1.e6])
-                self._limits_bkg_pars_[ipdf].setdefault('lam', [-1.e6, 1.e6])
+                self._limits_bkg_pars_[ipdf].setdefault('mass', [0., None])
+                self._limits_bkg_pars_[ipdf].setdefault('lam', [None, None])
                 self._fix_bkg_pars_[ipdf].setdefault('mass', True)
                 self._fix_bkg_pars_[ipdf].setdefault('lam', False)
                 if self._data_handler_.get_limits()[0] < self._init_bkg_pars_[ipdf]["mass"]:
