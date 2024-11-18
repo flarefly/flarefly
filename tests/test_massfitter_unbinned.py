@@ -44,6 +44,8 @@ FITTER.append(F2MassFitter(DATANOBKG2,
                            name_background_pdf=['nobkg'],
                            minuit_mode=1,
                            name="nobkg_2signals"))
+FITTER[2].set_signal_initpar(0, 'sigma', 0.01, limits=[0., 1.e6])
+FITTER[2].set_signal_initpar(1, 'sigma', 0.01, limits=[0., 1.e6])
 FITRES.append(FITTER[2].mass_zfit())
 FIGS.append(FITTER[2].plot_mass_fit(figsize=(10, 10)))
 
