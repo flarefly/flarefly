@@ -6,7 +6,7 @@
 ![](https://github.com/hipe4ml/flarefly/actions/workflows/pythonpackage.yml/badge.svg?branch=main)
 ![](https://github.com/hipe4ml/flarefly/actions/workflows/pythonpublish.yml/badge.svg)
 [![Test package](https://github.com/flarefly/flarefly/actions/workflows/pythonpackage.yml/badge.svg)](https://github.com/flarefly/flarefly/actions/workflows/pythonpackage.yml)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7579657.svg)](https://doi.org/10.5281/zenodo.7579657)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7579656.svg)](https://doi.org/10.5281/zenodo.7579656)
 
 # Introduction
 FLexible And REliable Fitting LibrarY is a library to perform fits to distributions for particle physics analysis
