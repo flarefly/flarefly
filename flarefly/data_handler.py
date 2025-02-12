@@ -47,128 +47,269 @@ class DataHandler:
             - treename: str
                 Name of the tree to be used in the fit in case of ROOT file
         """
+        # Default keyword arguments
         nbins = kwargs.get('nbins', 100)
         rebin = kwargs.get('rebin', 1)
 
         self._input_ = data
         self._var_name_ = var_name
-        self._limits_ = limits if limits is not None else [-1, -1]
+        self._limits_ = [None, None]
         self._use_zfit_ = use_zfit
         self._obs_ = None
         self._data_ = None
         self._binned_data_ = None
         self._nbins_ = nbins
-        self._isbinned_ = False
-        self._norm_ = 1.
+        self._isbinned_ = None
+        self._norm_ = 1.0
         self._rebin_ = rebin
+        self.__format__ = None
 
         if use_zfit:
-            if isinstance(data, str):
-                if data.endswith('.root'):
-                    self.__format__ = 'root'
-                    if 'histoname' in kwargs:
-                        hist = uproot.open(data)[kwargs['histoname']]
-                        hist = hist.to_hist()
-                        hist = eval(f"hist[::{self._rebin_}j]")  # pylint: disable=eval-used
-                        hist_array = hist.to_numpy()
-                        if limits is None:
-                            self._binned_data_ = zfit.data.BinnedData.from_hist(hist)
-                            self._nbins_ = len(hist_array[1]) - 1
-                            self._limits_[0] = hist_array[1][0]
-                            self._limits_[1] = hist_array[1][-1]
-                            idx_min = 0
-                            idx_max = len(hist_array[1])-1
-                        else:
-                            idx_min = np.argmin(np.abs(hist_array[1]-self._limits_[0]))
-                            idx_max = np.argmin(np.abs(hist_array[1]-self._limits_[1]))
-                            self._nbins_ = len(hist_array[1][idx_min:idx_max])
-                            self._limits_[0] = hist_array[1][idx_min]
-                            self._limits_[1] = hist_array[1][idx_max]
-                        binning = zfit.binned.RegularBinning(
-                            self._nbins_,
-                            self._limits_[0],
-                            self._limits_[1],
-                            name="xaxis"
-                        )
-                        self._obs_ = zfit.Space("xaxis", binning=binning)
-                        self._binned_data_ = zfit.data.BinnedData.from_tensor(
-                            self._obs_, hist.values()[idx_min:idx_max], hist.variances()[idx_min:idx_max])
-                        self._isbinned_ = True
-                    elif 'treename' in kwargs:
-                        input_df = uproot.open(data)[kwargs['treename']].arrays(library='pd')
-                        if limits is None:
-                            self._limits_[0] = min(input_df[self._var_name_])
-                            self._limits_[1] = max(input_df[self._var_name_])
-                        self._obs_ = zfit.Space(self._var_name_, lower=self._limits_[0], upper=self._limits_[1])
-                        self._data_ = zfit.data.Data.from_pandas(obs=self._obs_, df=input_df)
-                    else:
-                        Logger('"histoname" not specified. Please specify the '
-                               'name of the histogram to be used', 'FATAL')
-                elif data.endswith('.parquet') or data.endswith('.parquet.gzip'):
-                    self.__format__ = 'parquet'
-                    input_df = pd.read_parquet(data)
-                    if limits is None:
-                        self._limits_[0] = min(input_df[self._var_name_])
-                        self._limits_[1] = max(input_df[self._var_name_])
-                    self._obs_ = zfit.Space(self._var_name_, lower=self._limits_[0], upper=self._limits_[1])
-                    self._data_ = zfit.data.Data.from_pandas(obs=self._obs_, df=input_df)
-                else:
-                    Logger('Data format not supported yet. Please use .root or .parquet', 'FATAL')
-
-            elif isinstance(data, np.ndarray):
-                self.__format__ = 'numpy'
-                if limits is None:
-                    self._limits_[0] = min(data)
-                    self._limits_[1] = max(data)
-                self._obs_ = zfit.Space(self._var_name_, lower=self._limits_[0], upper=self._limits_[1])
-                self._data_ = zfit.data.Data.from_numpy(obs=self._obs_, array=data)
-
-            elif isinstance(data, pd.DataFrame):
-                self.__format__ = 'pandas'
-                if limits is None:
-                    self._limits_[0] = min(data[self._var_name_])
-                    self._limits_[1] = max(data[self._var_name_])
-                self._obs_ = zfit.Space(self._var_name_, lower=self._limits_[0], upper=self._limits_[1])
-                self._data_ = zfit.data.Data.from_pandas(obs=self._obs_, df=data)
-
-            elif isinstance(data, uproot.behaviors.TH1.Histogram):
-                self.__format__ = 'uproot'
-                hist = data.to_hist()
-                hist = eval(f"hist[::{self._rebin_}j]")  # pylint: disable=eval-used
-                hist_array = hist.to_numpy()
-                if limits is None:
-                    self._binned_data_ = zfit.data.BinnedData.from_hist(hist)
-                    self._nbins_ = len(hist_array[1]) - 1
-                    self._limits_[0] = hist_array[1][0]
-                    self._limits_[1] = hist_array[1][-1]
-                    idx_min = 0
-                    idx_max = len(hist_array[1])-1
-                else:
-                    idx_min = np.argmin(np.abs(hist_array[1]-self._limits_[0]))
-                    idx_max = np.argmin(np.abs(hist_array[1]-self._limits_[1]))
-                    self._nbins_ = len(hist_array[1][idx_min:idx_max])
-                    self._limits_[0] = hist_array[1][idx_min]
-                    self._limits_[1] = hist_array[1][idx_max]
-                binning = zfit.binned.RegularBinning(
-                    self._nbins_,
-                    self._limits_[0],
-                    self._limits_[1],
-                    name="xaxis"
-                )
-                self._obs_ = zfit.Space("xaxis", binning=binning)
-                self._binned_data_ = zfit.data.BinnedData.from_tensor(
-                    self._obs_, hist.values()[idx_min:idx_max], hist.variances()[idx_min:idx_max])
-                self._isbinned_ = True
-
-            else:
-                Logger('Data format not supported', 'FATAL')
-
+            data = self.__load_data(data, limits, **kwargs)
+            # Update normalization: binned data sums over bin values, unbinned counts entries.
             if self._isbinned_:
+                self._binned_data_ = data
                 self._norm_ = float(sum(self._binned_data_.values()))
             else:
+                self._data_ = data
                 self._norm_ = float(len(self._data_.to_pandas()))
         else:
             Logger('Non-zfit data not available', 'FATAL')
+
+    def __check_set_format(self, format_name):
+        """
+        Checks and sets the data format for the handler.
+
+        If the format is already set and does not match the provided format,
+        logs a fatal error. If the format is not set, assigns the provided format.
+
+        Parameters
+        ------------------------------------------------
+        format_name: str
+            The data format to check and set.
+        """
+        if self.__format__ is not None and self.__format__ != format_name:
+            Logger(f'Data format set to {self.__format__}, cannot use {format_name}', 'FATAL')
+        elif self.__format__ is None:
+            self.__format__ = format_name
+
+    def __check_set_limits_unbinned_obs_(self, data, limits):
+        """
+        Check and set the limits for unbinned observations.
+
+        This method updates the limits and observation space for unbinned data if the limits are not already set.
+        It sets the lower limit to the minimum value in the data and the upper limit to the maximum value in the data.
+        The observation space is then updated with these new limits.
+
+        Parameters
+        ------------------------------------------------
+        data: iterable
+            The unbinned data to determine the limits from.
+        limits: list
+            The limits provided by the user.
+        """
+        if None in self._limits_ and limits is not None:
+            self._limits_[0] = limits[0]
+            self._limits_[1] = limits[1]
+        elif None in self._limits_:
+            self._limits_[0] = min(data)
+            self._limits_[1] = max(data)
+        if self._obs_ is None:
+            self._obs_ = zfit.Space(self._var_name_, lower=self._limits_[0], upper=self._limits_[1])
+
+    def __check_binned_unbinned_(self, isbinned):
+        """
+        Checks and sets the binning status of the data.
+
+        This method ensures that the binning status of the data is consistent.
+        If the binning status has not been set, it sets it to the provided value.
+        If the binning status has already been set and the provided value is different,
+        it logs a fatal error indicating a data format mismatch.
+
+        Parameters
+        ------------------------------------------------
+        isbinned: bool
+            The binning status to check against the current status.
+        """
+        if self._isbinned_ is None:
+            self._isbinned_ = isbinned
+        elif self._isbinned_ is not None and self._isbinned_ != isbinned:
+            Logger('Data format mismatch', 'FATAL')
+
+    def __check_set_limits_binned_obs_(self, data, limits):
+        """
+        Check and set the limits and binning for binned observations.
+
+        This method checks if the limits for the binned observations are set. If not, it sets the number of bins,
+        the lower limit, and the upper limit based on the provided data. It then creates a regular binning and
+        observation space using zfit. If the limits are already set, it verifies that the bin edges match the
+        provided data. If the bin edges do not match, it logs a fatal error.
+
+        Parameters
+        ------------------------------------------------
+        data: tuple
+            A tuple where the second element is an array-like structure containing the bin edges.
+        limits: list
+            The limits provided by the user.
+        """
+        if None in self._limits_ and limits is not None:
+            idx_min = np.argmin(np.abs(data[1] - limits[0]))
+            idx_max = np.argmin(np.abs(data[1] - limits[1]))
+            self._limits_[0] = data[1][idx_min]
+            self._limits_[1] = data[1][idx_max]
+        elif None in self._limits_:
+            self._limits_[0] = data[1][0]
+            self._limits_[1] = data[1][-1]
+        if self._obs_ is None:
+            idx_min = np.argmin(np.abs(data[1] - self._limits_[0]))
+            idx_max = np.argmin(np.abs(data[1] - self._limits_[1]))
+            self._nbins_ = idx_max - idx_min
+            binning = zfit.binned.RegularBinning(
+                self._nbins_,
+                self._limits_[0],
+                self._limits_[1],
+                name="xaxis"
+            )
+            self._obs_ = zfit.Space("xaxis", binning=binning)
+        else:
+            idx_min = np.argmin(np.abs(data[1] - self._limits_[0]))
+            idx_max = np.argmin(np.abs(data[1] - self._limits_[1]))
+            binning = zfit.binned.RegularBinning(
+                self._nbins_,
+                self._limits_[0],
+                self._limits_[1],
+                name="xaxis"
+            )
+            bin_edges = []
+            for i in range(self._nbins_):
+                bin_edges.append(binning.bin(i)[0])
+            if not np.allclose(bin_edges, data[1][idx_min:idx_max]):
+                Logger('Bin edges do not match', 'FATAL')
+
+    def __load_data(self, data, limits, **kwargs):
+        """
+        Load data from various formats.
+
+        Parameters
+        ------------------------------------------------
+        data: str, np.ndarray, pd.DataFrame, or uproot.behaviors.TH1.Histogram
+            The data to be loaded. It can be a file path (str), a NumPy array,
+            a Pandas DataFrame, or an uproot Histogram.
+        limits: list
+            The limits provided by the user.
+        **kwargs:
+            Additional keyword arguments to be passed to the specific data loading functions.
+
+        Returns
+        -------------------------------------------------
+        data: zfit.core.data.Data or zfit.data.BinnedData:
+            The loaded data in the appropriate format.
+        """
+        if isinstance(data, str):
+            data = self.__load_from_file(data, limits, **kwargs)
+        elif isinstance(data, np.ndarray):
+            self.__check_set_format('numpy')
+            data = self.__load_from_numpy(data, limits)
+        elif isinstance(data, pd.DataFrame):
+            self.__check_set_format('pandas')
+            data = self.__load_from_pandas(data, limits)
+        elif isinstance(data, uproot.behaviors.TH1.Histogram):
+            self.__check_set_format('uproot')
+            data = self.__load_from_histogram(data, limits)
+        else:
+            Logger('Data format not supported', 'FATAL')
+
+        return data
+
+    def __load_from_file(self, filename, limits, **kwargs):
+        """
+        Load data from file-based sources (ROOT or parquet).
+
+        Parameters
+        ------------------------------------------------
+        filename: str
+            The path to the file to be loaded.
+        limits: list
+            The limits provided by the user.
+        **kwargs:
+            Additional keyword arguments to be passed to the specific data loading functions.
+        """
+        if filename.endswith('.root'):
+            if self.__format__ is None:
+                self.__check_set_format('root')
+            if 'histoname' in kwargs:
+                file = uproot.open(filename)
+                hist = file[kwargs['histoname']]
+                return self.__load_from_histogram(hist, limits)
+            if 'treename' in kwargs:
+                file = uproot.open(filename)
+                df = file[kwargs['treename']].arrays(library='pd')
+                return self.__load_from_pandas(df, limits)
+            Logger('"histoname" not specified. Please specify the name of the histogram to be used', 'FATAL')
+            return None
+        if filename.endswith('.parquet') or filename.endswith('.parquet.gzip'):
+            self.__check_set_format('parquet')
+            df = pd.read_parquet(filename)
+            return self.__load_from_pandas(df, limits)
+        Logger('Data format not supported yet. Please use .root or .parquet', 'FATAL')
+        return None
+
+    def __load_from_numpy(self, data, limits):
+        """Load a numpy array as unbinned data."""
+        self.__check_binned_unbinned_(False)
+        self.__check_set_limits_unbinned_obs_(data, limits)
+        return zfit.data.Data.from_numpy(obs=self._obs_, array=data)
+
+    def __load_from_pandas(self, df, limits):
+        """Load a pandas DataFrame as unbinned data."""
+        self.__check_binned_unbinned_(False)
+        self.__check_set_limits_unbinned_obs_(df, limits)
+        return zfit.data.Data.from_pandas(obs=self._obs_, df=df)
+
+    def __load_from_histogram(self, hist_obj, limits):
+        """
+        Load an uproot histogram object as binned data.
+        """
+
+        self.__check_binned_unbinned_(True)
+        hist = hist_obj.to_hist()
+        hist = eval(f"hist[::{self._rebin_}j]")  # pylint: disable=eval-used
+        hist_array = hist.to_numpy()
+
+        self.__check_set_limits_binned_obs_(hist_array, limits)
+        idx_min = np.argmin(np.abs(hist_array[1] - self._limits_[0]))
+        idx_max = np.argmin(np.abs(hist_array[1] - self._limits_[1]))
+
+        data = zfit.data.BinnedData.from_tensor(
+            self._obs_,
+            hist.values()[idx_min:idx_max],
+            hist.variances()[idx_min:idx_max]
+        )
+        return data
+
+    def add_data(self, data, **kwargs):
+        """
+        Add data to the existing dataset.
+
+        Parameters
+        ------------------------------------------------
+        data: str, np.ndarray, pd.DataFrame, or uproot.behaviors.TH1.Histogram
+            The data to be added.
+        **kwargs:
+            Additional keyword arguments to be passed to the specific data loading functions.
+        """
+        if "limits" in kwargs:
+            Logger('Limits not needed for adding data', 'FATAL')
+        data = self.__load_data(data, limits=None, **kwargs)
+
+        if self._isbinned_:
+            self._binned_data_ = zfit.data.concat(
+                [self._binned_data_.to_unbinned(), data.to_unbinned()]
+            ).to_binned(self._obs_)
+            self._norm_ = float(sum(self._binned_data_.values()))
+        else:
+            self._data_ = zfit.data.concat([self._data_, data])
+            self._norm_ = float(len(self._data_.to_pandas()))
 
     def get_data(self, input_data=False):
         """
