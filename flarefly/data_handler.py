@@ -238,12 +238,12 @@ class DataHandler:
             if self.__format__ is None:
                 self.__check_set_format('root')
             if 'histoname' in kwargs:
-                file = uproot.open(filename)
-                hist = file[kwargs['histoname']]
+                with uproot.open(filename, encoding="utf-8") as file:
+                    hist = file[kwargs['histoname']]
                 return self.__load_from_histogram(hist, limits)
             if 'treename' in kwargs:
-                file = uproot.open(filename)
-                df = file[kwargs['treename']].arrays(library='pd')
+                with uproot.open(filename, encoding="utf-8") as file:
+                    df = file[kwargs['treename']].arrays(library='pd')
                 return self.__load_from_pandas(df, limits)
             Logger('"histoname" not specified. Please specify the name of the histogram to be used', 'FATAL')
             return None
