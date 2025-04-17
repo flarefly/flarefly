@@ -88,6 +88,8 @@ for bkg_pdf in BKGPDFSDSTAR:
             FITTERBINNEDDSTAR[-1].set_signal_initpar(0, "sigma", 0.0007, limits=[0.0001, 0.0015])
         elif sgn_pdf == "voigtian":
             FITTERBINNEDDSTAR[-1].set_signal_initpar(0, "gamma", 70.e-6)  # 70 keV
+        if bkg_pdf == "powlaw":
+            FITTERBINNEDDSTAR[-1].set_background_initpar(0, "mass", 0.13957039, fix=True)
         FITRES.append(FITTERBINNEDDSTAR[-1].mass_zfit())
         if FITRES[-1].converged:
             FIG.append(FITTERBINNEDDSTAR[-1].plot_mass_fit(style="ATLAS"))

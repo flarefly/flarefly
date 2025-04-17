@@ -15,6 +15,7 @@ import mplhep
 from hepstats.splot import compute_sweights
 import pdg
 from flarefly.utils import Logger
+from flarefly.pdf_builder import PDFBuilder
 import flarefly.custom_pdfs as cpdf
 
 
@@ -264,462 +265,31 @@ class F2MassFitter:
             if pdf_name == 'nosignal':
                 Logger('Performing fit with no signal pdf', 'WARNING')
                 break
-            if pdf_name == 'gaussian':
-                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
-                self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
-                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
-                self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0., None])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., None])
-                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
-                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
-                self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma'],
-                    self._limits_sgn_pars_[ipdf]['sigma'][0], self._limits_sgn_pars_[ipdf]['sigma'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigma'])
-                self._signal_pdf_[ipdf] = zfit.pdf.Gauss(
-                    obs=obs,
-                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
-                    sigma=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}']
+            if 'kde' in pdf_name:
+                self._signal_pdf_[ipdf] = PDFBuilder.build_signal_kde(
+                    pdf_name,
+                    self._kde_signal_sample_[ipdf],
+                    self._name_,
+                    ipdf,
+                    self._kde_signal_option_[ipdf]
                 )
-            elif pdf_name == 'doublegaus':
-                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
-                self._init_sgn_pars_[ipdf].setdefault('sigma1', 0.010)
-                self._init_sgn_pars_[ipdf].setdefault('sigma2', 0.100)
-                self._init_sgn_pars_[ipdf].setdefault('frac1', 0.9)
-                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
-                self._fix_sgn_pars_[ipdf].setdefault('sigma1', False)
-                self._fix_sgn_pars_[ipdf].setdefault('sigma2', False)
-                self._fix_sgn_pars_[ipdf].setdefault('frac1', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, None])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma1', [0., None])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma2', [0., None])
-                self._limits_sgn_pars_[ipdf].setdefault('frac1', [0., 1.])
-                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
-                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
-                self._sgn_pars_[ipdf][f'{self._name_}_sigma1_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigma1_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma1'],
-                    self._limits_sgn_pars_[ipdf]['sigma1'][0], self._limits_sgn_pars_[ipdf]['sigma1'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigma1'])
-                self._sgn_pars_[ipdf][f'{self._name_}_sigma2_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigma2_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma2'],
-                    self._limits_sgn_pars_[ipdf]['sigma2'][0], self._limits_sgn_pars_[ipdf]['sigma2'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigma1'])
-                self._sgn_pars_[ipdf][f'{self._name_}_frac1_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_frac1_signal{ipdf}', self._init_sgn_pars_[ipdf]['frac1'],
-                    self._limits_sgn_pars_[ipdf]['frac1'][0], self._limits_sgn_pars_[ipdf]['frac1'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['frac1'])
-                self._signal_pdf_[ipdf] = cpdf.DoubleGauss(
-                    obs=obs,
-                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
-                    sigma1=self._sgn_pars_[ipdf][f'{self._name_}_sigma1_signal{ipdf}'],
-                    sigma2=self._sgn_pars_[ipdf][f'{self._name_}_sigma2_signal{ipdf}'],
-                    frac1=self._sgn_pars_[ipdf][f'{self._name_}_frac1_signal{ipdf}'],
-                )
-            elif pdf_name == 'crystalball':
-                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
-                self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
-                self._init_sgn_pars_[ipdf].setdefault('alpha', 0.5)
-                self._init_sgn_pars_[ipdf].setdefault('n', 1.)
-                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
-                self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
-                self._fix_sgn_pars_[ipdf].setdefault('alpha', False)
-                self._fix_sgn_pars_[ipdf].setdefault('n', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, None])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., None])
-                self._limits_sgn_pars_[ipdf].setdefault('alpha', [None, None])
-                self._limits_sgn_pars_[ipdf].setdefault('n', [0., None])
-                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
-                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
-                self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma'],
-                    self._limits_sgn_pars_[ipdf]['sigma'][0], self._limits_sgn_pars_[ipdf]['sigma'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigma'])
-                self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_alpha_signal{ipdf}', self._init_sgn_pars_[ipdf]['alpha'],
-                    self._limits_sgn_pars_[ipdf]['alpha'][0], self._limits_sgn_pars_[ipdf]['alpha'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['alpha'])
-                self._sgn_pars_[ipdf][f'{self._name_}_n_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_n_signal{ipdf}', self._init_sgn_pars_[ipdf]['n'],
-                    self._limits_sgn_pars_[ipdf]['n'][0], self._limits_sgn_pars_[ipdf]['n'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['n'])
-                self._signal_pdf_[ipdf] = zfit.pdf.CrystalBall(
-                    obs=obs,
-                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
-                    sigma=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'],
-                    alpha=self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}'],
-                    n=self._sgn_pars_[ipdf][f'{self._name_}_n_signal{ipdf}']
-                )
-            elif pdf_name == 'doublecb':
-                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
-                self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
-                self._init_sgn_pars_[ipdf].setdefault('alphal', 0.5)
-                self._init_sgn_pars_[ipdf].setdefault('nl', 1.)
-                self._init_sgn_pars_[ipdf].setdefault('alphar', 0.5)
-                self._init_sgn_pars_[ipdf].setdefault('nr', 1.)
-                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
-                self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
-                self._fix_sgn_pars_[ipdf].setdefault('alphal', False)
-                self._fix_sgn_pars_[ipdf].setdefault('nl', False)
-                self._fix_sgn_pars_[ipdf].setdefault('alphar', False)
-                self._fix_sgn_pars_[ipdf].setdefault('nr', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, None])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., None])
-                self._limits_sgn_pars_[ipdf].setdefault('alphal', [None, None])
-                self._limits_sgn_pars_[ipdf].setdefault('nl', [0., None])
-                self._limits_sgn_pars_[ipdf].setdefault('alphar', [None, None])
-                self._limits_sgn_pars_[ipdf].setdefault('nr', [0., None])
-                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
-                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
-                self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma'],
-                    self._limits_sgn_pars_[ipdf]['sigma'][0], self._limits_sgn_pars_[ipdf]['sigma'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigma'])
-                self._sgn_pars_[ipdf][f'{self._name_}_alphal_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_alphal_signal{ipdf}', self._init_sgn_pars_[ipdf]['alphal'],
-                    self._limits_sgn_pars_[ipdf]['alphal'][0], self._limits_sgn_pars_[ipdf]['alphal'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['alphal'])
-                self._sgn_pars_[ipdf][f'{self._name_}_nl_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_nl_signal{ipdf}', self._init_sgn_pars_[ipdf]['nl'],
-                    self._limits_sgn_pars_[ipdf]['nl'][0], self._limits_sgn_pars_[ipdf]['nl'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['nl'])
-                self._sgn_pars_[ipdf][f'{self._name_}_alphar_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_alphar_signal{ipdf}', self._init_sgn_pars_[ipdf]['alphar'],
-                    self._limits_sgn_pars_[ipdf]['alphar'][0], self._limits_sgn_pars_[ipdf]['alphar'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['alphar'])
-                self._sgn_pars_[ipdf][f'{self._name_}_nr_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_nr_signal{ipdf}', self._init_sgn_pars_[ipdf]['nr'],
-                    self._limits_sgn_pars_[ipdf]['nr'][0], self._limits_sgn_pars_[ipdf]['nr'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['nr'])
-                self._signal_pdf_[ipdf] = zfit.pdf.DoubleCB(
-                    obs=obs,
-                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
-                    sigma=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'],
-                    alphal=self._sgn_pars_[ipdf][f'{self._name_}_alphal_signal{ipdf}'],
-                    nl=self._sgn_pars_[ipdf][f'{self._name_}_nl_signal{ipdf}'],
-                    alphar=self._sgn_pars_[ipdf][f'{self._name_}_alphar_signal{ipdf}'],
-                    nr=self._sgn_pars_[ipdf][f'{self._name_}_nr_signal{ipdf}']
-                )
-            elif pdf_name == 'doublecbsymm':
-                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
-                self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
-                self._init_sgn_pars_[ipdf].setdefault('alpha', 0.5)
-                self._init_sgn_pars_[ipdf].setdefault('n', 1.)
-                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
-                self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
-                self._fix_sgn_pars_[ipdf].setdefault('alpha', False)
-                self._fix_sgn_pars_[ipdf].setdefault('n', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('alpha', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('n', [0., 1.e6])
-                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
-                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
-                self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma'],
-                    self._limits_sgn_pars_[ipdf]['sigma'][0], self._limits_sgn_pars_[ipdf]['sigma'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigma'])
-                self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_alpha_signal{ipdf}', self._init_sgn_pars_[ipdf]['alpha'],
-                    self._limits_sgn_pars_[ipdf]['alpha'][0], self._limits_sgn_pars_[ipdf]['alpha'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['alpha'])
-                self._sgn_pars_[ipdf][f'{self._name_}_n_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_n_signal{ipdf}', self._init_sgn_pars_[ipdf]['n'],
-                    self._limits_sgn_pars_[ipdf]['n'][0], self._limits_sgn_pars_[ipdf]['n'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['n'])
-                self._signal_pdf_[ipdf] = zfit.pdf.DoubleCB(
-                    obs=obs,
-                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
-                    sigma=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'],
-                    alphal=self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}'],
-                    nl=self._sgn_pars_[ipdf][f'{self._name_}_n_signal{ipdf}'],
-                    alphar=self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}'],
-                    nr=self._sgn_pars_[ipdf][f'{self._name_}_n_signal{ipdf}']
-                )
-            elif pdf_name == 'cauchy':
-                self._init_sgn_pars_[ipdf].setdefault('m', 1.865)
-                self._init_sgn_pars_[ipdf].setdefault('gamma', 0.010)
-                self._fix_sgn_pars_[ipdf].setdefault('m', False)
-                self._fix_sgn_pars_[ipdf].setdefault('gamma', False)
-                self._limits_sgn_pars_[ipdf].setdefault('m', [0, None])
-                self._limits_sgn_pars_[ipdf].setdefault('gamma', [0., None])
-                self._sgn_pars_[ipdf][f'{self._name_}_m_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_m_signal{ipdf}', self._init_sgn_pars_[ipdf]['m'],
-                    self._limits_sgn_pars_[ipdf]['m'][0], self._limits_sgn_pars_[ipdf]['m'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['m'])
-                self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_gamma_signal{ipdf}', self._init_sgn_pars_[ipdf]['gamma'],
-                    self._limits_sgn_pars_[ipdf]['gamma'][0], self._limits_sgn_pars_[ipdf]['gamma'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['gamma'])
-                self._signal_pdf_[ipdf] = zfit.pdf.Cauchy(
-                    obs=obs,
-                    m=self._sgn_pars_[ipdf][f'{self._name_}_m_signal{ipdf}'],
-                    gamma=self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}']
-                )
-            elif pdf_name == 'voigtian':
-                self._init_sgn_pars_[ipdf].setdefault('m', 1.865)
-                self._init_sgn_pars_[ipdf].setdefault('gamma', 0.010)
-                self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
-                self._fix_sgn_pars_[ipdf].setdefault('m', False)
-                self._fix_sgn_pars_[ipdf].setdefault('gamma', False)
-                self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
-                self._limits_sgn_pars_[ipdf].setdefault('m', [0, None])
-                self._limits_sgn_pars_[ipdf].setdefault('gamma', [0., None])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., None])
-                self._sgn_pars_[ipdf][f'{self._name_}_m_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_m_signal{ipdf}', self._init_sgn_pars_[ipdf]['m'],
-                    self._limits_sgn_pars_[ipdf]['m'][0], self._limits_sgn_pars_[ipdf]['m'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['m'])
-                self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_gamma_signal{ipdf}', self._init_sgn_pars_[ipdf]['gamma'],
-                    self._limits_sgn_pars_[ipdf]['gamma'][0], self._limits_sgn_pars_[ipdf]['gamma'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['gamma'])
-                self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma'],
-                    self._limits_sgn_pars_[ipdf]['sigma'][0], self._limits_sgn_pars_[ipdf]['sigma'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigma'])
-                self._signal_pdf_[ipdf] = zfit.pdf.Voigt(
-                    obs=obs,
-                    m=self._sgn_pars_[ipdf][f'{self._name_}_m_signal{ipdf}'],
-                    sigma=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'],
-                    gamma=self._sgn_pars_[ipdf][f'{self._name_}_gamma_signal{ipdf}']
-                )
-            elif pdf_name == 'gausexptail':
-                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
-                self._init_sgn_pars_[ipdf].setdefault('alpha', 1.e6)
-                self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
-                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
-                self._fix_sgn_pars_[ipdf].setdefault('alpha', False)
-                self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, None])
-                self._limits_sgn_pars_[ipdf].setdefault('alpha', [None, None])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., None])
-                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
-                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
-                self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_alpha_signal{ipdf}', self._init_sgn_pars_[ipdf]['alpha'],
-                    self._limits_sgn_pars_[ipdf]['alpha'][0], self._limits_sgn_pars_[ipdf]['alpha'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['alpha'])
-                self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma'],
-                    self._limits_sgn_pars_[ipdf]['sigma'][0], self._limits_sgn_pars_[ipdf]['sigma'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigma'])
-                self._signal_pdf_[ipdf] = zfit.pdf.GaussExpTail(
-                    obs=obs,
-                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
-                    sigma=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'],
-                    alpha=self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}']
-                )
-            elif pdf_name == 'genergausexptail':
-                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
-                self._init_sgn_pars_[ipdf].setdefault('alphar', 1.e6)
-                self._init_sgn_pars_[ipdf].setdefault('alphal', 1.e6)
-                self._init_sgn_pars_[ipdf].setdefault('sigmal', 0.010)
-                self._init_sgn_pars_[ipdf].setdefault('sigmar', 0.010)
-                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
-                self._fix_sgn_pars_[ipdf].setdefault('alphar', False)
-                self._fix_sgn_pars_[ipdf].setdefault('alphal', False)
-                self._fix_sgn_pars_[ipdf].setdefault('sigmar', False)
-                self._fix_sgn_pars_[ipdf].setdefault('sigmal', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, None])
-                self._limits_sgn_pars_[ipdf].setdefault('alphar', [None, None])
-                self._limits_sgn_pars_[ipdf].setdefault('alphal', [None, None])
-                self._limits_sgn_pars_[ipdf].setdefault('sigmar', [0., None])
-                self._limits_sgn_pars_[ipdf].setdefault('sigmal', [0., None])
-                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
-                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
-                self._sgn_pars_[ipdf][f'{self._name_}_alphar_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_alphar_signal{ipdf}', self._init_sgn_pars_[ipdf]['alphar'],
-                    self._limits_sgn_pars_[ipdf]['alphar'][0], self._limits_sgn_pars_[ipdf]['alphar'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['alphar'])
-                self._sgn_pars_[ipdf][f'{self._name_}_alphal_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_alphal_signal{ipdf}', self._init_sgn_pars_[ipdf]['alphal'],
-                    self._limits_sgn_pars_[ipdf]['alphal'][0], self._limits_sgn_pars_[ipdf]['alphal'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['alphal'])
-                self._sgn_pars_[ipdf][f'{self._name_}_sigmar_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigmar_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigmar'],
-                    self._limits_sgn_pars_[ipdf]['sigmar'][0], self._limits_sgn_pars_[ipdf]['sigmar'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigmar'])
-                self._sgn_pars_[ipdf][f'{self._name_}_sigmal_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigmal_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigmal'],
-                    self._limits_sgn_pars_[ipdf]['sigmal'][0], self._limits_sgn_pars_[ipdf]['sigmal'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigmal'])
-                self._signal_pdf_[ipdf] = zfit.pdf.GeneralizedGaussExpTail(
-                    obs=obs,
-                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
-                    sigmar=self._sgn_pars_[ipdf][f'{self._name_}_sigmar_signal{ipdf}'],
-                    sigmal=self._sgn_pars_[ipdf][f'{self._name_}_sigmal_signal{ipdf}'],
-                    alphar=self._sgn_pars_[ipdf][f'{self._name_}_alphar_signal{ipdf}'],
-                    alphal=self._sgn_pars_[ipdf][f'{self._name_}_alphal_signal{ipdf}']
-                )
-            elif pdf_name == 'genergausexptailsymm':
-                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
-                self._init_sgn_pars_[ipdf].setdefault('alpha', 1.e6)
-                self._init_sgn_pars_[ipdf].setdefault('sigma', 0.010)
-                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
-                self._fix_sgn_pars_[ipdf].setdefault('alpha', False)
-                self._fix_sgn_pars_[ipdf].setdefault('sigma', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, 1.e6])
-                self._limits_sgn_pars_[ipdf].setdefault('alpha', [-1.e10, 1.e10])
-                self._limits_sgn_pars_[ipdf].setdefault('sigma', [0., 1.e6])
-                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
-                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
-                self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_alpha_signal{ipdf}', self._init_sgn_pars_[ipdf]['alpha'],
-                    self._limits_sgn_pars_[ipdf]['alpha'][0], self._limits_sgn_pars_[ipdf]['alpha'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['alpha'])
-                self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigma'],
-                    self._limits_sgn_pars_[ipdf]['sigma'][0], self._limits_sgn_pars_[ipdf]['sigma'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigma'])
-                self._signal_pdf_[ipdf] = zfit.pdf.GeneralizedGaussExpTail(
-                    obs=obs,
-                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
-                    sigmar=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'],
-                    sigmal=self._sgn_pars_[ipdf][f'{self._name_}_sigma_signal{ipdf}'],
-                    alphar=self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}'],
-                    alphal=self._sgn_pars_[ipdf][f'{self._name_}_alpha_signal{ipdf}']
-                )
-            elif pdf_name == 'bifurgaus':
-                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
-                self._init_sgn_pars_[ipdf].setdefault('sigmal', 0.010)
-                self._init_sgn_pars_[ipdf].setdefault('sigmar', 0.010)
-                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
-                self._fix_sgn_pars_[ipdf].setdefault('sigmar', False)
-                self._fix_sgn_pars_[ipdf].setdefault('sigmal', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, None])
-                self._limits_sgn_pars_[ipdf].setdefault('sigmar', [0., None])
-                self._limits_sgn_pars_[ipdf].setdefault('sigmal', [0., None])
-                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
-                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
-                self._sgn_pars_[ipdf][f'{self._name_}_sigmar_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigmar_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigmar'],
-                    self._limits_sgn_pars_[ipdf]['sigmar'][0], self._limits_sgn_pars_[ipdf]['sigmar'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigmar'])
-                self._sgn_pars_[ipdf][f'{self._name_}_sigmal_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigmal_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigmal'],
-                    self._limits_sgn_pars_[ipdf]['sigmal'][0], self._limits_sgn_pars_[ipdf]['sigmal'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigmal'])
-                self._signal_pdf_[ipdf] = zfit.pdf.BifurGauss(
-                    obs=obs,
-                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
-                    sigmar=self._sgn_pars_[ipdf][f'{self._name_}_sigmar_signal{ipdf}'],
-                    sigmal=self._sgn_pars_[ipdf][f'{self._name_}_sigmal_signal{ipdf}']
-                )
-            elif pdf_name == 'genercrystalball':
-                self._init_sgn_pars_[ipdf].setdefault('mu', 1.865)
-                self._init_sgn_pars_[ipdf].setdefault('sigmar', 0.010)
-                self._init_sgn_pars_[ipdf].setdefault('sigmal', 0.010)
-                self._init_sgn_pars_[ipdf].setdefault('alphal', 0.5)
-                self._init_sgn_pars_[ipdf].setdefault('nl', 1.)
-                self._init_sgn_pars_[ipdf].setdefault('alphar', 0.5)
-                self._init_sgn_pars_[ipdf].setdefault('nr', 1.)
-                self._fix_sgn_pars_[ipdf].setdefault('mu', False)
-                self._fix_sgn_pars_[ipdf].setdefault('sigmar', False)
-                self._fix_sgn_pars_[ipdf].setdefault('sigmal', False)
-                self._fix_sgn_pars_[ipdf].setdefault('alphal', False)
-                self._fix_sgn_pars_[ipdf].setdefault('nl', False)
-                self._fix_sgn_pars_[ipdf].setdefault('alphar', False)
-                self._fix_sgn_pars_[ipdf].setdefault('nr', False)
-                self._limits_sgn_pars_[ipdf].setdefault('mu', [0, None])
-                self._limits_sgn_pars_[ipdf].setdefault('sigmar', [0., None])
-                self._limits_sgn_pars_[ipdf].setdefault('sigmal', [0., None])
-                self._limits_sgn_pars_[ipdf].setdefault('alphal', [0, None])
-                self._limits_sgn_pars_[ipdf].setdefault('nl', [0., None])
-                self._limits_sgn_pars_[ipdf].setdefault('alphar', [0, None])
-                self._limits_sgn_pars_[ipdf].setdefault('nr', [0., None])
-                self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mu_signal{ipdf}', self._init_sgn_pars_[ipdf]['mu'],
-                    self._limits_sgn_pars_[ipdf]['mu'][0], self._limits_sgn_pars_[ipdf]['mu'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['mu'])
-                self._sgn_pars_[ipdf][f'{self._name_}_sigmal_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigma_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigmal'],
-                    self._limits_sgn_pars_[ipdf]['sigmal'][0], self._limits_sgn_pars_[ipdf]['sigmal'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigmal'])
-                self._sgn_pars_[ipdf][f'{self._name_}_sigmar_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_sigmar_signal{ipdf}', self._init_sgn_pars_[ipdf]['sigmar'],
-                    self._limits_sgn_pars_[ipdf]['sigmar'][0], self._limits_sgn_pars_[ipdf]['sigmar'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['sigmar'])
-                self._sgn_pars_[ipdf][f'{self._name_}_alphal_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_alphal_signal{ipdf}', self._init_sgn_pars_[ipdf]['alphal'],
-                    self._limits_sgn_pars_[ipdf]['alphal'][0], self._limits_sgn_pars_[ipdf]['alphal'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['alphal'])
-                self._sgn_pars_[ipdf][f'{self._name_}_nl_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_nl_signal{ipdf}', self._init_sgn_pars_[ipdf]['nl'],
-                    self._limits_sgn_pars_[ipdf]['nl'][0], self._limits_sgn_pars_[ipdf]['nl'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['nl'])
-                self._sgn_pars_[ipdf][f'{self._name_}_alphar_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_alphar_signal{ipdf}', self._init_sgn_pars_[ipdf]['alphar'],
-                    self._limits_sgn_pars_[ipdf]['alphar'][0], self._limits_sgn_pars_[ipdf]['alphar'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['alphar'])
-                self._sgn_pars_[ipdf][f'{self._name_}_nr_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_nr_signal{ipdf}', self._init_sgn_pars_[ipdf]['nr'],
-                    self._limits_sgn_pars_[ipdf]['nr'][0], self._limits_sgn_pars_[ipdf]['nr'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['nr'])
-                self._signal_pdf_[ipdf] = zfit.pdf.GeneralizedCB(
-                    obs=obs,
-                    mu=self._sgn_pars_[ipdf][f'{self._name_}_mu_signal{ipdf}'],
-                    sigmar=self._sgn_pars_[ipdf][f'{self._name_}_sigmar_signal{ipdf}'],
-                    sigmal=self._sgn_pars_[ipdf][f'{self._name_}_sigmal_signal{ipdf}'],
-                    alphal=self._sgn_pars_[ipdf][f'{self._name_}_alphal_signal{ipdf}'],
-                    nl=self._sgn_pars_[ipdf][f'{self._name_}_nl_signal{ipdf}'],
-                    alphar=self._sgn_pars_[ipdf][f'{self._name_}_alphar_signal{ipdf}'],
-                    nr=self._sgn_pars_[ipdf][f'{self._name_}_nr_signal{ipdf}']
-                )
-            elif 'kde' in pdf_name:
-                if self._kde_signal_sample_[ipdf]:
-                    if pdf_name == 'kde_exact':
-                        self._signal_pdf_[ipdf] = zfit.pdf.KDE1DimExact(self._kde_signal_sample_[ipdf].get_data(),
-                                                                        obs=self._kde_signal_sample_[ipdf].get_obs(),
-                                                                        name=f'{self._name_}_kde_signal{ipdf}',
-                                                                        **self._kde_signal_option_[ipdf])
-                    elif pdf_name == 'kde_grid':
-                        self._signal_pdf_[ipdf] = zfit.pdf.KDE1DimGrid(self._kde_signal_sample_[ipdf].get_data(),
-                                                                       obs=self._kde_signal_sample_[ipdf].get_obs(),
-                                                                       name=f'{self._name_}_kde_signal{ipdf}',
-                                                                       **self._kde_signal_option_[ipdf])
-                    elif pdf_name == 'kde_fft':
-                        self._signal_pdf_[ipdf] = zfit.pdf.KDE1DimFFT(self._kde_signal_sample_[ipdf].get_data(),
-                                                                      obs=self._kde_signal_sample_[ipdf].get_obs(),
-                                                                      name=f'{self._name_}_kde_signal{ipdf}',
-                                                                      **self._kde_signal_option_[ipdf])
-                    elif pdf_name == 'kde_isj':
-                        self._signal_pdf_[ipdf] = zfit.pdf.KDE1DimISJ(self._kde_signal_sample_[ipdf].get_data(),
-                                                                      obs=self._kde_signal_sample_[ipdf].get_obs(),
-                                                                      name=f'{self._name_}_kde_signal{ipdf}',
-                                                                      **self._kde_signal_option_[ipdf])
-                else:
-                    Logger(f'Missing datasample for Kernel Density Estimation of signal {ipdf}!', 'FATAL')
             elif pdf_name == 'hist':
-                if self._hist_signal_sample_[ipdf]:
-                    self._signal_pdf_[ipdf] = zfit.pdf.SplinePDF(
-                        zfit.pdf.HistogramPDF(self._hist_signal_sample_[ipdf].get_binned_data(),
-                                              name=f'{self._name_}_hist_signal{ipdf}'),
-                        order=3,
-                        obs=obs
-                    )
-                else:
-                    Logger(f'Missing datasample for histogram template of signal {ipdf}!', 'FATAL')
+                self._signal_pdf_[ipdf] = PDFBuilder.build_signal_hist(
+                    obs,
+                    self._hist_signal_sample_[ipdf],
+                    self._name_,
+                    ipdf,
+                )
             else:
-                Logger(f'Signal pdf {pdf_name} not supported', 'FATAL')
+                self._signal_pdf_[ipdf], self._sgn_pars_[ipdf] = PDFBuilder.build_signal_pdf(
+                    pdf_name,
+                    obs,
+                    self._name_,
+                    ipdf,
+                    self._init_sgn_pars_[ipdf],
+                    self._limits_sgn_pars_[ipdf],
+                    self._fix_sgn_pars_[ipdf]
+                )
 
             if at_threshold:
                 # pion mass as default
@@ -754,165 +324,40 @@ class F2MassFitter:
             if pdf_name == 'nobkg':
                 Logger('Performing fit with no bkg pdf', 'WARNING')
                 break
-            if pdf_name == 'expo':
-                self._init_bkg_pars_[ipdf].setdefault('lam', 0.1)
-                self._limits_bkg_pars_[ipdf].setdefault('lam', [None, None])
-                self._fix_bkg_pars_[ipdf].setdefault('lam', False)
-                self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_lam_bkg{ipdf}', self._init_bkg_pars_[ipdf]['lam'],
-                    self._limits_bkg_pars_[ipdf]['lam'][0], self._limits_bkg_pars_[ipdf]['lam'][1],
-                    floating=not self._fix_bkg_pars_[ipdf]['lam'])
-                self._background_pdf_[ipdf] = zfit.pdf.Exponential(
-                    obs=obs,
-                    lam=self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}']
+            if 'kde' in pdf_name:
+                self._background_pdf_[ipdf] = PDFBuilder.build_bkg_kde(
+                    pdf_name,
+                    self._kde_bkg_sample_[ipdf],
+                    self._name_,
+                    ipdf,
+                    self._kde_bkg_option_[ipdf]
                 )
-            elif 'chebpol' in pdf_name:
-                pol_degree = int(pdf_name.split('chebpol')[1])
-                for deg in range(pol_degree + 1):
-                    self._init_bkg_pars_[ipdf].setdefault(f'c{deg}', 0.1)
-                    self._limits_bkg_pars_[ipdf].setdefault(f'c{deg}', [None, None])
-                    self._fix_bkg_pars_[ipdf].setdefault(f'c{deg}', False)
-                    self._bkg_pars_[ipdf][f'{self._name_}_c{deg}_bkg{ipdf}'] = zfit.Parameter(
-                        f'{self._name_}_c{deg}_bkg{ipdf}', self._init_bkg_pars_[ipdf][f'c{deg}'],
-                        self._limits_bkg_pars_[ipdf][f'c{deg}'][0], self._limits_bkg_pars_[ipdf][f'c{deg}'][1],
-                        floating=not self._fix_bkg_pars_[ipdf][f'c{deg}'])
-                coeff0 = self._bkg_pars_[ipdf][f'{self._name_}_c0_bkg{ipdf}']
-                bkg_coeffs = [self._bkg_pars_[ipdf][f'{self._name_}_c{deg}_bkg{ipdf}']
-                              for deg in range(1, pol_degree + 1)]
-                self._background_pdf_[ipdf] = zfit.pdf.Chebyshev(obs=obs, coeffs=bkg_coeffs, coeff0=coeff0)
-            elif 'powlaw' in pdf_name:
-                # pion mass as default
-                self._init_bkg_pars_[ipdf].setdefault('mass', self.pdg_api.get_particle_by_mcid(211).mass)
-                self._init_bkg_pars_[ipdf].setdefault('power', 1.)
-                self._limits_bkg_pars_[ipdf].setdefault('mass', [0., None])
-                self._limits_bkg_pars_[ipdf].setdefault('power', [None, None])
-                self._fix_bkg_pars_[ipdf].setdefault('mass', True)
-                self._fix_bkg_pars_[ipdf].setdefault('power', False)
-                if self._data_handler_.get_limits()[0] < self._init_bkg_pars_[ipdf]["mass"]:
-                    Logger('The mass parameter in powlaw cannot be smaller than the lower fit limit, please fix it.',
-                           'FATAL')
-                self._bkg_pars_[ipdf][f'{self._name_}_mass_bkg{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mass_bkg{ipdf}', self._init_bkg_pars_[ipdf]['mass'],
-                    self._limits_bkg_pars_[ipdf]['mass'][0], self._limits_bkg_pars_[ipdf]['mass'][1],
-                    floating=not self._fix_bkg_pars_[ipdf]['mass'])
-                self._bkg_pars_[ipdf][f'{self._name_}_power_bkg{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_power_bkg{ipdf}', self._init_bkg_pars_[ipdf]['power'],
-                    self._limits_bkg_pars_[ipdf]['power'][0], self._limits_bkg_pars_[ipdf]['power'][1],
-                    floating=not self._fix_bkg_pars_[ipdf]['power'])
-                self._background_pdf_[ipdf] = cpdf.Pow(
-                    obs=obs,
-                    mass=self._bkg_pars_[ipdf][f'{self._name_}_mass_bkg{ipdf}'],
-                    power=self._bkg_pars_[ipdf][f'{self._name_}_power_bkg{ipdf}']
-                )
-            elif 'expopowext' in pdf_name:
-                # pion mass as default
-                self._init_bkg_pars_[ipdf].setdefault('mass', self.pdg_api.get_particle_by_mcid(211).mass)
-                self._init_bkg_pars_[ipdf].setdefault('c1', -0.1)
-                self._init_bkg_pars_[ipdf].setdefault('c2', 0.)
-                self._init_bkg_pars_[ipdf].setdefault('c3', 0.)
-                self._init_bkg_pars_[ipdf].setdefault('power', 1./2)
-                self._limits_bkg_pars_[ipdf].setdefault('mass', [0., None])
-                self._limits_bkg_pars_[ipdf].setdefault('c1', [None, None])
-                self._limits_bkg_pars_[ipdf].setdefault('c2', [None, None])
-                self._limits_bkg_pars_[ipdf].setdefault('c3', [None, None])
-                self._limits_bkg_pars_[ipdf].setdefault('power', [None, None])
-                self._fix_bkg_pars_[ipdf].setdefault('mass', True)
-                self._fix_bkg_pars_[ipdf].setdefault('c1', False)
-                self._fix_bkg_pars_[ipdf].setdefault('c2', False)
-                self._fix_bkg_pars_[ipdf].setdefault('c3', False)
-                self._fix_bkg_pars_[ipdf].setdefault('power', False)
-                if self._data_handler_.get_limits()[0] < self._init_bkg_pars_[ipdf]["mass"]:
-                    Logger('The mass parameter in expopow cannot be smaller than the lower fit limit, please fix it.',
-                           'FATAL')
-                self._bkg_pars_[ipdf][f'{self._name_}_mass_bkg{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mass_bkg{ipdf}', self._init_bkg_pars_[ipdf]['mass'],
-                    self._limits_bkg_pars_[ipdf]['mass'][0], self._limits_bkg_pars_[ipdf]['mass'][1],
-                    floating=not self._fix_bkg_pars_[ipdf]['mass'])
-                self._bkg_pars_[ipdf][f'{self._name_}_power_bkg{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_power_bkg{ipdf}', self._init_bkg_pars_[ipdf]['power'],
-                    self._limits_bkg_pars_[ipdf]['power'][0], self._limits_bkg_pars_[ipdf]['power'][1],
-                    floating=not self._fix_bkg_pars_[ipdf]['power'])
-                self._bkg_pars_[ipdf][f'{self._name_}_c1_bkg{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_c1_bkg{ipdf}', self._init_bkg_pars_[ipdf]['c1'],
-                    self._limits_bkg_pars_[ipdf]['c1'][0], self._limits_bkg_pars_[ipdf]['c1'][1],
-                    floating=not self._fix_bkg_pars_[ipdf]['c1'])
-                self._bkg_pars_[ipdf][f'{self._name_}_c2_bkg{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_c2_bkg{ipdf}', self._init_bkg_pars_[ipdf]['c2'],
-                    self._limits_bkg_pars_[ipdf]['c2'][0], self._limits_bkg_pars_[ipdf]['c2'][1],
-                    floating=not self._fix_bkg_pars_[ipdf]['c2'])
-                self._bkg_pars_[ipdf][f'{self._name_}_c3_bkg{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_c3_bkg{ipdf}', self._init_bkg_pars_[ipdf]['c3'],
-                    self._limits_bkg_pars_[ipdf]['c3'][0], self._limits_bkg_pars_[ipdf]['c3'][1],
-                    floating=not self._fix_bkg_pars_[ipdf]['c3'])
-                self._background_pdf_[ipdf] = cpdf.ExpoPowExt(
-                    obs=obs,
-                    mass=self._bkg_pars_[ipdf][f'{self._name_}_mass_bkg{ipdf}'],
-                    power=self._bkg_pars_[ipdf][f'{self._name_}_power_bkg{ipdf}'],
-                    c1=self._bkg_pars_[ipdf][f'{self._name_}_c1_bkg{ipdf}'],
-                    c2=self._bkg_pars_[ipdf][f'{self._name_}_c2_bkg{ipdf}'],
-                    c3=self._bkg_pars_[ipdf][f'{self._name_}_c3_bkg{ipdf}']
-                )
-            elif 'expopow' in pdf_name:
-                # pion mass as default
-                self._init_bkg_pars_[ipdf].setdefault('mass', self.pdg_api.get_particle_by_mcid(211).mass)
-                self._init_bkg_pars_[ipdf].setdefault('lam', 0.1)
-                self._limits_bkg_pars_[ipdf].setdefault('mass', [0., None])
-                self._limits_bkg_pars_[ipdf].setdefault('lam', [None, None])
-                self._fix_bkg_pars_[ipdf].setdefault('mass', True)
-                self._fix_bkg_pars_[ipdf].setdefault('lam', False)
-                if self._data_handler_.get_limits()[0] < self._init_bkg_pars_[ipdf]["mass"]:
-                    Logger('The mass parameter in expopow cannot be smaller than the lower fit limit, please fix it.',
-                           'FATAL')
-                self._bkg_pars_[ipdf][f'{self._name_}_mass_bkg{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_mass_bkg{ipdf}', self._init_bkg_pars_[ipdf]['mass'],
-                    self._limits_bkg_pars_[ipdf]['mass'][0], self._limits_bkg_pars_[ipdf]['mass'][1],
-                    floating=not self._fix_bkg_pars_[ipdf]['mass'])
-                self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_lam_bkg{ipdf}', self._init_bkg_pars_[ipdf]['lam'],
-                    self._limits_bkg_pars_[ipdf]['lam'][0], self._limits_bkg_pars_[ipdf]['lam'][1],
-                    floating=not self._fix_bkg_pars_[ipdf]['lam'])
-                self._background_pdf_[ipdf] = cpdf.ExpoPow(
-                    obs=obs,
-                    mass=self._bkg_pars_[ipdf][f'{self._name_}_mass_bkg{ipdf}'],
-                    lam=self._bkg_pars_[ipdf][f'{self._name_}_lam_bkg{ipdf}']
-                )
-            elif 'kde' in pdf_name:
-                if self._kde_bkg_sample_[ipdf]:
-                    if pdf_name == 'kde_exact':
-                        self._background_pdf_[ipdf] = zfit.pdf.KDE1DimExact(self._kde_bkg_sample_[ipdf].get_data(),
-                                                                            obs=self._kde_bkg_sample_[ipdf].get_obs(),
-                                                                            name=f'{self._name_}_kde_bkg{ipdf}',
-                                                                            **self._kde_bkg_option_[ipdf])
-                    elif pdf_name == 'kde_grid':
-                        self._background_pdf_[ipdf] = zfit.pdf.KDE1DimGrid(self._kde_bkg_sample_[ipdf].get_data(),
-                                                                           obs=self._kde_bkg_sample_[ipdf].get_obs(),
-                                                                           name=f'{self._name_}_kde_bkg{ipdf}',
-                                                                           **self._kde_bkg_option_[ipdf])
-                    elif pdf_name == 'kde_fft':
-                        self._background_pdf_[ipdf] = zfit.pdf.KDE1DimFFT(self._kde_bkg_sample_[ipdf].get_data(),
-                                                                          obs=self._kde_bkg_sample_[ipdf].get_obs(),
-                                                                          name=f'{self._name_}_kde_bkg{ipdf}',
-                                                                          **self._kde_bkg_option_[ipdf])
-                    elif pdf_name == 'kde_isj':
-                        self._background_pdf_[ipdf] = zfit.pdf.KDE1DimISJ(self._kde_bkg_sample_[ipdf].get_data(),
-                                                                          obs=self._kde_bkg_sample_[ipdf].get_obs(),
-                                                                          name=f'{self._name_}_kde_bkg{ipdf}',
-                                                                          **self._kde_bkg_option_[ipdf])
 
-                else:
-                    Logger(f'Missing datasample for Kernel Density Estimation of background {ipdf}!', 'FATAL')
             elif pdf_name == 'hist':
-                if self._hist_bkg_sample_[ipdf]:
-                    self._background_pdf_[ipdf] = zfit.pdf.SplinePDF(
-                        zfit.pdf.HistogramPDF(self._hist_bkg_sample_[ipdf].get_binned_data(),
-                                              name=f'{self._name_}_hist_background{ipdf}'),
-                        order=3,
-                        obs=obs
-                    )
-                else:
-                    Logger(f'Missing datasample for histogram template of background {ipdf}!', 'FATAL')
+                self._background_pdf_[ipdf] = PDFBuilder.build_bkg_hist(
+                    obs,
+                    self._hist_bkg_sample_[ipdf],
+                    self._name_,
+                    ipdf,
+                )
             else:
-                Logger(f'Background pdf {pdf_name} not supported', 'FATAL')
+                self._background_pdf_[ipdf], self._bkg_pars_[ipdf] = PDFBuilder.build_bkg_pdf(
+                    pdf_name,
+                    obs,
+                    self._name_,
+                    ipdf,
+                    self._init_bkg_pars_[ipdf],
+                    self._limits_bkg_pars_[ipdf],
+                    self._fix_bkg_pars_[ipdf]
+                )
+                print(self._background_pdf_[ipdf].get_params())
+                if pdf_name in ['powlaw', 'expopow', 'expopowext'] and\
+                        self._data_handler_.get_limits()[0] < self._init_bkg_pars_[ipdf]["mass"]:
+                    Logger(
+                        'The mass parameter in powlaw cannot be smaller than the lower fit limit, '
+                        'please fix it.',
+                        'FATAL'
+                    )
 
     # pylint: disable=too-many-branches, too-many-statements
     def __build_reflection_pdfs(self, obs):
