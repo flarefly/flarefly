@@ -124,6 +124,10 @@ class F2MassFitter:
                 chi2 minimization if True, nll minmization else,
                 default value to False
 
+            - extended: bool
+                If True, the pdf is considered extended, i.e. the yield is a parameter to fit.
+                default value to False
+
             - minuit_mode:
                 A number used by minuit to define the internal minimization strategy, either 0, 1 or 2.
                 0 is the fastest, 2 is the slowest
@@ -213,6 +217,7 @@ class F2MassFitter:
             self._fracs_ = [None for _ in range(2 * len(name_signal_pdf) + len(name_background_pdf) - 1)]
         else:
             Logger('No signal nor background pdf defined', 'FATAL')
+        self._yields_ = [None for _ in range(len(self._fracs_) + 1)]
         self._total_pdf_norm_ = None
         self._ratio_truncated_ = None
         self._rawyield_ = [0. for _ in name_signal_pdf]
@@ -230,10 +235,13 @@ class F2MassFitter:
             'limits', self._data_handler_.get_limits())
         if not isinstance(self._limits_[0], list):
             self._limits_ = [self._limits_]
-        self._is_truncated_ = self._limits_ != [self._data_handler_.get_limits()]
+        self._is_truncated_ = not np.allclose(self._limits_, self._data_handler_.get_limits())
         self._name_ = kwargs.get('name', 'fitter')
         self._ndf_ = None
         self._chi2_loss_ = kwargs.get('chi2_loss', False)
+        self._extended_ = kwargs.get('extended', False)
+        if self._extended_ and self._data_handler_.get_is_binned():
+            Logger('Binned fit with extended pdf not yet supported!', 'FATAL')
         self._base_sgn_cmap_ = plt.colormaps.get_cmap('viridis')
         self._sgn_cmap_ = ListedColormap(self._base_sgn_cmap_(np.linspace(0.4, 0.65, len(self._signal_pdf_))))
         n_bkg_colors = len(self._background_pdf_)
@@ -524,12 +532,27 @@ class F2MassFitter:
 
         if len(self._signal_pdf_) + len(self._background_pdf_) == 1:
             if len(self._signal_pdf_) == 0:
-                self._total_pdf_ = self._background_pdf_[0]
+                if self._extended_:
+                    total_yield = zfit.Parameter(
+                        f'{self._name_}_yield',
+                        self._data_handler_.get_norm(),
+                        0,
+                        floating=True
+                    )
+                    self._total_pdf_.set_yield(total_yield)
                 if self._is_truncated_:
                     self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs)
                 return
             if len(self._background_pdf_) == 0:
-                self._total_pdf_ = self._signal_pdf_[0]
+                self._total_pdf_ = self._signal_pdf_[0].copy()
+                if self._extended_:
+                    total_yield = zfit.Parameter(
+                        f'{self._name_}_yield',
+                        self._data_handler_.get_norm(),
+                        0,
+                        floating=True
+                    )
+                    self._total_pdf_.set_yield(total_yield)
                 if self._is_truncated_:
                     self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs)
                 return
@@ -570,8 +593,48 @@ class F2MassFitter:
 
         self.__set_frac_constraints()
 
-        self._total_pdf_ = zfit.pdf.SumPDF(self._signal_pdf_+self._refl_pdf_+self._background_pdf_,
-                                           self._fracs_)
+        if self._extended_:
+            total_yield = zfit.Parameter(
+                f'{self._name_}_yield',
+                self._data_handler_.get_norm(),
+                0,
+                floating=True
+            )
+
+            def par_func(par, factor):
+                return par * factor
+            for i_frac, frac in enumerate(self._fracs_):
+
+                self._yields_[i_frac] = zfit.ComposedParameter(
+                    frac.name.replace('frac', 'yield'),
+                    par_func,
+                    params=[frac, total_yield],
+                    unpack_params=True
+                )
+
+            def frac_last_pdf(pars):
+                return 1 - sum(par.value() for par in pars)
+
+            frac_last = zfit.ComposedParameter(
+                f'{self._name_}_frac_bkg_{len(self._background_pdf_)-1}',
+                frac_last_pdf,
+                params=self._fracs_,
+                unpack_params=False
+            )
+            self._yields_[-1] = zfit.ComposedParameter(
+                frac_last.name.replace('frac', 'yield'),
+                par_func,
+                params=[frac_last, total_yield],
+                unpack_params=True
+            )
+
+            pdfs_sum = [pdf.copy() for pdf in self._signal_pdf_ + self._refl_pdf_ + self._background_pdf_]
+            for pdf, y in zip(pdfs_sum, self._yields_):
+                pdf.set_yield(y)
+            self._total_pdf_ = zfit.pdf.SumPDF(pdfs_sum)
+        else:
+            self._total_pdf_ = zfit.pdf.SumPDF(self._signal_pdf_+self._refl_pdf_+self._background_pdf_,
+                                               self._fracs_)
 
         if not self._data_handler_.get_is_binned() and self._is_truncated_:
             self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs, norm=obs)
@@ -580,7 +643,6 @@ class F2MassFitter:
         """
         Helper function to compose the total pdf binned from unbinned
         """
-
         # for binned data, obs already contains the wanted binning
         if self._data_handler_.get_is_binned():
             obs = self._data_handler_.get_obs()
@@ -935,7 +997,10 @@ class F2MassFitter:
             else:
                 loss = zfit.loss.BinnedNLL(self._total_pdf_binned_, self._data_handler_.get_binned_data())
         else:
-            loss = zfit.loss.UnbinnedNLL(model=self._total_pdf_, data=self._data_handler_.get_data())
+            if self._extended_:
+                loss = zfit.loss.ExtendedUnbinnedNLL(model=self._total_pdf_, data=self._data_handler_.get_data())
+            else:
+                loss = zfit.loss.UnbinnedNLL(model=self._total_pdf_, data=self._data_handler_.get_data())
 
         Logger("Performing FIT", "INFO")
         self._fit_result_ = self._minimizer_.minimize(loss=loss)
@@ -2034,7 +2099,40 @@ class F2MassFitter:
         Returns:
             dict: A dictionary containing sWeights for 'signal' and 'bkg' components.
         """
+        if self._is_truncated_:
+            Logger('sWeights not available for truncated fit', 'ERROR')
+            return {'signal': None, 'bkg': None}
+        if self._extended_:
+            model = self._total_pdf_.get_models()[0]  # Get the SumPDF object (not the truncated one)
+            # Create a new model removing the reflections if needed
+            sweights_model = []
+            for i_pdf, pdf_name in enumerate(self._name_signal_pdf_):
+                if pdf_name is not None:
+                    sweights_model.append(i_pdf)
+            for i_pdf, pdf_name in enumerate(self._name_refl_pdf_):
+                if pdf_name is not None:
+                    sweights_model.append(i_pdf + len(self._name_signal_pdf_))
+            for i_pdf, pdf_name in enumerate(self._name_background_pdf_):
+                if pdf_name is not None:
+                    sweights_model.append(i_pdf + len(self._name_signal_pdf_) + len(self._name_refl_pdf_))
+            model = zfit.pdf.SumPDF(
+                [model.get_models()[i] for i in sweights_model],
+                extended=self._data_handler_.get_norm(),
+                obs=self._data_handler_.get_obs(),
+                name=self._name_ + '_sweights'
+            )
 
+            sweights = compute_sweights(model, self._data_handler_.get_data())
+            names = self._name_signal_pdf_+self._name_refl_pdf_+self._name_background_pdf_
+            names = [names[i] for i in sweights_model]
+            for new_name, old_name in zip(
+                self._name_signal_pdf_+self._name_refl_pdf_+self._name_background_pdf_,
+                list(sweights.keys())
+            ):
+                sweights[new_name] = sweights.pop(old_name)
+            return sweights
+
+        # Not extended case
         signal_pdf_extended = []
         refl_pdf_extended = []
         bkg_pdf_extended = []
@@ -2061,7 +2159,7 @@ class F2MassFitter:
 
         if len(signal_pdf_extended + refl_pdf_extended) > 1:
             signal_pdf_for_sweights = zfit.pdf.SumPDF(
-                signal_pdf_extended + refl_pdf_extended,
+                signal_pdf_extended,
                 extended=total_signal_yields_par
             )
         else:
@@ -2069,7 +2167,7 @@ class F2MassFitter:
 
         if len(bkg_pdf_extended) > 1:
             bkg_pdf_for_sweights = zfit.pdf.SumPDF(
-                bkg_pdf_extended,
+                bkg_pdf_extended + refl_pdf_extended,
                 extended=total_bkg_yields_par
             )
         else:
