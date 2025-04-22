@@ -12,10 +12,12 @@ SIGNAL_PDF_CONFIGS = {
             'mu': {
                 'init': 1.865,
                 'limits': [0., None],
+                'fix': False
             },
             'sigma': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             }
         },
         'pdf_class': zfit.pdf.Gauss,
@@ -26,21 +28,25 @@ SIGNAL_PDF_CONFIGS = {
             'mu': {
                 'init': 1.865,
                 'limits': [0., None],
+                'fix': False
             },
             'sigma1': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             },
             'sigma2': {
                 'init': 0.100,
                 'limits': [0., None],
+                'fix': False
             },
             'frac1': {
                 'init': 0.9,
                 'limits': [0., 1.],
+                'fix': False
             }
         },
-        'pdf_class': cpdf.DoubleGauss,  # Assuming cpdf is imported
+        'pdf_class': cpdf.DoubleGauss,
         'pdf_args': ['mu', 'sigma1', 'sigma2', 'frac1']
     },
     'crystalball': {
@@ -48,18 +54,22 @@ SIGNAL_PDF_CONFIGS = {
             'mu': {
                 'init': 1.865,
                 'limits': [0., None],
+                'fix': False
             },
             'sigma': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             },
             'alpha': {
                 'init': 0.5,
                 'limits': [0, None],
+                'fix': False
             },
             'n': {
                 'init': 1.,
                 'limits': [0., None],
+                'fix': False
             }
         },
         'pdf_class': zfit.pdf.CrystalBall,
@@ -70,26 +80,32 @@ SIGNAL_PDF_CONFIGS = {
             'mu': {
                 'init': 1.865,
                 'limits': [0., None],
+                'fix': False
             },
             'sigma': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             },
             'alphal': {
                 'init': 0.5,
                 'limits': [0, None],
+                'fix': False
             },
             'nl': {
                 'init': 1.,
                 'limits': [0., None],
+                'fix': False
             },
             'alphar': {
                 'init': 0.5,
                 'limits': [0, None],
+                'fix': False
             },
             'nr': {
                 'init': 1.,
                 'limits': [0., None],
+                'fix': False
             }
         },
         'pdf_class': zfit.pdf.DoubleCB,
@@ -100,18 +116,22 @@ SIGNAL_PDF_CONFIGS = {
             'mu': {
                 'init': 1.865,
                 'limits': [0., None],
+                'fix': False
             },
             'sigma': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             },
             'alpha': {
                 'init': 0.5,
                 'limits': [0, None],
+                'fix': False
             },
             'n': {
                 'init': 1.,
                 'limits': [0., None],
+                'fix': False
             }
         },
         'args_mapping': {
@@ -130,10 +150,12 @@ SIGNAL_PDF_CONFIGS = {
             'm': {
                 'init': 1.865,
                 'limits': [0., None],
+                'fix': False
             },
             'gamma': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             }
         },
         'pdf_class': zfit.pdf.Cauchy,
@@ -144,14 +166,17 @@ SIGNAL_PDF_CONFIGS = {
             'm': {
                 'init': 1.865,
                 'limits': [0., None],
+                'fix': False
             },
             'sigma': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             },
             'gamma': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             }
         },
         'pdf_class': zfit.pdf.Voigt,
@@ -162,14 +187,17 @@ SIGNAL_PDF_CONFIGS = {
             'mu': {
                 'init': 1.865,
                 'limits': [0., None],
+                'fix': False
             },
             'sigma': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             },
             'alpha': {
                 'init': 1.e6,
                 'limits': [None, None],
+                'fix': False
             }
         },
         'pdf_class': zfit.pdf.GaussExpTail,
@@ -180,22 +208,27 @@ SIGNAL_PDF_CONFIGS = {
             'mu': {
                 'init': 1.865,
                 'limits': [0., None],
+                'fix': False
             },
             'sigmal': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             },
             'sigmar': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             },
             'alphal': {
                 'init': 1.e6,
                 'limits': [None, None],
+                'fix': False
             },
             'alphar': {
                 'init': 1.e6,
                 'limits': [None, None],
+                'fix': False
             }
         },
         'pdf_class': zfit.pdf.GeneralizedGaussExpTail,
@@ -206,14 +239,17 @@ SIGNAL_PDF_CONFIGS = {
             'mu': {
                 'init': 1.865,
                 'limits': [0., None],
+                'fix': False
             },
             'sigma': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             },
             'alpha': {
                 'init': 1.e6,
                 'limits': [None, None],
+                'fix': False
             }
         },
         'args_mapping': {
@@ -231,14 +267,17 @@ SIGNAL_PDF_CONFIGS = {
             'mu': {
                 'init': 1.865,
                 'limits': [0., None],
+                'fix': False
             },
             'sigmal': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             },
             'sigmar': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             }
         },
         'pdf_class': zfit.pdf.BifurGauss,
@@ -249,30 +288,37 @@ SIGNAL_PDF_CONFIGS = {
             'mu': {
                 'init': 1.865,
                 'limits': [0., None],
+                'fix': False
             },
             'sigmal': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             },
             'sigmar': {
                 'init': 0.010,
                 'limits': [0., None],
+                'fix': False
             },
             'alphal': {
                 'init': 0.5,
                 'limits': [0, None],
+                'fix': False
             },
             'nl': {
                 'init': 1.,
                 'limits': [0., None],
+                'fix': False
             },
             'alphar': {
                 'init': 0.5,
                 'limits': [0, None],
+                'fix': False
             },
             'nr': {
                 'init': 1.,
                 'limits': [0., None],
+                'fix': False
             }
         },
         'pdf_class': zfit.pdf.GeneralizedCB,
@@ -285,7 +331,8 @@ BACKGROUND_PDF_CONFIGS = {
         'parameters': {
             'c': {
                 'init': 0.1,
-                'limits': [None, None]
+                'limits': [None, None],
+                'fix': False
             }
         },
         'pdf_class': zfit.pdf.Exponential,
@@ -295,7 +342,8 @@ BACKGROUND_PDF_CONFIGS = {
         'parameters': {
             'lam': {
                 'init': 0.1,
-                'limits': [None, None]
+                'limits': [None, None],
+                'fix': False
             }
         },
         'pdf_class': zfit.pdf.Exponential,
@@ -305,11 +353,13 @@ BACKGROUND_PDF_CONFIGS = {
         'parameters': {
             'mass': {
                 'init': pdg_api.get_particle_by_mcid(211).mass,  # pion mass
-                'limits': [0., None]
+                'limits': [0., None],
+                'fix': True
             },
             'power': {
                 'init': 1.,
-                'limits': [None, None]
+                'limits': [None, None],
+                'fix': False
             }
         },
         'pdf_class': cpdf.Pow,
@@ -318,12 +368,14 @@ BACKGROUND_PDF_CONFIGS = {
     'expopow': {
         'parameters': {
             'mass': {
-                'init': pdg_api.get_particle_by_mcid(211).mass,
-                'limits': [0., None]
+                'init': pdg_api.get_particle_by_mcid(211).mass,  # pion mass
+                'limits': [0., None],
+                'fix': True
             },
             'lam': {
                 'init': 0.1,
-                'limits': [None, None]
+                'limits': [None, None],
+                'fix': False
             }
         },
         'pdf_class': cpdf.ExpoPow,
@@ -332,24 +384,29 @@ BACKGROUND_PDF_CONFIGS = {
     'expopowext': {
         'parameters': {
             'mass': {
-                'init': pdg_api.get_particle_by_mcid(211).mass,
-                'limits': [0., None]
+                'init': pdg_api.get_particle_by_mcid(211).mass,  # pion mass
+                'limits': [0., None],
+                'fix': True
             },
             'power': {
                 'init': 0.5,
-                'limits': [0., None]
+                'limits': [0., None],
+                'fix': False
             },
             'c1': {
                 'init': -0.1,
-                'limits': [None, None]
+                'limits': [None, None],
+                'fix': False
             },
             'c2': {
                 'init': 0.,
-                'limits': [None, None]
+                'limits': [None, None],
+                'fix': False
             },
             'c3': {
                 'init': 0.,
-                'limits': [None, None]
+                'limits': [None, None],
+                'fix': False
             }
         },
         'pdf_class': cpdf.ExpoPowExt,
@@ -372,7 +429,6 @@ def get_signal_pdf_config(pdf_name: str):
 
     # Get the specific config
     config = SIGNAL_PDF_CONFIGS[pdf_name].copy()
-    config.update({'floating': False})  # Default to not floating
 
     return config
 
@@ -384,7 +440,6 @@ def get_bkg_pdf_config(pdf_name: str):
 
     # Get the specific config
     config = BACKGROUND_PDF_CONFIGS[pdf_name].copy()
-    config.update({'floating': False})  # Default to not floating
 
     return config
 
