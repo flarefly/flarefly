@@ -350,7 +350,6 @@ class F2MassFitter:
                     self._limits_bkg_pars_[ipdf],
                     self._fix_bkg_pars_[ipdf]
                 )
-                print(self._background_pdf_[ipdf].get_params())
                 if pdf_name in ['powlaw', 'expopow', 'expopowext'] and\
                         self._data_handler_.get_limits()[0] < self._init_bkg_pars_[ipdf]["mass"]:
                     Logger(

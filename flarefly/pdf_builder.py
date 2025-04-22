@@ -281,4 +281,4 @@ class PDFBuilder:
         for par_name, par_config in config['parameters'].items():
             init_pars.setdefault(par_name, par_config['init'])
             limits_pars.setdefault(par_name, par_config['limits'])
-            fix_pars.setdefault(par_name, False)  # Default to not fixed
+            fix_pars.setdefault(par_name, par_config['fix'])
