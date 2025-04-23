@@ -112,8 +112,12 @@ class DataHandler:
             self._limits_[0] = limits[0]
             self._limits_[1] = limits[1]
         elif None in self._limits_:
-            self._limits_[0] = min(data)
-            self._limits_[1] = max(data)
+            if isinstance(data, pd.DataFrame):
+                self._limits_[0] = min(data[self._var_name_])
+                self._limits_[1] = max(data[self._var_name_])
+            else:
+                self._limits_[0] = min(data)
+                self._limits_[1] = max(data)
         if self._obs_ is None:
             self._obs_ = zfit.Space(self._var_name_, lower=self._limits_[0], upper=self._limits_[1])
 
