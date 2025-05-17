@@ -230,6 +230,7 @@ class F2MassFitter:
             'limits', self._data_handler_.get_limits())
         if not isinstance(self._limits_[0], list):
             self._limits_ = [self._limits_]
+        self._is_truncated_ = self._limits_ != [self._data_handler_.get_limits()]
         self._name_ = kwargs.get('name', 'fitter')
         self._ndf_ = None
         self._chi2_loss_ = kwargs.get('chi2_loss', False)
@@ -512,10 +513,14 @@ class F2MassFitter:
 
         if len(self._signal_pdf_) + len(self._background_pdf_) == 1:
             if len(self._signal_pdf_) == 0:
-                self._total_pdf_ = self._background_pdf_[0].to_truncated(limits=self._limits_, obs=obs)
+                self._total_pdf_ = self._background_pdf_[0]
+                if self._is_truncated_:
+                    self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs)
                 return
             if len(self._background_pdf_) == 0:
-                self._total_pdf_ = self._signal_pdf_[0].to_truncated(limits=self._limits_, obs=obs)
+                self._total_pdf_ = self._signal_pdf_[0]
+                if self._is_truncated_:
+                    self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs)
                 return
 
         for ipdf, _ in enumerate(self._signal_pdf_):
@@ -557,7 +562,7 @@ class F2MassFitter:
         self._total_pdf_ = zfit.pdf.SumPDF(self._signal_pdf_+self._refl_pdf_+self._background_pdf_,
                                            self._fracs_)
 
-        if not self._data_handler_.get_is_binned():
+        if not self._data_handler_.get_is_binned() and self._is_truncated_:
             self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs, norm=obs)
 
     def __build_total_pdf_binned(self):
@@ -690,6 +695,10 @@ class F2MassFitter:
         """
         Get the ratio of the sidebands integral over the total integral
         """
+        if not self._is_truncated_:
+            self._ratio_truncated_ = 1.
+            return
+
         signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
         fracs = signal_fracs + refl_fracs + bkg_fracs
         limits = self._data_handler_.get_limits()
