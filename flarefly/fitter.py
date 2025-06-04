@@ -256,8 +256,17 @@ class F2MassFitter:
         zfit.settings.changed_warnings.all = False
         self.pdg_api = pdg.connect()
 
-    def __del__(self):
+    def cleanup(self):
+        """
+        Cleanup function to clear the graph cache of zfit
+        """
         zfit.run.clear_graph_cache()
+
+    def __del__(self):
+        try:
+            self.cleanup()
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
 
     # pylint: disable=too-many-branches, too-many-statements
     def __build_signal_pdfs(self, obs):
