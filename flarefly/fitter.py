@@ -256,6 +256,9 @@ class F2MassFitter:
         zfit.settings.changed_warnings.all = False
         self.pdg_api = pdg.connect()
 
+    def __del__(self):
+        zfit.run.clear_graph_cache()
+
     # pylint: disable=too-many-branches, too-many-statements
     def __build_signal_pdfs(self, obs):
         """
