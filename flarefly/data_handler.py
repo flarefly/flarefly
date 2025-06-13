@@ -8,6 +8,7 @@ import zfit
 import pandas as pd
 import uproot
 from hist import Hist
+from hist.axis import Regular
 from flarefly.utils import Logger
 
 
@@ -23,7 +24,7 @@ class DataHandler:
 
         Parameters
         ------------------------------------------------
-        data: numpy.array / pandas.DataFrame / uproot.behaviors.TH1.Histogram / string
+        data: numpy.array / pandas.DataFrame / uproot.behaviors.TH1.Histogram / ROOT.TH1 / string
             Data or path to data to be used in the fit
         var_name: str
             Name of the variable used in the fit
@@ -196,7 +197,7 @@ class DataHandler:
 
         Parameters
         ------------------------------------------------
-        data: str, np.ndarray, pd.DataFrame, or uproot.behaviors.TH1.Histogram
+        data: str, np.ndarray, pd.DataFrame, uproot.behaviors.TH1.Histogram, or ROOT.TH1
             The data to be loaded. It can be a file path (str), a NumPy array,
             a Pandas DataFrame, or an uproot Histogram.
         limits: list
@@ -219,6 +220,10 @@ class DataHandler:
             data = self.__load_from_pandas(data, limits)
         elif isinstance(data, uproot.behaviors.TH1.Histogram):
             self.__check_set_format('uproot')
+            data = self.__load_from_histogram(data, limits)
+        # Care the position: "TH1" is also in uproot type
+        elif "TH1" in str(type(data)):
+            self.__check_set_format('root_hist')
             data = self.__load_from_histogram(data, limits)
         else:
             Logger('Data format not supported', 'FATAL')
@@ -276,7 +281,19 @@ class DataHandler:
         """
 
         self.__check_binned_unbinned_(True)
-        hist = hist_obj.to_hist()
+        if self.__format__ == 'root_hist':
+            nbins = hist_obj.GetNbinsX()
+            xmin = hist_obj.GetXaxis().GetXmin()
+            xmax = hist_obj.GetXaxis().GetXmax()
+
+            hist = Hist(Regular(nbins, xmin, xmax, name="x"))
+            contents = np.array([hist_obj.GetBinContent(i+1) for i in range(nbins)])
+            errors2 = np.array([hist_obj.GetBinError(i+1)**2 for i in range(nbins)])
+
+            hist.view(flow=False)[...] = contents
+            hist.variances(flow=False)[...] = errors2
+        else:
+            hist = hist_obj.to_hist()
         hist = eval(f"hist[::{self._rebin_}j]")  # pylint: disable=eval-used
         hist_array = hist.to_numpy()
 
