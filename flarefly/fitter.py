@@ -1112,32 +1112,32 @@ class F2MassFitter:
                     extra_info += fr'  $\sigma = {sigma*1000:.1f}\pm{sigma_unc*1000:.1f}$ MeV$/c^2$''\n'
                 if gamma is not None:
                     extra_info += fr'  $\Gamma/2 = {gamma*1000:.1f}\pm{gamma_unc*1000:.1f}$ MeV$/c^2$''\n'
-                if mass_range is not None:
-                    bkg, bkg_err = self.get_background(idx=idx, min=mass_range[0], max=mass_range[1])
-                    s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, min=mass_range[0],
-                                                                             max=mass_range[1])
-                    signif, signif_err = self.get_significance(idx=idx, min=mass_range[0], max=mass_range[1])
-                    interval = f'[{mass_range[0]:.3f}, {mass_range[1]:.3f}]'
-                    extra_info += fr'  $S={rawyield:.0f} \pm {rawyield_err:.0f}$''\n'
-                    extra_info += fr'  $B({interval})={bkg:.0f} \pm {bkg_err:.0f}$''\n'
-                    extra_info += fr'  $S/B({interval})={s_over_b:.2f} \pm {s_over_b_err:.2f}$''\n'
-                    extra_info += fr'  Signif.$({interval})={signif:.1f} \pm {signif_err:.1f}$'
-                elif nhwhm is not None:
-                    bkg, bkg_err = self.get_background(idx=idx, nhwhm=nhwhm)
-                    s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, nhwhm=nhwhm)
-                    signif, signif_err = self.get_significance(idx=idx, nhwhm=nhwhm)
-                    extra_info += fr'  $S=${rawyield:.0f} $\pm$ {rawyield_err:.0f}''\n'
-                    extra_info += fr'  $B({nhwhm}~\mathrm{{HWHM}})=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
-                    extra_info += fr'  $S/B({nhwhm}~\mathrm{{HWHM}})=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
-                    extra_info += fr'  Signif.$({nhwhm}~\mathrm{{HWHM}})=${signif:.1f} $\pm$ {signif_err:.1f}'
-                else:
-                    bkg, bkg_err = self.get_background(idx=idx, nsigma=nsigma)
-                    s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, nsigma=nsigma)
-                    signif, signif_err = self.get_significance(idx=idx, nsigma=nsigma)
-                    extra_info += fr'  $S=${rawyield:.0f} $\pm$ {rawyield_err:.0f}''\n'
-                    extra_info += fr'  $B({nsigma}\sigma)=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
-                    extra_info += fr'  $S/B({nsigma}\sigma)=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
-                    extra_info += fr'  Signif.$({nsigma}\sigma)=${signif:.1f} $\pm$ {signif_err:.1f}'
+
+                extra_info += fr'  $S={rawyield:.0f} \pm {rawyield_err:.0f}$''\n'
+                if self._name_background_pdf_[0] != 'nobkg':
+                    if mass_range is not None:
+                        interval = f'[{mass_range[0]:.3f}, {mass_range[1]:.3f}]'
+                        bkg, bkg_err = self.get_background(idx=idx, min=mass_range[0], max=mass_range[1])
+                        s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, min=mass_range[0],
+                                                                                max=mass_range[1])
+                        signif, signif_err = self.get_significance(idx=idx, min=mass_range[0], max=mass_range[1])
+                        extra_info += fr'  $B({interval})={bkg:.0f} \pm {bkg_err:.0f}$''\n'
+                        extra_info += fr'  $S/B({interval})={s_over_b:.2f} \pm {s_over_b_err:.2f}$''\n'
+                        extra_info += fr'  Signif.$({interval})={signif:.1f} \pm {signif_err:.1f}$'
+                    elif nhwhm is not None:
+                        bkg, bkg_err = self.get_background(idx=idx, nhwhm=nhwhm)
+                        s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, nhwhm=nhwhm)
+                        signif, signif_err = self.get_significance(idx=idx, nhwhm=nhwhm)
+                        extra_info += fr'  $B({nhwhm}~\mathrm{{HWHM}})=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
+                        extra_info += fr'  $S/B({nhwhm}~\mathrm{{HWHM}})=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
+                        extra_info += fr'  Signif.$({nhwhm}~\mathrm{{HWHM}})=${signif:.1f} $\pm$ {signif_err:.1f}'
+                    else:
+                        bkg, bkg_err = self.get_background(idx=idx, nsigma=nsigma)
+                        s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, nsigma=nsigma)
+                        signif, signif_err = self.get_significance(idx=idx, nsigma=nsigma)
+                        extra_info += fr'  $B({nsigma}\sigma)=${bkg:.0f} $\pm$ {bkg_err:.0f}''\n'
+                        extra_info += fr'  $S/B({nsigma}\sigma)=${s_over_b:.2f} $\pm$ {s_over_b_err:.2f}''\n'
+                        extra_info += fr'  Signif.$({nsigma}\sigma)=${signif:.1f} $\pm$ {signif_err:.1f}'
                 text.append(extra_info)
             concatenated_text = '\n'.join(text)
             anchored_text_signal = AnchoredText(concatenated_text, loc=info_loc[1], frameon=False)
