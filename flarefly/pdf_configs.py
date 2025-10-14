@@ -3,11 +3,12 @@ import zfit
 import pdg
 import flarefly.custom_pdfs as cpdf
 from flarefly.utils import Logger
+from flarefly.components.pdf_kind import PDFKind, PDFType
 
 pdg_api = pdg.connect()
 
 SIGNAL_PDF_CONFIGS = {
-    'gaussian': {
+    PDFType.GAUSSIAN: {
         'parameters': {
             'mu': {
                 'init': 1.865,
@@ -23,7 +24,7 @@ SIGNAL_PDF_CONFIGS = {
         'pdf_class': zfit.pdf.Gauss,
         'pdf_args': ['mu', 'sigma']
     },
-    'doublegaus': {
+    PDFType.DOUBLE_GAUS: {
         'parameters': {
             'mu': {
                 'init': 1.865,
@@ -49,7 +50,7 @@ SIGNAL_PDF_CONFIGS = {
         'pdf_class': cpdf.DoubleGauss,
         'pdf_args': ['mu', 'sigma1', 'sigma2', 'frac1']
     },
-    'crystalball': {
+    PDFType.CRYSTAL_BALL: {
         'parameters': {
             'mu': {
                 'init': 1.865,
@@ -75,7 +76,7 @@ SIGNAL_PDF_CONFIGS = {
         'pdf_class': zfit.pdf.CrystalBall,
         'pdf_args': ['mu', 'sigma', 'alpha', 'n']
     },
-    'doublecb': {
+    PDFType.DOUBLE_CB: {
         'parameters': {
             'mu': {
                 'init': 1.865,
@@ -111,7 +112,7 @@ SIGNAL_PDF_CONFIGS = {
         'pdf_class': zfit.pdf.DoubleCB,
         'pdf_args': ['mu', 'sigma', 'alphal', 'nl', 'alphar', 'nr']
     },
-    'doublecbsymm': {
+    PDFType.DOUBLE_CB_SYMM: {
         'parameters': {
             'mu': {
                 'init': 1.865,
@@ -145,7 +146,7 @@ SIGNAL_PDF_CONFIGS = {
         'pdf_class': zfit.pdf.DoubleCB,
         'pdf_args': ['mu', 'sigma', 'alphal', 'nl', 'alphar', 'nr']
     },
-    'cauchy': {
+    PDFType.CAUCHY: {
         'parameters': {
             'm': {
                 'init': 1.865,
@@ -161,7 +162,7 @@ SIGNAL_PDF_CONFIGS = {
         'pdf_class': zfit.pdf.Cauchy,
         'pdf_args': ['m', 'gamma']
     },
-    'voigtian': {
+    PDFType.VOIGTIAN: {
         'parameters': {
             'm': {
                 'init': 1.865,
@@ -182,7 +183,7 @@ SIGNAL_PDF_CONFIGS = {
         'pdf_class': zfit.pdf.Voigt,
         'pdf_args': ['m', 'sigma', 'gamma']
     },
-    'gausexptail': {
+    PDFType.GAUS_EXP_TAIL: {
         'parameters': {
             'mu': {
                 'init': 1.865,
@@ -203,7 +204,7 @@ SIGNAL_PDF_CONFIGS = {
         'pdf_class': zfit.pdf.GaussExpTail,
         'pdf_args': ['mu', 'sigma', 'alpha']
     },
-    'genergausexptail': {
+    PDFType.GENER_GAUS_EXP_TAIL: {
         'parameters': {
             'mu': {
                 'init': 1.865,
@@ -234,7 +235,7 @@ SIGNAL_PDF_CONFIGS = {
         'pdf_class': zfit.pdf.GeneralizedGaussExpTail,
         'pdf_args': ['mu', 'sigmar', 'sigmal', 'alphar', 'alphal']
     },
-    'genergausexptailsymm': {
+    PDFType.GENER_GAUS_EXP_TAIL_SYMM: {
         'parameters': {
             'mu': {
                 'init': 1.865,
@@ -262,7 +263,7 @@ SIGNAL_PDF_CONFIGS = {
         'pdf_class': zfit.pdf.GeneralizedGaussExpTail,
         'pdf_args': ['mu', 'sigmar', 'sigmal', 'alphar', 'alphal']
     },
-    'bifurgaus': {
+    PDFType.BIFUR_GAUS: {
         'parameters': {
             'mu': {
                 'init': 1.865,
@@ -283,7 +284,7 @@ SIGNAL_PDF_CONFIGS = {
         'pdf_class': zfit.pdf.BifurGauss,
         'pdf_args': ['mu', 'sigmar', 'sigmal']
     },
-    'genercrystalball': {
+    PDFType.GENER_CRYSTAL_BALL: {
         'parameters': {
             'mu': {
                 'init': 1.865,
@@ -327,7 +328,7 @@ SIGNAL_PDF_CONFIGS = {
 }
 
 BACKGROUND_PDF_CONFIGS = {
-    'chebpol': {
+    PDFType.CHEBPOL: {
         'parameters': {
             'c': {
                 'init': 0.1,
@@ -338,7 +339,7 @@ BACKGROUND_PDF_CONFIGS = {
         'pdf_class': zfit.pdf.Exponential,
         'pdf_args': ['coeff0', 'coeffs']
     },
-    'expo': {
+    PDFType.EXPO: {
         'parameters': {
             'lam': {
                 'init': 0.1,
@@ -349,7 +350,7 @@ BACKGROUND_PDF_CONFIGS = {
         'pdf_class': zfit.pdf.Exponential,
         'pdf_args': ['lam']
     },
-    'powlaw': {
+    PDFType.POW_LAW: {
         'parameters': {
             'mass': {
                 'init': pdg_api.get_particle_by_mcid(211).mass,  # pion mass
@@ -365,7 +366,7 @@ BACKGROUND_PDF_CONFIGS = {
         'pdf_class': cpdf.Pow,
         'pdf_args': ['mass', 'power']
     },
-    'expopow': {
+    PDFType.EXPO_POW: {
         'parameters': {
             'mass': {
                 'init': pdg_api.get_particle_by_mcid(211).mass,  # pion mass
@@ -381,7 +382,7 @@ BACKGROUND_PDF_CONFIGS = {
         'pdf_class': cpdf.ExpoPow,
         'pdf_args': ['mass', 'lam']
     },
-    'expopowext': {
+    PDFType.EXPO_POW_EXT: {
         'parameters': {
             'mass': {
                 'init': pdg_api.get_particle_by_mcid(211).mass,  # pion mass
@@ -422,35 +423,35 @@ KDE_MAP = {
 }
 
 
-def get_signal_pdf_config(pdf_name: str):
+def get_signal_pdf_config(pdf_kind: PDFKind):
     """Get the configuration for a specific PDF."""
-    if pdf_name not in SIGNAL_PDF_CONFIGS:
-        Logger(f"Unknown signal PDF name: {pdf_name}.", "FATAL")
+    if pdf_kind not in SIGNAL_PDF_CONFIGS:
+        Logger(f"Unknown signal PDF name: {pdf_kind.value}.", "FATAL")
 
     # Get the specific config
-    config = SIGNAL_PDF_CONFIGS[pdf_name].copy()
+    config = SIGNAL_PDF_CONFIGS[pdf_kind].copy()
 
     return config
 
 
-def get_bkg_pdf_config(pdf_name: str):
+def get_bkg_pdf_config(pdf_kind: PDFKind):
     """Get the configuration for a specific PDF."""
-    if pdf_name not in BACKGROUND_PDF_CONFIGS:
-        Logger(f"Unknown background PDF name: {pdf_name}.", "FATAL")
+    if pdf_kind not in BACKGROUND_PDF_CONFIGS:
+        Logger(f"Unknown background PDF name: {pdf_kind.value}.", "FATAL")
 
     # Get the specific config
-    config = BACKGROUND_PDF_CONFIGS[pdf_name].copy()
+    config = BACKGROUND_PDF_CONFIGS[pdf_kind].copy()
 
     return config
 
 
-def get_kde_pdf(kde_name: str):
+def get_kde_pdf(kde_kind: PDFKind):
     """Get the KDE PDF class for a specific KDE type."""
-    if kde_name not in KDE_MAP:
+    if kde_kind not in KDE_MAP:
         Logger(
-            f"Unknown KDE type: {kde_name}. "
+            f"Unknown KDE type: {kde_kind.value}. "
             f"Available types: {list(KDE_MAP.keys())}",
             "FATAL"
         )
 
-    return KDE_MAP[kde_name]
+    return KDE_MAP[kde_kind]
