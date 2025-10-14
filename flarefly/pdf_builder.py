@@ -3,13 +3,14 @@ from typing import Dict, Any, List, Optional, Tuple
 import zfit
 from flarefly.pdf_configs import get_signal_pdf_config, get_bkg_pdf_config, get_kde_pdf
 from flarefly.utils import Logger
+from flarefly.components.pdf_kind import PDFKind, PDFType
 
 
 class PDFBuilder:
     """Class to build signal and background PDFs using zfit."""
     @staticmethod
     def build_signal_pdf(
-        pdf_name: str,
+        pdf_kind: PDFKind,
         obs: zfit.Space,
         name: str,
         ipdf: int,
@@ -20,7 +21,7 @@ class PDFBuilder:
         """Build a signal PDF with configurable parameters.
 
         Args:
-            pdf_name: Name of the PDF to build
+            pdf_kind: PDFKind of the PDF to build
             obs: The observable space for the PDF
             name: Base name for parameters
             ipdf: Index of the PDF
@@ -32,7 +33,7 @@ class PDFBuilder:
             - The constructed zfit PDF object
             - Dictionary of zfit.Parameter objects for the PDF parameters
         """
-        config = get_signal_pdf_config(pdf_name)
+        config = get_signal_pdf_config(pdf_kind)
 
         # Update the input dictionaries with default values
         PDFBuilder._update_with_defaults(config, init_pars, limits_pars, fix_pars)
@@ -60,7 +61,7 @@ class PDFBuilder:
 
     @staticmethod
     def build_signal_kde(
-        pdf_name: str,
+        pdf_kind: PDFKind,
         kde_sample: Any,
         name: str,
         ipdf: int,
@@ -69,7 +70,7 @@ class PDFBuilder:
         """Build a signal KDE PDF.
 
         Args:
-            pdf_name: Type of KDE ('kde_exact', 'kde_grid', 'kde_fft', 'kde_isj')
+            pdf_kind: Type of KDE ('kde_exact', 'kde_grid', 'kde_fft', 'kde_isj')
             kde_sample: The sample data for KDE estimation
             name: Base name for the PDF
             ipdf: Index of the PDF
@@ -83,7 +84,7 @@ class PDFBuilder:
 
         kde_options = kde_options or {}
 
-        return get_kde_pdf(pdf_name)(
+        return get_kde_pdf(pdf_kind)(
             data=kde_sample.get_data(),
             obs=kde_sample.get_obs(),
             name=f'{name}_kde_signal{ipdf}',
@@ -121,7 +122,7 @@ class PDFBuilder:
 
     @staticmethod
     def build_bkg_pdf(
-        pdf_name: str,
+        pdf_kind: PDFKind,
         obs: zfit.Space,
         name: str,
         ipdf: int,
@@ -132,7 +133,7 @@ class PDFBuilder:
         """Build a signal PDF with configurable parameters.
 
         Args:
-            pdf_name: Name of the PDF to build
+            pdf_kind: PDFKind of the PDF to build
             obs: The observable space for the PDF
             name: Base name for parameters
             ipdf: Index of the PDF
@@ -145,12 +146,12 @@ class PDFBuilder:
             - Dictionary of zfit.Parameter objects for the PDF parameters
         """
         # Handle Chebyshev polynomials specially
-        if 'chebpol' in pdf_name:
+        if pdf_kind == PDFType.CHEBPOL:
             return PDFBuilder._build_chebyshev_pdf(
-                pdf_name, obs, name, ipdf, init_pars, limits_pars, fix_pars
+                pdf_kind, obs, name, ipdf, init_pars, limits_pars, fix_pars
             )
 
-        config = get_bkg_pdf_config(pdf_name)
+        config = get_bkg_pdf_config(pdf_kind)
 
         # Update the input dictionaries with default values
         PDFBuilder._update_with_defaults(config, init_pars, limits_pars, fix_pars)
@@ -175,7 +176,7 @@ class PDFBuilder:
 
     @staticmethod
     def _build_chebyshev_pdf(
-        pdf_name: str,
+        pdf_kind: PDFKind,
         obs: zfit.Space,
         name: str,
         ipdf: int,
@@ -184,11 +185,10 @@ class PDFBuilder:
         fix_pars: Dict[str, bool]
     ) -> Tuple[zfit.pdf.BasePDF, Dict[str, zfit.Parameter]]:
         """Build a Chebyshev polynomial background PDF."""
-        pol_degree = int(pdf_name.split('chebpol')[1])
 
         # Create parameters for each coefficient
         parameters = {}
-        for deg in range(pol_degree + 1):
+        for deg in range(pdf_kind.order + 1):
             par_name = f'c{deg}'
             init_pars.setdefault(par_name, 0.1)
             limits_pars.setdefault(par_name, [None, None])
@@ -205,13 +205,13 @@ class PDFBuilder:
 
         # Prepare Chebyshev arguments
         coeff0 = parameters[f'{name}_c0_bkg{ipdf}']
-        bkg_coeffs = [parameters[f'{name}_c{deg}_bkg{ipdf}'] for deg in range(1, pol_degree + 1)]
+        bkg_coeffs = [parameters[f'{name}_c{deg}_bkg{ipdf}'] for deg in range(1, pdf_kind.order + 1)]
 
         return zfit.pdf.Chebyshev(obs=obs, coeff0=coeff0, coeffs=bkg_coeffs), parameters
 
     @staticmethod
     def build_bkg_kde(
-        pdf_name: str,
+        pdf_kind: PDFKind,
         kde_sample: Any,
         name: str,
         ipdf: int,
@@ -220,7 +220,7 @@ class PDFBuilder:
         """Build a background KDE PDF.
 
         Args:
-            pdf_name: Type of KDE ('kde_exact', 'kde_grid', 'kde_fft', 'kde_isj')
+            pdf_kind: Kind of KDE ('kde_exact', 'kde_grid', 'kde_fft', 'kde_isj')
             kde_sample: The sample data for KDE estimation
             name: Base name for the PDF
             ipdf: Index of the PDF
@@ -234,7 +234,7 @@ class PDFBuilder:
 
         kde_options = kde_options or {}
 
-        return get_kde_pdf(pdf_name)(
+        return get_kde_pdf(pdf_kind)(
             data=kde_sample.get_data(),
             obs=kde_sample.get_obs(),
             name=f'{name}_kde_bkg{ipdf}',
