@@ -1073,7 +1073,9 @@ class F2MassFitter:
                             (frac_err / frac)**2 +
                             (self._fit_result_.hesse(
                                 params=self._total_yield_, method='hesse_np'
-                            )[self._total_yield_]['error'] / self._total_pdf_.get_yield().value())**2
+                            )[self._total_yield_]['error'] / self._total_pdf_.get_yield().value())**2 +
+                            2 * self.__get_frac_cov(self._fracs_[i_pdf], 'signal', self._total_yield_) /
+                                self._total_pdf_.get_yield().value() / frac
                         )
             else:
                 for i_pdf, _ in enumerate(self._signal_pdf_):
