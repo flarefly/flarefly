@@ -217,6 +217,7 @@ class F2MassFitter:
             self._fracs_ = [None for _ in range(2 * len(name_signal_pdf) + len(name_background_pdf) - 1)]
         else:
             Logger('No signal nor background pdf defined', 'FATAL')
+        self._total_yield_ = None
         self._yields_ = [None for _ in range(len(self._fracs_) + 1)]
         self._total_pdf_norm_ = None
         self._ratio_truncated_ = None
@@ -533,27 +534,28 @@ class F2MassFitter:
 
         if len(self._signal_pdf_) + len(self._background_pdf_) == 1:
             if len(self._signal_pdf_) == 0:
+                self._total_pdf_ = self._background_pdf_[0].copy()
                 if self._extended_:
-                    total_yield = zfit.Parameter(
+                    self._total_yield_ = zfit.Parameter(
                         f'{self._name_}_yield',
                         self._data_handler_.get_norm(),
                         0,
                         floating=True
                     )
-                    self._total_pdf_.set_yield(total_yield)
+                    self._total_pdf_.set_yield(self._total_yield_)
                 if self._is_truncated_:
                     self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs)
                 return
             if len(self._background_pdf_) == 0:
                 self._total_pdf_ = self._signal_pdf_[0].copy()
                 if self._extended_:
-                    total_yield = zfit.Parameter(
+                    self._total_yield_ = zfit.Parameter(
                         f'{self._name_}_yield',
                         self._data_handler_.get_norm(),
                         0,
                         floating=True
                     )
-                    self._total_pdf_.set_yield(total_yield)
+                    self._total_pdf_.set_yield(self._total_yield_)
                 if self._is_truncated_:
                     self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs)
                 return
@@ -595,7 +597,7 @@ class F2MassFitter:
         self.__set_frac_constraints()
 
         if self._extended_:
-            total_yield = zfit.Parameter(
+            self._total_yield_ = zfit.Parameter(
                 f'{self._name_}_yield',
                 self._data_handler_.get_norm(),
                 0,
@@ -609,7 +611,7 @@ class F2MassFitter:
                 self._yields_[i_frac] = zfit.ComposedParameter(
                     frac.name.replace('frac', 'yield'),
                     par_func,
-                    params=[frac, total_yield],
+                    params=[frac, self._total_yield_],
                     unpack_params=True
                 )
 
@@ -625,7 +627,7 @@ class F2MassFitter:
             self._yields_[-1] = zfit.ComposedParameter(
                 frac_last.name.replace('frac', 'yield'),
                 par_func,
-                params=[frac_last, total_yield],
+                params=[frac_last, self._total_yield_],
                 unpack_params=True
             )
 
@@ -662,7 +664,8 @@ class F2MassFitter:
         self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(zfit.pdf.SumPDF(
             self._signal_pdf_+self._refl_pdf_+self._background_pdf_, self._fracs_), obs)
 
-    def __get_frac_and_err(self, par_name, frac_par, frac_type):
+    def __get_frac_and_err(self, frac_par, frac_type):
+        par_name = frac_par.name
         if 'constrained' in par_name:
             split_par_name = par_name.split(sep='_constrained_to_')
             target_frac_name = split_par_name[0].replace(split_par_name[0].split('_')[-1], split_par_name[1])
@@ -676,7 +679,7 @@ class F2MassFitter:
                     frac_type = 'signal'
                 else:
                     frac_type = 'bkg'
-                frac_temp, err_temp, isgn = self.__get_frac_and_err(target_par_name, target_par, frac_type)
+                frac_temp, err_temp, isgn = self.__get_frac_and_err(target_par, frac_type)
                 return (
                     frac_temp * float(frac_par.params['param_1'].value()),
                     err_temp * float(frac_par.params['param_1'].value()),
@@ -696,6 +699,38 @@ class F2MassFitter:
             self._fit_result_.params[par_name]['hesse']['error'],
             int(par_name.split(sep=f'{self._name_}_frac_{frac_type}')[-1])
         )
+
+    def __get_frac_cov(self, frac_par, frac_type, other_par):
+        par_name = frac_par.name
+        other_par_name = other_par.name
+        if 'constrained' in par_name:
+            split_par_name = par_name.split(sep='_constrained_to_')
+            target_frac_name = split_par_name[0].replace(split_par_name[0].split('_')[-1], split_par_name[1])
+            # find the parameter containing target_frac_name
+            target_par_name, target_par = [
+                (par.name, par) for par in self._fracs_ if target_frac_name in par.name
+            ][0]
+
+            if 'constrained' in target_par_name:
+                if f'{self._name_}_frac_signal' in target_par_name:
+                    frac_type = 'signal'
+                else:
+                    frac_type = 'bkg'
+                cov_temp = self.__get_frac_cov(target_par, frac_type, other_par)
+                return cov_temp * float(frac_par.params['param_1'].value())
+
+        if 'constrained' in other_par_name:
+            split_par_name = other_par_name.split(sep='_constrained_to_')
+            target_frac_name = split_par_name[0].replace(split_par_name[0].split('_')[-1], split_par_name[1])
+            # find the parameter containing target_frac_name
+            target_par_name, target_par = [
+                (par.name, par) for par in self._fracs_ if target_frac_name in par.name
+            ][0]
+            if 'constrained' in target_par_name:
+                cov_temp = self.__get_frac_cov(frac_par, frac_type, target_par)
+                return cov_temp * float(frac_par.params['param_1'].value())
+
+        return self._fit_result_.covariance(params=[frac_par, other_par], method='hesse_np')[0, 1]
 
     def __get_all_fracs(self):
         """
@@ -722,13 +757,13 @@ class F2MassFitter:
                 continue
             par_name = frac_par.name
             if f'{self._name_}_frac_signal' in par_name:
-                signal_frac, signal_err, isgn = self.__get_frac_and_err(par_name, frac_par, 'signal')
+                signal_frac, signal_err, isgn = self.__get_frac_and_err(frac_par, 'signal')
                 signal_fracs.append(signal_frac)
                 signal_err_fracs.append(signal_err)
                 refl_fracs.append(signal_frac * self._refl_over_sgn_[isgn])
                 refl_err_fracs.append(signal_err * self._refl_over_sgn_[isgn])
             elif f'{self._name_}_frac_bkg' in par_name:
-                bkg_frac, bkg_err, isgn = self.__get_frac_and_err(par_name, frac_par, 'bkg')
+                bkg_frac, bkg_err, isgn = self.__get_frac_and_err(frac_par, 'bkg')
                 bkg_fracs.append(bkg_frac)
                 bkg_err_fracs.append(bkg_err)
 
@@ -1023,9 +1058,31 @@ class F2MassFitter:
             self._rawyield_[0] = self._data_handler_.get_norm()
             self._rawyield_err_[0] = np.sqrt(self._rawyield_[0])
         else:
-            for i_pdf, _ in enumerate(self._signal_pdf_):
-                self._rawyield_[i_pdf] = signal_fracs[i_pdf] * norm / self._ratio_truncated_
-                self._rawyield_err_[i_pdf] = signal_frac_errs[i_pdf] * norm / self._ratio_truncated_
+            if self._extended_:
+                for i_pdf, (_, frac, frac_err) in enumerate(zip(self._signal_pdf_, signal_fracs, signal_frac_errs)):
+                    self._rawyield_[i_pdf] = self._total_pdf_.models[i_pdf].get_yield().value()
+                    # no background case: last signal fraction is 1 - sum(others)
+                    if len(self._signal_pdf_) > 0 and\
+                        len(self._background_pdf_) == 0 and\
+                            i_pdf == len(self._signal_pdf_) - 1:
+                        self._rawyield_err_[i_pdf] = np.sqrt(
+                            np.sum(np.square(signal_frac_errs)) + 2 * np.sum([
+                                self.__get_frac_cov(self._fracs_[i], 'signal', self._fracs_[j])
+                                for i in range(len(self._fracs_)-1) for j in range(i+1, len(self._fracs_)-1)
+                            ])
+                        )
+
+                    else:
+                        self._rawyield_err_[i_pdf] = self._rawyield_[i_pdf] * np.sqrt(
+                            (frac_err / frac)**2 +
+                            (self._fit_result_.hesse(
+                                params=self._total_yield_, method='hesse_np'
+                            )[self._total_yield_]['error'] / self._total_pdf_.get_yield().value())**2
+                        )
+            else:
+                for i_pdf, _ in enumerate(self._signal_pdf_):
+                    self._rawyield_[i_pdf] = signal_fracs[i_pdf] * norm / self._ratio_truncated_
+                    self._rawyield_err_[i_pdf] = signal_frac_errs[i_pdf] * norm / self._ratio_truncated_
 
         return self._fit_result_
 
