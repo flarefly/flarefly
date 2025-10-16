@@ -2344,6 +2344,15 @@ class F2MassFitter:
             Data sample for histogram template
         """
 
+        edges_sgn = sample.get_bin_edges()
+        edges_data = self._data_handler_.get_bin_edges()
+        if len(edges_sgn) != len(edges_data):
+            Logger(f'The data and the signal template {idx} have different number of bins:'
+                   f' \n       -> signal template: {len(edges_sgn)-1}, data -> {len(edges_data)-1}', 'FATAL')
+        if not np.allclose(edges_sgn, edges_data):
+            Logger(f'The data and the signal template {idx} have different bin edges:'
+                   f' \n       -> signal template: {edges_sgn}, data -> {edges_data}', 'FATAL')
+
         self._hist_signal_sample_[idx] = sample
 
     # pylint: disable=line-too-long
@@ -2380,6 +2389,15 @@ class F2MassFitter:
         r_over_s: float
             R/S ratio
         """
+
+        edges_refl = sample.get_bin_edges()
+        edges_data = self._data_handler_.get_bin_edges()
+        if len(edges_refl) != len(edges_data):
+            Logger(f'The data and the reflection template {idx} have different number of bins:'
+                   f' \n       -> reflection template: {len(edges_refl)-1}, data -> {len(edges_data)-1}', 'FATAL')
+        if not np.allclose(edges_refl, edges_data):
+            Logger(f'The data and the reflection template {idx} have different bin edges:'
+                   f' \n       -> reflection template: {edges_refl}, data -> {edges_data}', 'FATAL')
 
         self._hist_refl_sample_[idx] = sample
         self._refl_over_sgn_[idx] = r_over_s
@@ -2420,12 +2438,14 @@ class F2MassFitter:
             Data sample for template histogram
         """
 
-        limits_bkg = sample.get_limits()
-        limits_data = self._data_handler_.get_limits()
-        if not np.isclose(limits_bkg[0], limits_data[0], rtol=1e-05, atol=1e-08, equal_nan=False) or \
-                not np.isclose(limits_bkg[1], limits_data[1], rtol=1e-05, atol=1e-08, equal_nan=False):
-            Logger(f'The data and the background template {idx} have different limits:'
-                   f' \n       -> background template: {limits_bkg}, data -> {limits_data}', 'FATAL')
+        edges_bkg = sample.get_bin_edges()
+        edges_data = self._data_handler_.get_bin_edges()
+        if len(edges_bkg) != len(edges_data):
+            Logger(f'The data and the background template {idx} have different number of bins:'
+                   f' \n       -> background template: {len(edges_bkg)-1}, data -> {len(edges_data)-1}', 'FATAL')
+        if not np.allclose(edges_bkg, edges_data):
+            Logger(f'The data and the background template {idx} have different bin edges:'
+                   f' \n       -> background template: {edges_bkg}, data -> {edges_data}', 'FATAL')
 
         self._hist_bkg_sample_[idx] = sample
 
