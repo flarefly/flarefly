@@ -458,6 +458,25 @@ class DataHandler:
             bin_center.append((bin_[0] + bin_[1])/2)
         return bin_center
 
+    def get_bin_edges(self):
+        """
+        Get the edges of the bins
+
+        Returns
+        -------------------------------------------------
+        bin_edges: list
+            The bin edges
+        """
+        if self.get_is_binned():
+            binning = self.get_obs().binning[0]
+        else:
+            binning = self.get_binned_obs_from_unbinned_data().binning[0]
+        bin_edges = []
+        for bin_ in binning:
+            bin_edges.append(bin_[0])
+        bin_edges.append(binning[-1][1])
+        return bin_edges
+
     def get_nbins(self):
         """
         Get the number of bins
