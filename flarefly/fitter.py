@@ -2555,13 +2555,12 @@ class F2MassFitter:
         signal_pars_uncs = []
         for i_sgn, sgn_par in enumerate(self._sgn_pars_):
             signal_pars_uncs.append({})
-            for key, value in sgn_par.items():
+            for key in sgn_par:
                 par_name = key.split(f'{self._name_}_')[-1]
                 par_name = par_name.split(f'_signal{i_sgn}')[0]
                 try:
                     par_unc = self._fit_result_.params[key]['hesse']['error']
-                except Exception as e:
-                    print(f"    Parameter {key} is fixed, setting uncertainty to 0!")
+                except KeyError:
                     par_unc = 0.
                 signal_pars_uncs[-1][par_name] = par_unc
             signal_pars_uncs[-1]['frac'] = fracs[3][i_sgn]
@@ -2590,13 +2589,12 @@ class F2MassFitter:
         bkg_pars_uncs = []
         for i_bkg, bkg_par in enumerate(self._bkg_pars_):
             bkg_pars_uncs.append({})
-            for key, value in bkg_par.items():
+            for key in bkg_par:
                 par_name = key.split(f'{self._name_}_')[-1]
                 par_name = par_name.split(f'_bkg{i_bkg}')[0]
                 try:
                     par_unc = self._fit_result_.params[key]['hesse']['error']
-                except Exception as e:
-                    print(f"    Parameter {key} is fixed, setting uncertainty to 0!")
+                except KeyError:
                     par_unc = 0.
                 bkg_pars_uncs[-1][par_name] = par_unc
             bkg_pars_uncs[-1]['frac'] = fracs[4][i_bkg]
