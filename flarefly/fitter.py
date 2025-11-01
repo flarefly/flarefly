@@ -2547,6 +2547,26 @@ class F2MassFitter:
             signal_pars[-1]['frac'] = fracs[0][i_sgn]
         return signal_pars
 
+    def get_signal_pars_uncs(self):
+        """
+        Return the signal parameters uncertainties
+        """
+        fracs = self.__get_all_fracs()
+        signal_pars_uncs = []
+        for i_sgn, sgn_par in enumerate(self._sgn_pars_):
+            signal_pars_uncs.append({})
+            for key, value in sgn_par.items():
+                par_name = key.split(f'{self._name_}_')[-1]
+                par_name = par_name.split(f'_signal{i_sgn}')[0]
+                try:
+                    par_unc = self._fit_result_.params[key]['hesse']['error']
+                except Exception as e:
+                    print(f"    Parameter {key} is fixed, setting uncertainty to 0!")
+                    par_unc = 0.
+                signal_pars_uncs[-1][par_name] = par_unc
+            signal_pars_uncs[-1]['frac'] = fracs[3][i_sgn]
+        return signal_pars_uncs
+
     def get_bkg_pars(self):
         """
         Return the background parameters
@@ -2561,3 +2581,23 @@ class F2MassFitter:
                 bkg_pars[-1][par_name] = value.numpy()
             bkg_pars[-1]['frac'] = fracs[1][i_bkg]
         return bkg_pars
+
+    def get_bkg_pars_uncs(self):
+        """
+        Return the background parameters uncertainties
+        """
+        fracs = self.__get_all_fracs()
+        bkg_pars_uncs = []
+        for i_bkg, bkg_par in enumerate(self._bkg_pars_):
+            bkg_pars_uncs.append({})
+            for key, value in bkg_par.items():
+                par_name = key.split(f'{self._name_}_')[-1]
+                par_name = par_name.split(f'_bkg{i_bkg}')[0]
+                try:
+                    par_unc = self._fit_result_.params[key]['hesse']['error']
+                except Exception as e:
+                    print(f"    Parameter {key} is fixed, setting uncertainty to 0!")
+                    par_unc = 0.
+                bkg_pars_uncs[-1][par_name] = par_unc
+            bkg_pars_uncs[-1]['frac'] = fracs[4][i_bkg]
+        return bkg_pars_uncs
