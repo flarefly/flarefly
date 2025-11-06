@@ -247,7 +247,6 @@ class F2MassFitter:
         self._raw_residuals_ = []
         self._raw_residual_variances_ = []
         self._std_residuals_ = []
-        self._std_residual_variances_ = []
 
         self._signal_at_threshold = kwargs.get('signal_at_threshold', [False for _ in name_signal_pdf])
         self._signalthr_pdf_ = [None for _ in name_signal_pdf]
@@ -775,7 +774,6 @@ class F2MassFitter:
         bins = self._data_handler_.get_nbins()
         norm = self._total_pdf_norm_
         self._std_residuals_ = [None]*bins
-        self._std_residual_variances_ = [None]*bins
 
         # access normalized data values and errors for all bins
         if self._data_handler_.get_is_binned():
@@ -795,7 +793,6 @@ class F2MassFitter:
             if variance == 0:
                 Logger('Null variance. Consider enlarging the bins.', 'FATAL')
             self._std_residuals_[ibin] = float((data - model)/np.sqrt(variance))
-            self._std_residual_variances_[ibin] = float(variance/np.sqrt(variance))
 
     def __prefit(self, excluded_regions):
         """
@@ -900,7 +897,6 @@ class F2MassFitter:
         self._raw_residuals_ = []
         self._raw_residual_variances_ = []
         self._std_residuals_ = []
-        self._std_residual_variances_ = []
 
         self.__build_total_pdf()
         self.__build_total_pdf_binned()
@@ -1443,6 +1439,10 @@ class F2MassFitter:
         limits = self._data_handler_.get_limits()
         bins = self._data_handler_.get_nbins()
         bin_center = self._data_handler_.get_bin_center()
+        xerr_lower = [bin_center[i] - bin_center[i-1] for i in range(1, len(bin_center))]
+        xerr_lower.insert(0, bin_center[1] - bin_center[0])
+        xerr_upper = [bin_center[i+1] - bin_center[i] for i in range(len(bin_center)-1)]
+        xerr_upper.append(bin_center[-1] - bin_center[-2])
 
         fig = plt.figure(figsize=figsize)
 
@@ -1451,8 +1451,8 @@ class F2MassFitter:
         # draw residuals
         plt.errorbar(bin_center,
                      self._std_residuals_,
-                     xerr=None,
-                     yerr=np.sqrt(self._std_residual_variances_),
+                     xerr=(xerr_lower, xerr_upper),
+                     yerr=None,
                      linestyle="None",
                      elinewidth=1,
                      capsize=0,
