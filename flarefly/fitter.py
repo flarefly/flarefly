@@ -1193,7 +1193,7 @@ class F2MassFitter:
                                             nbins=bins,
                                             varname=self._data_handler_.get_var_name())
         # write data
-        self.__write_data(hdata, f'hdata{suffix}', filename, option, folder)
+        self.__write_data(hdata, f'hdata{suffix}', folder, filename, option)
 
         bin_sigma = (limits[1] - limits[0]) / bins
         norm = self._total_pdf_norm_ * bin_sigma
