@@ -1193,7 +1193,7 @@ class F2MassFitter:
                                             nbins=bins,
                                             varname=self._data_handler_.get_var_name())
         # write data
-        self.__write_data(hdata, f'hdata{suffix}', filename, folder, option)
+        self.__write_data(hdata, f'hdata{suffix}', filename, option, folder)
 
         bin_sigma = (limits[1] - limits[0]) / bins
         norm = self._total_pdf_norm_ * bin_sigma
@@ -2452,7 +2452,7 @@ class F2MassFitter:
         self._kde_bkg_sample_[idx] = sample
         self._kde_bkg_option_[idx] = kwargs
 
-    def __write_data(self, hdata, histname='hdata', filename='output.root', folder='', option='recreate'):
+    def __write_data(self, hdata, histname='hdata', folder='', filename='output.root', option='recreate'):
         """
         Helper method to save a data histogram in a .root file (TH1D format)
 
@@ -2464,11 +2464,11 @@ class F2MassFitter:
         histname: str
             Name of the histogram
 
-        filename: str
-            Name of the ROOT file
-
         folder: str
             Folder in the ROOT file
+
+        filename: str
+            Name of the ROOT file
 
         option: str
             Option (recreate or update)
