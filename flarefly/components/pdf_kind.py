@@ -67,8 +67,13 @@ class PDFType(Enum):
 
 @dataclass
 class PDFKind:
-    kind: PDFType
+    kind: PDFType | str
     order: int | None = None
+
+    def __post_init__(self):
+        # Allow to use string representation for kind
+        if isinstance(self.kind, str):
+            self.kind = PDFType(self.kind)
 
     def __eq__(self, other):
         if isinstance(other, PDFKind):
