@@ -160,18 +160,18 @@ class F2MassFitter:
         """
 
         self._data_handler_ = data_handler
-        self._kind_background_pdf_ = [PDFKind(PDFType(pdf)) if "chebpol" not in pdf else None for pdf in name_background_pdf]
+        self._kind_background_pdf_ = [PDFKind(pdf) if "chebpol" not in pdf else None for pdf in name_background_pdf]
         for ipdf, pdf in enumerate(name_background_pdf):
             if "chebpol" in pdf:
                 order = int(pdf.replace('chebpol', ''))
-                self._kind_background_pdf_[ipdf] = PDFKind(PDFType.CHEBPOL, order=order)
-        self._kind_signal_pdf_ = [PDFKind(PDFType(name)) for name in name_signal_pdf]
+                self._kind_background_pdf_[ipdf] = PDFKind("chebpol", order=order)
+        self._kind_signal_pdf_ = [PDFKind(name) for name in name_signal_pdf]
         self.label_signal_pdf = kwargs.get(
             'label_signal_pdf', [f'signal {idx}' for idx in range(len(name_signal_pdf))])
         self.label_bkg_pdf = kwargs.get(
             'label_bkg_pdf', [f'background {idx}' for idx in range(len(name_background_pdf))])
         self._kind_refl_pdf_ = kwargs.get('name_refl_pdf', [None for _ in name_signal_pdf])
-        self._kind_refl_pdf_ = [PDFKind(PDFType(name)) if name is not None else None for name in self._kind_refl_pdf_]
+        self._kind_refl_pdf_ = [PDFKind(name) if name is not None else None for name in self._kind_refl_pdf_]
         if len(self._kind_refl_pdf_) != len(self._kind_signal_pdf_):
             print(self._kind_refl_pdf_, self._kind_signal_pdf_)
             Logger('List of pdfs for signals and reflections different! Exit', 'FATAL')
