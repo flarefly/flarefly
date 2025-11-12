@@ -1293,14 +1293,17 @@ class F2MassFitter:
             - option: str
                 option (recreate or update)
 
-
             - suffix: str
                 suffix to append to objects
+
+            - folder: str
+                folder in the ROOT file to store the objects
         """
 
         num = kwargs.get('num', 10000)
         suffix = kwargs.get('suffix', '')
         option = kwargs.get('option', 'recreate')
+        folder = kwargs.get('folder', '')
         bins = self._data_handler_.get_nbins()
         obs = self._data_handler_.get_obs()
         limits = self._data_handler_.get_limits()
@@ -1310,7 +1313,7 @@ class F2MassFitter:
                                             nbins=bins,
                                             varname=self._data_handler_.get_var_name())
         # write data
-        self.__write_data(hdata, f'hdata{suffix}', filename, option)
+        self.__write_data(hdata, f'hdata{suffix}', folder, filename, option)
 
         bin_sigma = (limits[1] - limits[0]) / bins
         norm = self._total_pdf_norm_ * bin_sigma
@@ -1320,7 +1323,7 @@ class F2MassFitter:
         total_func = zfit.run(self._total_pdf_.pdf(x_plot, norm_range=obs))
         # write total_func
         self.__write_pdf(histname=f'total_func{suffix}', weight=total_func * norm, num=num,
-                         filename=filename, option='update')
+                         folder=folder, filename=filename, option='update')
 
         signal_funcs, bkg_funcs, refl_funcs = ([] for _ in range(3))
         for signal_pdf in self._signal_pdf_:
@@ -1336,12 +1339,12 @@ class F2MassFitter:
         for ibkg, (bkg_func, bkg_frac) in enumerate(zip(bkg_funcs, bkg_fracs)):
             self.__write_pdf(histname=f'bkg_{ibkg}{suffix}',
                              weight=bkg_func * norm * bkg_frac / self._ratio_truncated_,
-                             num=num, filename=filename, option='update')
+                             num=num, folder=folder, filename=filename, option='update')
         # then write signals
         for isgn, (frac, signal_func) in enumerate(zip(signal_funcs, signal_fracs)):
             self.__write_pdf(histname=f'signal_{isgn}{suffix}',
                              weight=signal_func * norm * frac / self._ratio_truncated_,
-                             num=num, filename=filename, option='update')
+                             num=num, folder=folder, filename=filename, option='update')
 
         # finally write reflected signals
         for irefl, (frac, refl_func) in enumerate(zip(refl_funcs, refl_fracs)):
@@ -1349,7 +1352,7 @@ class F2MassFitter:
                 continue
             self.__write_pdf(histname=f'refl_{irefl}{suffix}',
                              weight=refl_func * norm * frac / self._ratio_truncated_,
-                             num=num, filename=filename, option='update')
+                             num=num, folder=folder, filename=filename, option='update')
 
     @property
     def get_fit_result(self):
@@ -2626,7 +2629,7 @@ class F2MassFitter:
         self._kde_bkg_sample_[idx] = sample
         self._kde_bkg_option_[idx] = kwargs
 
-    def __write_data(self, hdata, histname='hdata', filename='output.root', option='recreate'):
+    def __write_data(self, hdata, histname='hdata', folder='', filename='output.root', option='recreate'):
         """
         Helper method to save a data histogram in a .root file (TH1D format)
 
@@ -2638,6 +2641,9 @@ class F2MassFitter:
         histname: str
             Name of the histogram
 
+        folder: str
+            Folder in the ROOT file
+
         filename: str
             Name of the ROOT file
 
@@ -2647,14 +2653,15 @@ class F2MassFitter:
         if option not in ['recreate', 'update']:
             Logger('Illegal option to save outputs in ROOT file!', 'FATAL')
 
+        data_path = f"{folder}/{histname}" if folder != "" else histname
         if option == 'recreate':
             with uproot.recreate(filename) as ofile:
-                ofile[histname] = hdata
+                ofile[data_path] = hdata
         else:
             with uproot.update(filename) as ofile:
-                ofile[histname] = hdata
+                ofile[data_path] = hdata
 
-    def __write_pdf(self, histname, weight, num, filename='output.root', option='recreate'):
+    def __write_pdf(self, histname, weight, num, folder="", filename='output.root', option='recreate'):
         """
         Helper method to save a pdf histogram in a .root file (TH1D format)
 
@@ -2684,12 +2691,13 @@ class F2MassFitter:
         histo = Hist.new.Reg(num, limits[0], limits[1], name=self._data_handler_.get_var_name()).Double()
         histo.fill(x_plot, weight=weight)
 
+        pdf_path = f"{folder}/{histname}" if folder != "" else histname
         if option == 'recreate':
             with uproot.recreate(filename) as ofile:
-                ofile[histname] = histo
+                ofile[pdf_path] = histo
         else:
             with uproot.update(filename) as ofile:
-                ofile[histname] = histo
+                ofile[pdf_path] = histo
 
     def get_name_signal_pdf(self):
         """
