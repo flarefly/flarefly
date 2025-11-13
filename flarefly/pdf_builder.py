@@ -182,7 +182,6 @@ class PDFBuilder:
             return
         if pdf.kind == PDFType.CHEBPOL:
             # Handle Chebyshev polynomials specially
-            print("is reaally chebpol")
             PDFBuilder._build_chebyshev_pdf(
                 pdf, obs, name, ipdf
             )
@@ -247,11 +246,8 @@ class PDFBuilder:
         bkg_coeffs = [parameters[f'{name}_c{deg}_bkg{ipdf}'] for deg in range(1, pdf.kind.order + 1)]
 
 
-        print("Parameters: chebyyy ", parameters)
         pdf.pdf = zfit.pdf.Chebyshev(obs=obs, coeff0=coeff0, coeffs=bkg_coeffs)
         pdf.parameters = parameters
-
-        print(pdf.parameters)
 
     @staticmethod
     def build_bkg_kde(

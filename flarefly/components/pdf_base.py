@@ -13,13 +13,10 @@ class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-a
             **kwargs
         ):
         if not name_pdf.startswith("chebpol"):
-            print("not chebpol")
             self._kind_pdf = PDFKind(name_pdf)
         else:
-            print("is chebpol!")
             order = int(name_pdf.replace('chebpol', ''))
             self._kind_pdf = PDFKind("chebpol", order=order)
-        print(self._kind_pdf)
         self._pdf = None
         self._label_pdf = label_pdf
         self.set_signal_bkg_or_refl(signal_bkg_or_refl)
@@ -49,11 +46,11 @@ class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-a
         return (f"F2PDFBase(PDF={self._pdf}, label={self._label_pdf}, kind={self._kind_pdf}, "
             f"Signal/Background/Reflection={self._signal_bkg_or_refl.name}, at_threshold={self._at_threshold}), "
             f"parameter_setup={self._parameter_setup}, parameters={self._pars}")
-    
+
     # ------------------
     # --- Properties ---
     # ------------------
-    
+
     # --- pdf ---
     @property
     def pdf(self):
@@ -114,13 +111,13 @@ class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-a
     def at_threshold(self):
         """Get the at_threshold flag"""
         return self._at_threshold
-    
+
     # --- kind ---
     @property
     def kind(self):
         """Get the PDF kind"""
         return self._kind_pdf
-    
+
     # --- label ---
     @property
     def label(self):
@@ -149,7 +146,7 @@ class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-a
     def has_hwhm(self):
         """Check if PDF type has a HWHM"""
         return self._kind_pdf.has_hwhm()
-   
+
     def par_exists(self, name):
         """Check if the parameter exists"""
         return name in self._parameter_setup
