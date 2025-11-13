@@ -82,7 +82,6 @@ FITTER.append(F2MassFitter(DATANOBKG, name_signal_pdf=['gaussian'],
                            name_background_pdf=['nobkg'],
                            minuit_mode=1,
                            extended=True))
-FITTER[TestCases.NOBKG_EXTENDED].set_background_initpar(0, 'lam', -10, limits=[-15., -5.], fix=False)
 FITRES.append(FITTER[TestCases.NOBKG_EXTENDED].mass_zfit(True, prefit_excluded_regions=[1.8, 1.95]))
 FIGS.append(FITTER[TestCases.NOBKG_EXTENDED].plot_mass_fit(figsize=(10, 10)))
 
@@ -138,9 +137,9 @@ def test_fitter_result():
     """
     for i_fit, fit in enumerate(FITTER):
         test_case = TestCases(i_fit)
-        rawy, rawy_err = fit.get_raw_yield()
-        rawy_bc, rawy_bc_err = fit.get_raw_yield_bincounting()
         if test_case != TestCases.NOSGN:
+            rawy, rawy_err = fit.get_raw_yield()
+            rawy_bc, rawy_bc_err = fit.get_raw_yield_bincounting()
             assert np.isclose(10000, rawy, atol=3*rawy_err)
             assert np.isclose(10000, rawy_bc, atol=3*rawy_bc_err)
         # test the case with two signals
@@ -167,7 +166,8 @@ def test_plot():
     """
     Test the mass fitter plot
     """
-    for fig in FIGS:
+    for ifig, fig in enumerate(FIGS):
+        fig[0].savefig(f"plots/test{ifig}.png")
         assert isinstance(fig[0], matplotlib.figure.Figure)
         assert isinstance(fig[1], matplotlib.figure.Axes)
 
