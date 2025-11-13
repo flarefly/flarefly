@@ -1081,12 +1081,6 @@ class F2MassFitter:
             plt.ylim(0., max(total_func) * norm_total_pdf * 1.5)
 
         if show_extra_info:
-            # info on chi2/ndf
-            chi2 = self.get_chi2()
-            ndf = self.get_ndf()
-            anchored_text_chi2 = AnchoredText(fr'$\chi^2 / \mathrm{{ndf}} =${chi2:.2f} / {ndf}',
-                                              loc=info_loc[0],
-                                              frameon=False)
             # signal and background info for all signals
             text = []
             for idx, signal_pdf in enumerate(self._signal_pdfs_):
@@ -1134,7 +1128,14 @@ class F2MassFitter:
             concatenated_text = '\n'.join(text)
             anchored_text_signal = AnchoredText(concatenated_text, loc=info_loc[1], frameon=False)
 
-            axs.add_artist(anchored_text_chi2)
+            if not self._is_truncated_:  # chi2 not yet available for truncated fits
+                # info on chi2/ndf
+                chi2 = self.get_chi2()
+                ndf = self.get_ndf()
+                anchored_text_chi2 = AnchoredText(fr'$\chi^2 / \mathrm{{ndf}} =${chi2:.2f} / {ndf}',
+                                                loc=info_loc[0],
+                                                frameon=False)
+                axs.add_artist(anchored_text_chi2)
             axs.add_artist(anchored_text_signal)
 
         plt.legend(loc=legend_loc)
