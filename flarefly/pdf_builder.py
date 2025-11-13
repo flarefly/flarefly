@@ -198,7 +198,7 @@ class PDFBuilder:
 
         parameters = {}
         for par_name in config['parameters'].keys():
-            param_name = f'{name}_{par_name}_signal{ipdf}'
+            param_name = f'{name}_{par_name}_bkg{ipdf}'
             parameters[param_name] = zfit.Parameter(
                 name=param_name,
                 value=pdf.get_init_par(par_name),
@@ -210,9 +210,9 @@ class PDFBuilder:
         pdf_args = {'obs': obs}
         for arg_name in config['pdf_args']:
             if 'args_mapping' in config: # flarefly -> zfit argument name mapping
-                param_key = f"{name}_{config['args_mapping'][arg_name]}_signal{ipdf}"
+                param_key = f"{name}_{config['args_mapping'][arg_name]}_bkg{ipdf}"
             else:
-                param_key = f'{name}_{arg_name}_signal{ipdf}'
+                param_key = f'{name}_{arg_name}_bkg{ipdf}'
             pdf_args[arg_name] = parameters[param_key]
 
         pdf.set_pdf(config['pdf_class'](**pdf_args))
@@ -282,7 +282,7 @@ class PDFBuilder:
         pdf.set_pdf(get_kde_pdf(pdf.kind)(
             data=pdf.kde_sample,
             obs=pdf.kde_sample.get_obs(),
-            name=f'{name}_kde_signal{ipdf}',
+            name=f'{name}_kde_bkg{ipdf}',
             **kde_options
         ))
 
