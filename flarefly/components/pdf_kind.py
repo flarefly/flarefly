@@ -1,3 +1,4 @@
+"""Module defining PDF kinds"""
 from enum import Enum
 from dataclasses import dataclass
 
@@ -33,11 +34,15 @@ class PDFType(Enum):
     EXPO_POW = "expopow"
     EXPO_POW_EXT = "expopowext"
 
+    # Reflection PDFs
+    NONE = "none"
 
     def is_kde(self) -> bool:
+        """Check if PDF type is KDE"""
         return self.value.startswith("kde_")
 
     def is_hist(self) -> bool:
+        """Check if PDF type is histogram"""
         return self.value == "hist"
 
     def has_sigma(self) -> bool:
@@ -73,6 +78,7 @@ class SignalBkgOrRefl(Enum):
 
 @dataclass
 class PDFKind:
+    """Class representing the kind of PDF"""
     kind: PDFType | str
     order: int | None = None
 
@@ -92,10 +98,5 @@ class PDFKind:
         return hash(self.kind)
 
     def __getattr__(self, name):
-        """Delegate unknown attributes/methods to the Enum"""
+        """Delegate unknown attributes/methods to PDFType Enum"""
         return getattr(self.kind, name)
-
-    # def __str__(self):
-    #     if self.kind is PDFType.CHEBPOL and self.order is not None:
-    #        return f"{self.kind.value}{self.order}"
-    #     return self.kind.value
