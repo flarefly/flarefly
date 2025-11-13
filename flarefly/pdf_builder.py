@@ -1,11 +1,11 @@
 """PDFBuilder class to create signal and background PDFs using zfit."""
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, Tuple
 import zfit
 import pdg
 from flarefly.pdf_configs import get_signal_pdf_config, get_bkg_pdf_config, get_kde_pdf
 from flarefly.utils import Logger
 import flarefly.custom_pdfs as cpdf
-from flarefly.components.pdf_kind import PDFKind, PDFType
+from flarefly.components.pdf_kind import PDFType
 from flarefly.components.pdf_base import F2PDFBase
 
 class PDFBuilder:
@@ -276,7 +276,7 @@ class PDFBuilder:
         if not pdf.kde_sample:
             Logger(f'Missing datasample for Kernel Density Estimation of background {ipdf}!', 'FATAL')
 
-        kde_options = kde_options or {}
+        kde_options = pdf.kde_options or {}
 
 
         pdf.set_pdf(get_kde_pdf(pdf.kind)(

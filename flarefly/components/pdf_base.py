@@ -1,7 +1,9 @@
+"""Module defining the base class for PDFs"""
 from flarefly.utils import Logger
 from flarefly.components.pdf_kind import PDFKind, SignalBkgOrRefl
 
-class F2PDFBase:
+class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-attributes
+    """Base class for PDFs"""
 
     def __init__(self, name_pdf, label_pdf, signal_bkg_or_refl, **kwargs):
         if "chebpol" not in name_pdf:
@@ -24,8 +26,9 @@ class F2PDFBase:
         self._init_pars_ = {}
         self._limits_pars_ = {}
         self._fix_pars_ = {}
-       
+
     def set_signal_bkg_or_refl(self, signal_bkg_or_refl):
+        """Set whether the PDF is signal, background, or reflection"""
         signal_bkg_or_refl = signal_bkg_or_refl.lower()
         if signal_bkg_or_refl == "signal":
             self._signal_bkg_or_refl_ = SignalBkgOrRefl.SIGNAL
@@ -56,63 +59,63 @@ class F2PDFBase:
     def is_kde(self):
         """Check if this PDF type is KDE"""
         return self._kind_pdf_.is_kde()
-    
+
     def is_hist(self):
         """Check if this PDF type is histogram"""
         return self._kind_pdf_.is_hist()
-    
+
     def uses_m_not_mu(self):
         """Check if this PDF uses m instead of mu"""
         return self._kind_pdf_.uses_m_not_mu()
-    
+
     def has_sigma(self):
         """Check if PDF type has sigma parameter"""
         return self._kind_pdf_.has_sigma()
-    
+
     def has_hwhm(self):
         """Check if PDF type has a HWHM"""
         return self._kind_pdf_.has_hwhm()
-    
+
     @property
     def kde_sample(self):
         """Get the KDE sample"""
         return self._kde_sample_
-    
+
     @property
     def kde_option(self):
         """Get the KDE options"""
         return self._kde_option_
-    
+
     @property
     def hist_sample(self):
         """Get the histogram sample"""
         return self._hist_sample_
-    
+
     @property
     def parameters(self):
         """Get the parameters"""
         return self._pars_
-    
+
     @kde_sample.setter
     def kde_sample(self, value):
         """Set the KDE sample"""
         self._kde_sample_ = value
-    
+
     @kde_option.setter
     def kde_option(self, value):
         """Set the KDE options"""
         self._kde_option_ = value
-    
+
     @hist_sample.setter
     def hist_sample(self, value):
         """Set the histogram sample"""
         self._hist_sample_ = value
-    
+
     @parameters.setter
     def parameters(self, value):
         """Set the parameters"""
         self._pars_ = value
-    
+
     @property
     def at_threshold(self):
         """Get the at_threshold flag"""
@@ -125,7 +128,7 @@ class F2PDFBase:
     def get_pdf(self):
         """Get the PDF name"""
         return self._pdf_
-    
+
     def get_init_pars(self):
         """Get the parameters dictionary"""
         return self._init_pars_
@@ -137,7 +140,7 @@ class F2PDFBase:
     def get_fix_pars(self):
         """Get the parameters fix dictionary"""
         return self._fix_pars_
-    
+
     def get_init_par(self, name):
         """Get the parameter initial value"""
         return self._init_pars_[name]
@@ -149,11 +152,11 @@ class F2PDFBase:
     def get_fix_par(self, name):
         """Get the parameter fix flag"""
         return self._fix_pars_[name]
-    
+
     def get_label(self):
         """Get the PDF label"""
         return self._label_pdf_
-    
+
     def set_init_pars(self, pars: dict):
         """Set the parameters dictionary"""
         self._init_pars_ = pars
@@ -165,7 +168,7 @@ class F2PDFBase:
     def set_fix_pars(self, pars: dict):
         """Set the parameters fix dictionary"""
         self._fix_pars_ = pars
-    
+
     def set_init_par(self, name, value):
         """Set the parameter"""
         self._init_pars_[name] = value
