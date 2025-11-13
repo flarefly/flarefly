@@ -201,7 +201,7 @@ class F2MassFitter:
         self._refl_idx_ = [None] * len(self._refl_pdfs_)
         if not all(pdf.kind == PDFType.NONE for pdf in self._refl_pdfs_):
             Logger(
-                'Reflection pdfs will be deprecated in future versions,' \
+                'Reflection pdfs will be deprecated in future versions, ' \
                 'please use background pdfs instead',
                 'WARNING'
             )
@@ -224,7 +224,6 @@ class F2MassFitter:
             self._fracs_ = [None for _ in range(len(self._background_pdfs_) - 1)]
         elif not self.no_signal and not self.no_background:
             self._fracs_ = [None for _ in range(len(self._signal_pdfs_) + len(self._background_pdfs_) - 1)]
-            print("setting self._fracs_")
         else:
             Logger('No signal nor background pdf defined', 'FATAL')
         self._total_yield_ = None
@@ -386,8 +385,6 @@ class F2MassFitter:
 
         self.__build_signal_pdfs(obs)
         self.__build_background_pdfs(obs)
-        print("HERRRRRRRRRRRRRRRRRE")
-        print(self._background_pdfs_)
 
         self.__get_total_pdf_norm()
 
@@ -418,7 +415,6 @@ class F2MassFitter:
                 self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs)
             return
 
-        print(self._fracs_)
         for ipdf, pdf in enumerate(self._signal_pdfs_):
             pdf.set_default_par('frac', init=0.1, fix=False, limits=[0, 1.])
             if self.no_background and ipdf == len(self._signal_pdfs_) - 1:
@@ -480,13 +476,7 @@ class F2MassFitter:
             for pdf, y in zip(pdfs_sum, self._yields_):
                 pdf.set_yield(y)
             self._total_pdf_ = zfit.pdf.SumPDF(pdfs_sum)
-            print([pdf.pdf for pdf in self._signal_pdfs_+self._background_pdfs_])
-            print("self._fracs_ : ######## ",self._fracs_)
         else:
-            print("[pdf for pdf in self._signal_pdfs_] ",[pdf.pdf for pdf in self._signal_pdfs_])
-            print("[pdf for pdf in self._background_pdfs_] ",[pdf.pdf for pdf in self._background_pdfs_])
-            print([pdf.pdf for pdf in self._signal_pdfs_+self._background_pdfs_])
-            print("self._fracs_ : ######## ",self._fracs_)
             self._total_pdf_ = zfit.pdf.SumPDF([pdf.pdf for pdf in self._signal_pdfs_+self._background_pdfs_],
                                                self._fracs_)
 
@@ -602,9 +592,6 @@ class F2MassFitter:
             errors of fractions of the reflected signal pdfs
         """
         signal_fracs, bkg_fracs, refl_fracs, signal_err_fracs, bkg_err_fracs, refl_err_fracs = ([] for _ in range(6))
-        print("#########################")
-        print(self._fracs_)
-        print("#########################")
         for frac_par in self._fracs_:
             if frac_par is None:
                 continue
@@ -629,14 +616,11 @@ class F2MassFitter:
                 bkg_err_fracs.append(0.)
         else:
             if self.no_background:
-                print("hereeee")
                 signal_fracs.append(1 - sum(signal_fracs) - sum(refl_fracs) - sum(bkg_fracs))
                 signal_err_fracs.append(np.sqrt(sum(list(err**2 for err in signal_err_fracs + bkg_err_fracs))))
             else:
                 bkg_fracs.append(1 - sum(signal_fracs) - sum(refl_fracs) - sum(bkg_fracs))
                 bkg_err_fracs.append(np.sqrt(sum(list(err**2 for err in signal_err_fracs + bkg_err_fracs))))
-
-        print(signal_fracs, self.no_background)
 
         for refl_idx in self._refl_idx_:
             if refl_idx is None:
@@ -866,11 +850,8 @@ class F2MassFitter:
         self._raw_residual_variances_ = []
         self._std_residuals_ = []
 
-        print("######### self._fracs_ before func ###########", self._fracs_)
         self.__build_total_pdf()
         self.__build_total_pdf_binned()
-        print("######### self._fracs_ after func ###########", self._fracs_)
-
 
         # do prefit
         if do_prefit:
@@ -953,7 +934,6 @@ class F2MassFitter:
                         )
             else:
                 for i_pdf, _ in enumerate(self._signal_pdfs_):
-                    print(i_pdf, self._signal_pdfs_, self._refl_idx_, signal_fracs)
                     if i_pdf in self._refl_idx_:
                         continue
                     self._rawyield_[i_pdf] = signal_fracs[i_pdf] * norm / self._ratio_truncated_
@@ -1291,8 +1271,6 @@ class F2MassFitter:
         for (data, model) in zip(data_values, model_values):
             if data == 0:
                 continue
-            if (data - model)**2/data > 1:
-                print(f"Large contribution to chi2: data={data}, model={model}, contrib={(data - model)**2/data}")
             chi2 += (data - model)**2/data
 
         return float(chi2)
