@@ -54,7 +54,7 @@ class PDFType(Enum):
         ]
 
     def has_hwhm(self) -> bool:
-        """Check if PDF type has HWHM parameter"""
+        """Check if PDF type has HWHM"""
         return self.value in ["gaussian", "cauchy", "voigtian"]
 
     def uses_m_not_mu(self) -> bool:
@@ -64,6 +64,12 @@ class PDFType(Enum):
     def mass_limits(self) -> bool:
         """Check if PDF has mass limits"""
         return self.value in ["powlaw", "expopow", "expopowext"]
+
+class SignalBkgOrRefl(Enum):
+    """Enumeration of type of component"""
+    SIGNAL = "signal"
+    BACKGROUND = "background"
+    REFLECTION = "reflection"
 
 @dataclass
 class PDFKind:
@@ -89,7 +95,7 @@ class PDFKind:
         """Delegate unknown attributes/methods to the Enum"""
         return getattr(self.kind, name)
 
-    def __str__(self):
-        if self.kind is PDFType.CHEBPOL and self.order is not None:
-            return f"{self.kind.value}{self.order}"
-        return self.kind.value
+    # def __str__(self):
+    #     if self.kind is PDFType.CHEBPOL and self.order is not None:
+    #        return f"{self.kind.value}{self.order}"
+    #     return self.kind.value
