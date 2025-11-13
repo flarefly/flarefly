@@ -18,6 +18,7 @@ from flarefly.utils import Logger
 from flarefly.pdf_builder import PDFBuilder
 import flarefly.custom_pdfs as cpdf
 from flarefly.components.pdf_kind import PDFKind, PDFType
+from flarefly.components.pdf_base import F2PDFBase
 
 
 # pylint: disable=too-many-instance-attributes, too-many-lines, too-many-public-methods
@@ -160,68 +161,61 @@ class F2MassFitter:
         """
 
         self._data_handler_ = data_handler
-        self._kind_background_pdf_ = [PDFKind(pdf) if "chebpol" not in pdf else None for pdf in name_background_pdf]
-        for ipdf, pdf in enumerate(name_background_pdf):
-            if "chebpol" in pdf:
-                order = int(pdf.replace('chebpol', ''))
-                self._kind_background_pdf_[ipdf] = PDFKind("chebpol", order=order)
-        self._kind_signal_pdf_ = [PDFKind(name) for name in name_signal_pdf]
-        self.label_signal_pdf = kwargs.get(
-            'label_signal_pdf', [f'signal {idx}' for idx in range(len(name_signal_pdf))])
-        self.label_bkg_pdf = kwargs.get(
-            'label_bkg_pdf', [f'background {idx}' for idx in range(len(name_background_pdf))])
-        self._kind_refl_pdf_ = kwargs.get('name_refl_pdf', [None for _ in name_signal_pdf])
-        self._kind_refl_pdf_ = [PDFKind(name) if name is not None else None for name in self._kind_refl_pdf_]
-        if len(self._kind_refl_pdf_) != len(self._kind_signal_pdf_):
-            print(self._kind_refl_pdf_, self._kind_signal_pdf_)
-            Logger('List of pdfs for signals and reflections different! Exit', 'FATAL')
-        if self._kind_signal_pdf_[0] == PDFType.NO_SIGNAL:
-            self._signal_pdf_ = []
-            self._hist_signal_sample_ = []
-            self._kde_signal_sample_ = []
-            self._kde_signal_option_ = []
-            self._kind_refl_pdf_ = []
-        else:
-            self._signal_pdf_ = [None for _ in name_signal_pdf]
-            self._hist_signal_sample_ = [None for _ in name_signal_pdf]
-            self._kde_signal_sample_ = [None for _ in name_signal_pdf]
-            self._kde_signal_option_ = [None for _ in name_signal_pdf]
-        if self._kind_background_pdf_[0] == PDFType.NO_BKG:
-            self._background_pdf_ = []
-            self._hist_bkg_sample_ = []
-            self._kde_bkg_sample_ = []
-            self._kde_bkg_option_ = []
-        else:
-            self._background_pdf_ = [None for _ in name_background_pdf]
-            self._hist_bkg_sample_ = [None for _ in name_background_pdf]
-            self._kde_bkg_sample_ = [None for _ in name_background_pdf]
-            self._kde_bkg_option_ = [None for _ in name_background_pdf]
+        signal_labels = kwargs.get('label_signal_pdf', [f'signal {idx}' for idx in range(len(name_signal_pdf))]) 
+        background_labels = kwargs.get('label_bkg_pdf', [f'background {idx}' for idx in range(len(name_background_pdf))])
+        signal_at_threshold = kwargs.get('signal_at_threshold', [False for _ in name_signal_pdf])
+        self._signal_pdfs_ = [F2PDFBase(
+            name, label, "signal", at_threshold=at_threshold
+        ) for name, label, at_threshold in zip(name_signal_pdf, signal_labels, signal_at_threshold)]
+        self._background_pdfs_ = [F2PDFBase(
+            name, label, "background"
+        ) for name, label in zip(name_background_pdf, background_labels)]
+        
+        self.no_signal = any(pdf.kind == PDFType.NO_SIGNAL for pdf in self._signal_pdfs_)
+        self.no_background = any(pdf.kind == PDFType.NO_BKG for pdf in self._background_pdfs_)
 
-        self._refl_pdf_ = [None for _ in self._kind_refl_pdf_]
-        self._hist_refl_sample_ = [None for _ in self._kind_refl_pdf_]
-        self._kde_refl_sample_ = [None for _ in self._kind_refl_pdf_]
-        self._kde_refl_option_ = [None for _ in self._kind_refl_pdf_]
-        self._refl_over_sgn_ = [0. for _ in self._kind_refl_pdf_]
+        refl_names = kwargs.get('name_refl_pdf', ["none" for _ in name_signal_pdf])
+        self._refl_pdfs_ = [F2PDFBase(
+            name,
+            f'reflection {idx}',
+            "reflection"
+            ) for idx, name in enumerate(refl_names)]
+
+        if len(self._refl_pdfs_) != len(self._signal_pdfs_):
+            Logger('List of pdfs for signals and reflections different! Exit', 'FATAL')
+
+        if self.no_signal:
+            # Remove all other signal pdfs
+            self._signal_pdfs_ = []
+        if self.no_background:
+            # Remove all other background pdfs
+            self._background_pdfs_ = []
+        
+        # workaround, add reflections to signal pdfs, to be removed in future versions
+        self._n_refl_ = 0
+        self._refl_idx_ = [None] * len(self._refl_pdfs_)
+        if not all(pdf.kind == PDFType.NONE for pdf in self._refl_pdfs_):
+            Logger('Reflection pdfs will be deprecated in future versions, please use background pdfs instead', 'WARNING')
+            n_signal = len(self._signal_pdfs_)
+            for ipdf, pdf in enumerate(self._refl_pdfs_):
+                if pdf.kind != PDFType.NONE:
+                    self._signal_pdfs_.append(pdf)
+                    self._refl_idx_[ipdf] = n_signal + self._n_refl_
+                    self._n_refl_ += 1
+
         self._total_pdf_ = None
         self._total_pdf_binned_ = None
         self._fit_result_ = None
-        self._init_sgn_pars_ = [{} for _ in name_signal_pdf]
-        self._init_bkg_pars_ = [{} for _ in name_background_pdf]
-        self._limits_sgn_pars_ = [{} for _ in name_signal_pdf]
-        self._limits_bkg_pars_ = [{} for _ in name_background_pdf]
-        self._fix_sgn_pars_ = [{} for _ in name_signal_pdf]
         self._fix_fracs_to_pdfs_ = []
-        self._fix_bkg_pars_ = [{} for _ in name_background_pdf]
-        self._sgn_pars_ = [{} for _ in name_signal_pdf]
-        self._bkg_pars_ = [{} for _ in name_background_pdf]
-        if self._kind_signal_pdf_[0] != PDFType.NO_SIGNAL and self._kind_background_pdf_[0] == PDFType.NO_BKG:
-            if self._kind_refl_pdf_[0] is not None:
+        if not self.no_signal and self.no_background:
+            if self._refl_pdfs_[0].kind != PDFType.NONE:
                 Logger('Not possible to use reflections without background pdf', 'FATAL')
-            self._fracs_ = [None for _ in range(len(name_signal_pdf) - 1)]
-        elif self._kind_signal_pdf_[0] == PDFType.NO_SIGNAL and self._kind_background_pdf_[0] != PDFType.NO_BKG:
-            self._fracs_ = [None for _ in range(len(name_background_pdf) - 1)]
-        elif self._kind_signal_pdf_[0] != PDFType.NO_SIGNAL and self._kind_background_pdf_[0] != PDFType.NO_BKG:
-            self._fracs_ = [None for _ in range(2 * len(name_signal_pdf) + len(name_background_pdf) - 1)]
+            self._fracs_ = [None for _ in range(len(self._signal_pdfs_) - 1)]
+        elif self.no_signal and not self.no_background:
+            self._fracs_ = [None for _ in range(len(self._background_pdfs_) - 1)]
+        elif not self.no_signal and not self.no_background:
+            self._fracs_ = [None for _ in range(len(self._signal_pdfs_) + len(self._background_pdfs_) - 1)]
+            print("setting self._fracs_")
         else:
             Logger('No signal nor background pdf defined', 'FATAL')
         self._total_yield_ = None
@@ -237,7 +231,7 @@ class F2MassFitter:
         )
         if 'limits' in kwargs and self._data_handler_.get_is_binned():
             Logger('Restriction of fit limits is not yet implemented in binned fits!', 'FATAL')
-        if 'limits' in kwargs and PDFType.NO_SIGNAL in self._kind_signal_pdf_:
+        if 'limits' in kwargs and self._signal_pdfs_[0].kind != PDFType.NO_SIGNAL:
             Logger('Using signal PDFs while restricting fit limits!', 'WARNING')
         self._limits_ = kwargs.get(
             'limits', self._data_handler_.get_limits())
@@ -251,21 +245,18 @@ class F2MassFitter:
         if self._extended_ and self._data_handler_.get_is_binned():
             Logger('Binned fit with extended pdf not yet supported!', 'FATAL')
         self._base_sgn_cmap_ = plt.colormaps.get_cmap('viridis')
-        self._sgn_cmap_ = ListedColormap(self._base_sgn_cmap_(np.linspace(0.4, 0.65, len(self._signal_pdf_))))
-        n_bkg_colors = len(self._background_pdf_)
-        if len(self._background_pdf_) == 0:
+        self._sgn_cmap_ = ListedColormap(self._base_sgn_cmap_(np.linspace(0.4, 0.65, len(self._signal_pdfs_))))
+        n_bkg_colors = len(self._background_pdfs_)
+        if len(self._background_pdfs_) == 0:
             n_bkg_colors = 1  # to avoid crash
         self._base_bkg_cmap_ = plt.colormaps.get_cmap('Reds')
         self._bkg_cmap_ = ListedColormap(self._base_bkg_cmap_(np.linspace(0.8, 0.2, n_bkg_colors)))
         self._base_refl_cmap_ = plt.colormaps.get_cmap('summer')
-        self._refl_cmap_ = ListedColormap(self._base_refl_cmap_(np.linspace(0., 0.6, len(self._refl_pdf_))))
+        self._refl_cmap_ = ListedColormap(self._base_refl_cmap_(np.linspace(0., 0.6, len(self._refl_pdfs_))))
 
         self._raw_residuals_ = []
         self._raw_residual_variances_ = []
         self._std_residuals_ = []
-
-        self._signal_at_threshold = kwargs.get('signal_at_threshold', [False for _ in name_signal_pdf])
-        self._signalthr_pdf_ = [None for _ in name_signal_pdf]
 
         zfit.settings.advanced_warnings.all = False
         zfit.settings.changed_warnings.all = False
@@ -289,158 +280,40 @@ class F2MassFitter:
         Helper function to compose the signal pdfs
         """
 
-        for ipdf, (pdf_kind, at_threshold) in enumerate(zip(self._kind_signal_pdf_, self._signal_at_threshold)):
-            if pdf_kind == PDFType.NO_SIGNAL:
-                Logger('Performing fit with no signal pdf', 'WARNING')
-                break
-            if pdf_kind.is_kde():
-                self._signal_pdf_[ipdf] = PDFBuilder.build_signal_kde(
-                    pdf_kind,
-                    self._kde_signal_sample_[ipdf],
-                    self._name_,
-                    ipdf,
-                    self._kde_signal_option_[ipdf]
-                )
-            elif pdf_kind == PDFType.HIST:
-                self._signal_pdf_[ipdf] = PDFBuilder.build_signal_hist(
-                    obs,
-                    self._hist_signal_sample_[ipdf],
-                    self._name_,
-                    ipdf,
-                )
-            else:
-                self._signal_pdf_[ipdf], self._sgn_pars_[ipdf] = PDFBuilder.build_signal_pdf(
-                    pdf_kind,
-                    obs,
-                    self._name_,
-                    ipdf,
-                    self._init_sgn_pars_[ipdf],
-                    self._limits_sgn_pars_[ipdf],
-                    self._fix_sgn_pars_[ipdf]
-                )
+        if self.no_signal:
+            Logger('Performing fit with no signal pdf', 'WARNING')
+            return
 
-            if at_threshold:
-                # pion mass as default
-                self._init_sgn_pars_[ipdf].setdefault('powerthr', 1.)
-                self._limits_sgn_pars_[ipdf].setdefault('massthr', [None, None])
-                self._fix_sgn_pars_[ipdf].setdefault('powerthr', False)
-                self._fix_sgn_pars_[ipdf].setdefault('massthr', True)
-                self._limits_sgn_pars_[ipdf].setdefault('powerthr', [None, None])
-                self._init_sgn_pars_[ipdf].setdefault('massthr', self.pdg_api.get_particle_by_mcid(211).mass)
-                self._sgn_pars_[ipdf][f'{self._name_}_massthr_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_massthr_signal{ipdf}', self._init_sgn_pars_[ipdf]['massthr'],
-                    self._limits_sgn_pars_[ipdf]['massthr'][0], self._limits_sgn_pars_[ipdf]['massthr'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['massthr'])
-                self._sgn_pars_[ipdf][f'{self._name_}_powerthr_signal{ipdf}'] = zfit.Parameter(
-                    f'{self._name_}_powerthr_signal{ipdf}', self._init_sgn_pars_[ipdf]['powerthr'],
-                    self._limits_sgn_pars_[ipdf]['powerthr'][0], self._limits_sgn_pars_[ipdf]['powerthr'][1],
-                    floating=not self._fix_sgn_pars_[ipdf]['powerthr'])
-                self._signalthr_pdf_[ipdf] = cpdf.Pow(
-                    obs=obs,
-                    mass=self._sgn_pars_[ipdf][f'{self._name_}_massthr_signal{ipdf}'],
-                    power=self._sgn_pars_[ipdf][f'{self._name_}_powerthr_signal{ipdf}']
-                )
-                self._signal_pdf_[ipdf] = zfit.pdf.ProductPDF(
-                    [self._signal_pdf_[ipdf], self._signalthr_pdf_[ipdf]], obs=obs)
+        for ipdf, pdf in enumerate(self._signal_pdfs_):
+            PDFBuilder.build_signal_pdf(
+                pdf,
+                obs,
+                self._name_,
+                ipdf
+            )
 
     def __build_background_pdfs(self, obs):
         """
         Helper function to compose the background pdfs
         """
+        if self.no_background:
+            Logger('Performing fit with no background pdf', 'WARNING')
+            return
+        for ipdf, pdf in enumerate(self._background_pdfs_):
+            PDFBuilder.build_bkg_pdf(
+                pdf,
+                obs,
+                self._name_,
+                ipdf
+            )
 
-        for ipdf, pdf_kind in enumerate(self._kind_background_pdf_):
-            if pdf_kind == PDFType.NO_BKG:
-                Logger('Performing fit with no bkg pdf', 'WARNING')
-                break
-            if pdf_kind.is_kde():
-                self._background_pdf_[ipdf] = PDFBuilder.build_bkg_kde(
-                    pdf_kind,
-                    self._kde_bkg_sample_[ipdf],
-                    self._name_,
-                    ipdf,
-                    self._kde_bkg_option_[ipdf]
+            if str(pdf.kind) in ['powlaw', 'expopow', 'expopowext'] and\
+                    self._data_handler_.get_limits()[0] < pdf.get_init_par("mass"):
+                Logger(
+                    'The mass parameter in powlaw cannot be smaller than the lower fit limit, '
+                    'please fix it.',
+                    'FATAL'
                 )
-
-            elif pdf_kind.is_hist():
-                self._background_pdf_[ipdf] = PDFBuilder.build_bkg_hist(
-                    obs,
-                    self._hist_bkg_sample_[ipdf],
-                    self._name_,
-                    ipdf,
-                )
-            else:
-                self._background_pdf_[ipdf], self._bkg_pars_[ipdf] = PDFBuilder.build_bkg_pdf(
-                    pdf_kind,
-                    obs,
-                    self._name_,
-                    ipdf,
-                    self._init_bkg_pars_[ipdf],
-                    self._limits_bkg_pars_[ipdf],
-                    self._fix_bkg_pars_[ipdf]
-                )
-                if str(pdf_kind) in ['powlaw', 'expopow', 'expopowext'] and\
-                        self._data_handler_.get_limits()[0] < self._init_bkg_pars_[ipdf]["mass"]:
-                    Logger(
-                        'The mass parameter in powlaw cannot be smaller than the lower fit limit, '
-                        'please fix it.',
-                        'FATAL'
-                    )
-
-    # pylint: disable=too-many-branches, too-many-statements
-    def __build_reflection_pdfs(self, obs):
-        """
-        Helper function to compose the reflection pdfs
-        """
-
-        for ipdf, pdf_kind in enumerate(self._kind_refl_pdf_):
-            if pdf_kind is None:  # by default we put a dummy pdf
-                low = zfit.Parameter(f'{self._name_}_low_refl{ipdf}',
-                                     self._data_handler_.get_limits()[0],
-                                     self._data_handler_.get_limits()[0] - 0.01,
-                                     self._data_handler_.get_limits()[0] + 0.01,
-                                     floating=False)
-                high = zfit.Parameter(f'{self._name_}_high_refl{ipdf}',
-                                      self._data_handler_.get_limits()[1],
-                                      self._data_handler_.get_limits()[1] - 0.01,
-                                      self._data_handler_.get_limits()[1] + 0.01,
-                                      floating=False)
-                self._refl_pdf_[ipdf] = zfit.pdf.Uniform(obs=obs, low=low, high=high)
-            elif pdf_kind.is_kde():
-                if self._kde_refl_sample_[ipdf]:
-                    if pdf_kind == PDFKind.KDE_EXACT:
-                        self._refl_pdf_[ipdf] = zfit.pdf.KDE1DimExact(self._kde_refl_sample_[ipdf].get_data(),
-                                                                      obs=self._kde_refl_sample_[ipdf].get_obs(),
-                                                                      name=f'{self._name_}_kde_refl{ipdf}',
-                                                                      **self._kde_refl_option_[ipdf])
-                    elif pdf_kind == PDFKind.KDE_GRID:
-                        self._refl_pdf_[ipdf] = zfit.pdf.KDE1DimGrid(self._kde_refl_sample_[ipdf].get_data(),
-                                                                     obs=self._kde_refl_sample_[ipdf].get_obs(),
-                                                                     name=f'{self._name_}_kde_refl{ipdf}',
-                                                                     **self._kde_refl_option_[ipdf])
-                    elif pdf_kind == PDFKind.KDE_FFT:
-                        self._refl_pdf_[ipdf] = zfit.pdf.KDE1DimFFT(self._kde_refl_sample_[ipdf].get_data(),
-                                                                    obs=self._kde_refl_sample_[ipdf].get_obs(),
-                                                                    name=f'{self._name_}_kde_refl{ipdf}',
-                                                                    **self._kde_refl_option_[ipdf])
-                    elif pdf_kind == PDFKind.KDE_ISJ:
-                        self._refl_pdf_[ipdf] = zfit.pdf.KDE1DimISJ(self._kde_refl_sample_[ipdf].get_data(),
-                                                                    obs=self._kde_refl_sample_[ipdf].get_obs(),
-                                                                    name=f'{self._name_}_kde_refl{ipdf}',
-                                                                    **self._kde_refl_option_[ipdf])
-                else:
-                    Logger(f'Missing datasample for Kernel Density Estimation of reflection {ipdf}!', 'FATAL')
-            elif pdf_kind.is_hist():
-                if self._hist_refl_sample_[ipdf]:
-                    self._refl_pdf_[ipdf] = zfit.pdf.SplinePDF(
-                        zfit.pdf.HistogramPDF(self._hist_refl_sample_[ipdf].get_binned_data(),
-                                              name=f'{self._name_}_hist_refl{ipdf}'),
-                        order=3,
-                        obs=obs
-                    )
-                else:
-                    Logger(f'Missing datasample for histogram template of reflections {ipdf}!', 'FATAL')
-            else:
-                Logger(f'Reflection pdf {str(pdf_kind)} not supported', 'FATAL')
 
     def __get_constrained_frac_par(self, frac_par, factor_par, refl=False):
         """
@@ -470,50 +343,22 @@ class F2MassFitter:
                         self._fracs_[frac_fix_info['target_pdf_idx']],
                         frac_fix_info['factor']
                     )
-                    # also set for reflections
-                    fix_factor = zfit.Parameter(
-                        frac_fix_info['factor'].name.replace('factor', 'factor_refl'),
-                        float(
-                            frac_fix_info['factor'].value()
-                        ) * self._refl_over_sgn_[frac_fix_info['fixed_pdf_idx']],
-                        floating=False
-                    )
-                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + len(self._signal_pdf_)] = \
-                        self.__get_constrained_frac_par(
-                            self._fracs_[frac_fix_info['target_pdf_idx']],
-                            fix_factor,
-                            refl=True
-                        )
                 else:  # fix to background PDF
                     self._fracs_[frac_fix_info['fixed_pdf_idx']] = self.__get_constrained_frac_par(
-                        self._fracs_[frac_fix_info['target_pdf_idx'] + 2 * len(self._signal_pdf_)],
+                        self._fracs_[frac_fix_info['target_pdf_idx'] + 2 * len(self._signal_pdfs_)],
                         frac_fix_info['factor']
                     )
-                    # also set for reflections
-                    fix_factor = zfit.Parameter(
-                        frac_fix_info['factor'].name.replace('factor', 'factor_refl'),
-                        float(
-                            frac_fix_info['factor'].value()
-                        ) * self._refl_over_sgn_[frac_fix_info['fixed_pdf_idx']],
-                        floating=False
-                    )
-                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + len(self._signal_pdf_)] = \
-                        self.__get_constrained_frac_par(
-                            self._fracs_[frac_fix_info['target_pdf_idx'] + 2 * len(self._signal_pdf_)],
-                            fix_factor,
-                            refl=True
-                        )
             else:  # fix background fraction
                 if frac_fix_info['target_pdf_type'] == 'signal':
-                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + 2 * len(self._signal_pdf_)] = \
+                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + 2 * len(self._signal_pdfs_)] = \
                         self.__get_constrained_frac_par(
                             self._fracs_[frac_fix_info['target_pdf_idx']],
                             frac_fix_info['factor']
                         )
                 else:  # fix to background PDF
-                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + 2 * len(self._signal_pdf_)] = \
+                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + 2 * len(self._signal_pdfs_)] = \
                         self.__get_constrained_frac_par(
-                            self._fracs_[frac_fix_info['target_pdf_idx'] + 2 * len(self._signal_pdf_)],
+                            self._fracs_[frac_fix_info['target_pdf_idx'] + 2 * len(self._signal_pdfs_)],
                             frac_fix_info['factor']
                         )
 
@@ -529,76 +374,68 @@ class F2MassFitter:
 
         # order of the pdfs is signal, background
 
+
         self.__build_signal_pdfs(obs)
         self.__build_background_pdfs(obs)
-        if len(self._background_pdf_) != 0:
-            self.__build_reflection_pdfs(obs)
-        else:
-            self._refl_pdf_ = []
+        print("HERRRRRRRRRRRRRRRRRE")
+        print(self._background_pdfs_)
+
+        for pdf in self._signal_pdfs_ + self._background_pdfs_:
+            pdf.print()
 
         self.__get_total_pdf_norm()
 
-        if len(self._signal_pdf_) + len(self._background_pdf_) == 1:
-            if len(self._signal_pdf_) == 0:
-                self._total_pdf_ = self._background_pdf_[0].copy()
-                if self._extended_:
-                    self._total_yield_ = zfit.Parameter(
-                        f'{self._name_}_yield',
-                        self._data_handler_.get_norm(),
-                        0,
-                        floating=True
-                    )
-                    self._total_pdf_.set_yield(self._total_yield_)
-                if self._is_truncated_:
-                    self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs)
-                return
-            if len(self._background_pdf_) == 0:
-                self._total_pdf_ = self._signal_pdf_[0].copy()
-                if self._extended_:
-                    self._total_yield_ = zfit.Parameter(
-                        f'{self._name_}_yield',
-                        self._data_handler_.get_norm(),
-                        0,
-                        floating=True
-                    )
-                    self._total_pdf_.set_yield(self._total_yield_)
-                if self._is_truncated_:
-                    self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs)
-                return
+        if self.no_signal and len(self._background_pdfs_) == 1:
+            self._total_pdf_ = self._background_pdfs_[0].get_pdf().copy()
+            if self._extended_:
+                self._total_yield_ = zfit.Parameter(
+                    f'{self._name_}_yield',
+                    self._data_handler_.get_norm(),
+                    0,
+                    floating=True
+                )
+                self._total_pdf_.set_yield(self._total_yield_)
+            if self._is_truncated_:
+                self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs)
+            return
+        if self.no_background and len(self._signal_pdfs_) == 1:
+            self._total_pdf_ = self._signal_pdfs_[0].get_pdf().copy()
+            if self._extended_:
+                self._total_yield_ = zfit.Parameter(
+                    f'{self._name_}_yield',
+                    self._data_handler_.get_norm(),
+                    0,
+                    floating=True
+                )
+                self._total_pdf_.set_yield(self._total_yield_)
+            if self._is_truncated_:
+                self._total_pdf_ = self._total_pdf_.to_truncated(limits=self._limits_, obs=obs)
+            return
 
-        for ipdf, _ in enumerate(self._signal_pdf_):
-            self._init_sgn_pars_[ipdf].setdefault('frac', 0.1)
-            self._fix_sgn_pars_[ipdf].setdefault('frac', False)
-            self._limits_sgn_pars_[ipdf].setdefault('frac', [0, 1.])
-            if len(self._background_pdf_) == 0 and ipdf == len(self._signal_pdf_) - 1:
+        print(self._fracs_)
+        for ipdf, pdf in enumerate(self._signal_pdfs_):
+            pdf.set_default_init_par('frac', 0.1)
+            pdf.set_default_fix_par('frac', False)
+            pdf.set_default_limits_par('frac', [0, 1.])
+            if self.no_background and ipdf == len(self._signal_pdfs_) - 1:
                 continue
             self._fracs_[ipdf] = zfit.Parameter(f'{self._name_}_frac_signal{ipdf}',
-                                                self._init_sgn_pars_[ipdf]['frac'],
-                                                self._limits_sgn_pars_[ipdf]['frac'][0],
-                                                self._limits_sgn_pars_[ipdf]['frac'][1],
-                                                floating=not self._fix_sgn_pars_[ipdf]['frac'])
+                                                pdf.get_init_par('frac'),
+                                                pdf.get_limits_par('frac')[0],
+                                                pdf.get_limits_par('frac')[1],
+                                                floating=not pdf.get_fix_par('frac'))
 
-            # normalisation of reflection fixed to the one of the signal
-            if len(self._background_pdf_) != 0:
-                def func_mult(params):
-                    return params['ros'] * params['s']
-                self._fracs_[ipdf + len(self._signal_pdf_)] = zfit.ComposedParameter(
-                    f'{self._name_}_frac_refl{ipdf}',
-                    func_mult, params={'ros': self._refl_over_sgn_[ipdf],
-                                       's': self._fracs_[ipdf]}
-                )
-
-        if len(self._background_pdf_) > 1:
-            for ipdf, _ in enumerate(self._background_pdf_[:-1]):
-                self._init_bkg_pars_[ipdf].setdefault('frac', 0.1)
-                self._fix_bkg_pars_[ipdf].setdefault('frac', False)
-                self._limits_bkg_pars_[ipdf].setdefault('frac', [0, 1.])
-                self._fracs_[ipdf + 2 * len(self._signal_pdf_)] = zfit.Parameter(
+        if len(self._background_pdfs_) > 1:
+            for ipdf, pdf in enumerate(self._background_pdfs_[:-1]):
+                pdf.set_default_init_par('frac', 0.1)
+                pdf.set_default_fix_par('frac', False)
+                pdf.set_default_limits_par('frac', [0, 1.])
+                self._fracs_[ipdf + len(self._signal_pdfs_)] = zfit.Parameter(
                     f'{self._name_}_frac_bkg{ipdf}',
-                    self._init_bkg_pars_[ipdf]['frac'],
-                    self._limits_bkg_pars_[ipdf]['frac'][0],
-                    self._limits_bkg_pars_[ipdf]['frac'][1],
-                    floating=not self._fix_bkg_pars_[ipdf]['frac'])
+                    pdf.get_init_par('frac'),
+                    pdf.get_limits_par('frac')[0],
+                    pdf.get_limits_par('frac')[1],
+                    floating=not pdf.get_fix_par('frac'))
 
         self.__set_frac_constraints()
 
@@ -625,7 +462,7 @@ class F2MassFitter:
                 return 1 - sum(par.value() for par in pars)
 
             frac_last = zfit.ComposedParameter(
-                f'{self._name_}_frac_bkg_{len(self._background_pdf_)-1}',
+                f'{self._name_}_frac_bkg_{len(self._background_pdfs_)-1}',
                 frac_last_pdf,
                 params=self._fracs_,
                 unpack_params=False
@@ -637,12 +474,18 @@ class F2MassFitter:
                 unpack_params=True
             )
 
-            pdfs_sum = [pdf.copy() for pdf in self._signal_pdf_ + self._refl_pdf_ + self._background_pdf_]
+            pdfs_sum = [pdf.get_pdf().copy() for pdf in self._signal_pdfs_ + self._background_pdfs_]
             for pdf, y in zip(pdfs_sum, self._yields_):
                 pdf.set_yield(y)
             self._total_pdf_ = zfit.pdf.SumPDF(pdfs_sum)
+            print([pdf.get_pdf() for pdf in self._signal_pdfs_+self._background_pdfs_])
+            print("self._fracs_ : ######## ",self._fracs_)
         else:
-            self._total_pdf_ = zfit.pdf.SumPDF(self._signal_pdf_+self._refl_pdf_+self._background_pdf_,
+            print("[pdf for pdf in self._signal_pdfs_] ",[pdf.get_pdf() for pdf in self._signal_pdfs_])
+            print("[pdf for pdf in self._background_pdfs_] ",[pdf.get_pdf() for pdf in self._background_pdfs_])
+            print([pdf.get_pdf() for pdf in self._signal_pdfs_+self._background_pdfs_])
+            print("self._fracs_ : ######## ",self._fracs_)
+            self._total_pdf_ = zfit.pdf.SumPDF([pdf.get_pdf() for pdf in self._signal_pdfs_+self._background_pdfs_],
                                                self._fracs_)
 
         if not self._data_handler_.get_is_binned() and self._is_truncated_:
@@ -659,16 +502,15 @@ class F2MassFitter:
         else:
             obs = self._data_handler_.get_binned_obs_from_unbinned_data()
 
-        if len(self._signal_pdf_) + len(self._background_pdf_) == 1:
-            if len(self._signal_pdf_) == 0:
-                self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[0], obs)
-                return
-            if len(self._background_pdf_) == 0:
-                self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._signal_pdf_[0], obs)
-                return
+        if self.no_signal and len(self._background_pdfs_) == 1:
+            self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdfs_[0].get_pdf(), obs)
+            return
+        if self.no_background and len(self._signal_pdfs_) == 1:
+            self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(self._signal_pdfs_[0].get_pdf(), obs)
+            return
 
         self._total_pdf_binned_ = zfit.pdf.BinnedFromUnbinnedPDF(zfit.pdf.SumPDF(
-            self._signal_pdf_+self._refl_pdf_+self._background_pdf_, self._fracs_), obs)
+            [pdf.get_pdf() for pdf in self._signal_pdfs_+self._background_pdfs_], self._fracs_), obs)
 
     def __get_frac_and_err(self, frac_par, frac_type):
         par_name = frac_par.name
@@ -758,6 +600,9 @@ class F2MassFitter:
             errors of fractions of the reflected signal pdfs
         """
         signal_fracs, bkg_fracs, refl_fracs, signal_err_fracs, bkg_err_fracs, refl_err_fracs = ([] for _ in range(6))
+        print("#########################")
+        print(self._fracs_)
+        print("#########################")
         for frac_par in self._fracs_:
             if frac_par is None:
                 continue
@@ -766,29 +611,38 @@ class F2MassFitter:
                 signal_frac, signal_err, isgn = self.__get_frac_and_err(frac_par, 'signal')
                 signal_fracs.append(signal_frac)
                 signal_err_fracs.append(signal_err)
-                refl_fracs.append(signal_frac * self._refl_over_sgn_[isgn])
-                refl_err_fracs.append(signal_err * self._refl_over_sgn_[isgn])
             elif f'{self._name_}_frac_bkg' in par_name:
                 bkg_frac, bkg_err, isgn = self.__get_frac_and_err(frac_par, 'bkg')
                 bkg_fracs.append(bkg_frac)
                 bkg_err_fracs.append(bkg_err)
 
         if len(signal_fracs) == len(bkg_fracs) == len(refl_fracs) == 0:
-            if len(self._background_pdf_) == 0:
+            if self.no_background:
                 signal_fracs.append(1.)
                 signal_err_fracs.append(0.)
                 refl_fracs.append(0.)
                 refl_err_fracs.append(0.)
-            elif len(self._signal_pdf_) == 0:
+            elif self.no_signal:
                 bkg_fracs.append(1.)
                 bkg_err_fracs.append(0.)
         else:
-            if len(self._background_pdf_) == 0:
+            if self.no_background:
+                print("hereeee")
                 signal_fracs.append(1 - sum(signal_fracs) - sum(refl_fracs) - sum(bkg_fracs))
                 signal_err_fracs.append(np.sqrt(sum(list(err**2 for err in signal_err_fracs + bkg_err_fracs))))
             else:
                 bkg_fracs.append(1 - sum(signal_fracs) - sum(refl_fracs) - sum(bkg_fracs))
                 bkg_err_fracs.append(np.sqrt(sum(list(err**2 for err in signal_err_fracs + bkg_err_fracs))))
+
+        print(signal_fracs, self.no_background)
+
+        for i_refl, refl_idx in enumerate(self._refl_idx_):
+            if refl_idx is None:
+                continue
+            refl_frac = signal_fracs.pop(refl_idx)
+            refl_err_frac = signal_err_fracs.pop(refl_idx)
+            refl_fracs.append(refl_frac)
+            refl_err_fracs.append(refl_err_frac)
 
         return signal_fracs, bkg_fracs, refl_fracs, signal_err_fracs, bkg_err_fracs, refl_err_fracs
 
@@ -818,9 +672,9 @@ class F2MassFitter:
         fracs = signal_fracs + refl_fracs + bkg_fracs
         limits = self._data_handler_.get_limits()
         sidebands_integral, total_integral = 0., 0.
-        for i_pdf, pdf in enumerate(self._signal_pdf_ + self._refl_pdf_ + self._background_pdf_):
-            sidebands_integral += float(sum(pdf.integrate(lim) * fracs[i_pdf] for lim in self._limits_))
-            total_integral += float(pdf.integrate(limits) * fracs[i_pdf])
+        for i_pdf, pdf in enumerate(self._signal_pdfs_ + self._background_pdfs_):
+            sidebands_integral += float(sum(pdf.get_pdf().integrate(lim) * fracs[i_pdf] for lim in self._limits_))
+            total_integral += float(pdf.get_pdf().integrate(limits) * fracs[i_pdf])
 
         self._ratio_truncated_ = sidebands_integral / total_integral
 
@@ -832,8 +686,8 @@ class F2MassFitter:
         bins = self._data_handler_.get_nbins()
         norm = self._total_pdf_norm_
         self._raw_residuals_ = [None]*bins
-        background_pdf_binned_ = [None for _ in enumerate(self._kind_background_pdf_)]
-        model_bkg_values = [None for _ in enumerate(self._kind_background_pdf_)]
+        background_pdf_binned_ = [None for _ in enumerate(self._background_pdfs_)]
+        model_bkg_values = [None for _ in enumerate(self._background_pdfs_)]
 
         # access normalized data values and errors for all bins
         if self._data_handler_.get_is_binned():
@@ -847,23 +701,23 @@ class F2MassFitter:
             obs = self._data_handler_.get_binned_obs_from_unbinned_data()
 
         # get background fractions
-        if len(self._background_pdf_) > 0:
-            if len(self._background_pdf_) == 1:
+        if len(self._background_pdfs_) > 0:
+            if len(self._background_pdfs_) == 1:
                 _, bkg_fracs, _, _, _, _ = self.__get_all_fracs()
             else:
                 _, bkg_fracs, _, _, _, _ = self.__get_all_fracs()
             # access model predicted values for background
-            for ipdf, bkg_kind in enumerate(self._kind_background_pdf_):
-                background_pdf_binned_[ipdf] = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdf_[ipdf], obs)
+            for ipdf, pdf in enumerate(self._background_pdfs_):
+                background_pdf_binned_[ipdf] = zfit.pdf.BinnedFromUnbinnedPDF(self._background_pdfs_[ipdf].get_pdf(), obs)
                 norm_bkg = norm
-                if bkg_kind.is_hist():
+                if pdf.is_hist():
                     norm_bkg /= float(sum(background_pdf_binned_[ipdf].values()))
                 model_bkg_values[ipdf] = background_pdf_binned_[ipdf].values() * bkg_fracs[ipdf]
                 model_bkg_values[ipdf] *= norm_bkg / self._ratio_truncated_
             # compute residuals
             for ibin, data in enumerate(data_values):
                 self._raw_residuals_[ibin] = float(data)
-                for ipdf, _ in enumerate(self._kind_background_pdf_):
+                for ipdf, _ in enumerate(self._background_pdfs_):
                     self._raw_residuals_[ibin] -= model_bkg_values[ipdf][ibin]
         else:
             for ibin, data in enumerate(data_values):
@@ -910,7 +764,7 @@ class F2MassFitter:
 
         """
 
-        if self._kind_background_pdf_[0] == PDFType.NO_BKG:
+        if self.no_background:
             Logger('Prefit cannot be performed in case of no background, skip', 'WARNING')
             return
 
@@ -945,15 +799,15 @@ class F2MassFitter:
             return
 
         fracs_bkg_prefit = []
-        for ipdf, _ in enumerate(self._background_pdf_):
+        for ipdf, _ in enumerate(self._background_pdfs_):
             fracs_bkg_prefit.append(zfit.Parameter(f'{self._name_}_frac_bkg{ipdf}_prefit', 0.1, 0., 1.))
 
         prefit_background_pdf = None
-        if len(self._background_pdf_) > 1:
-            prefit_background_pdf = zfit.pdf.SumPDF(self._background_pdf_, fracs_bkg_prefit).to_truncated(
+        if len(self._background_pdfs_) > 1:
+            prefit_background_pdf = zfit.pdf.SumPDF([pdf.get_pdf() for pdf in self._background_pdfs_], fracs_bkg_prefit).to_truncated(
                 limits=limits_sb, obs=obs, norm=obs)
         else:
-            prefit_background_pdf = self._background_pdf_[0].to_truncated(
+            prefit_background_pdf = self._background_pdfs_[0].get_pdf().to_truncated(
                 limits=limits_sb, obs=obs, norm=obs)
 
         prefit_loss = zfit.loss.UnbinnedNLL(model=prefit_background_pdf,
@@ -966,7 +820,7 @@ class F2MassFitter:
         # re-initialise the parameters from those obtained in the prefit
         for par in res_prefit.params:
             which_pdf = int(par.name[-1])
-            self._bkg_pars_[which_pdf][par.name].set_value(res_prefit.params[par.name]['value'])
+            self._background_pdfs_[which_pdf].parameters[par.name].set_value(res_prefit.params[par.name]['value'])
 
     # pylint: disable=too-many-nested-blocks
     def mass_zfit(self, do_prefit=False, **kwargs):
@@ -1002,8 +856,11 @@ class F2MassFitter:
         self._raw_residual_variances_ = []
         self._std_residuals_ = []
 
+        print("######### self._fracs_ before func ###########", self._fracs_)
         self.__build_total_pdf()
         self.__build_total_pdf_binned()
+        print("######### self._fracs_ after func ###########", self._fracs_)
+
 
         # do prefit
         if do_prefit:
@@ -1011,15 +868,15 @@ class F2MassFitter:
             excluded_regions = []
             exclude_signals_nsigma = kwargs.get('prefit_exclude_nsigma', None)
             if exclude_signals_nsigma is not None:
-                for ipdf, pdf_kind in enumerate(self._kind_signal_pdf_):
-                    if not pdf_kind.has_sigma():
-                        Logger(f"Sigma parameter not defined for {str(pdf_kind)}, "
+                for ipdf, pdf in enumerate(self._signal_pdfs_):
+                    if not pdf.kind.has_sigma():
+                        Logger(f"Sigma parameter not defined for {str(pdf.kind)}, "
                                "cannot use nsigma for excluded regions in prefit", "Error")
                         skip_prefit = True
                     else:
-                        mass_name = 'm' if pdf_kind.uses_m_not_mu() else 'mu'
-                        mass = self._init_sgn_pars_[ipdf][mass_name]
-                        sigma = self._init_sgn_pars_[ipdf]['sigma']
+                        mass_name = 'm' if pdf.kind.uses_m_not_mu() else 'mu'
+                        mass = pdf.get_init_par(mass_name)
+                        sigma = pdf.get_init_par('sigma')
                         excluded_regions.append(
                             [mass - exclude_signals_nsigma * sigma, mass + exclude_signals_nsigma * sigma])
             else:
@@ -1062,12 +919,12 @@ class F2MassFitter:
             self._rawyield_err_[0] = np.sqrt(self._rawyield_[0])
         else:
             if self._extended_:
-                for i_pdf, (_, frac, frac_err) in enumerate(zip(self._signal_pdf_, signal_fracs, signal_frac_errs)):
+                for i_pdf, (_, frac, frac_err) in enumerate(zip(self._signal_pdfs_, signal_fracs, signal_frac_errs)):
                     self._rawyield_[i_pdf] = self._total_pdf_.models[i_pdf].get_yield().value()
                     # no background case: last signal fraction is 1 - sum(others)
-                    if len(self._signal_pdf_) > 0 and\
-                        len(self._background_pdf_) == 0 and\
-                            i_pdf == len(self._signal_pdf_) - 1:
+                    if not self.no_signal and\
+                        self.no_background and\
+                            i_pdf == len(self._signal_pdfs_) - 1:
                         self._rawyield_err_[i_pdf] = np.sqrt(
                             np.sum(np.square(signal_frac_errs)) + 2 * np.sum([
                                 self.__get_frac_cov(self._fracs_[i], 'signal', self._fracs_[j])
@@ -1085,7 +942,10 @@ class F2MassFitter:
                                 self._total_pdf_.get_yield().value() / frac
                         )
             else:
-                for i_pdf, _ in enumerate(self._signal_pdf_):
+                for i_pdf, _ in enumerate(self._signal_pdfs_):
+                    print(i_pdf, self._signal_pdfs_, self._refl_idx_, signal_fracs)
+                    if i_pdf in self._refl_idx_:
+                        continue
                     self._rawyield_[i_pdf] = signal_fracs[i_pdf] * norm / self._ratio_truncated_
                     self._rawyield_err_[i_pdf] = signal_frac_errs[i_pdf] * norm / self._ratio_truncated_
 
@@ -1173,34 +1033,25 @@ class F2MassFitter:
         total_func = zfit.run(self._total_pdf_.pdf(x_plot, norm_range=obs))
         signal_funcs, refl_funcs, bkg_funcs = ([] for _ in range(3))
 
-        for signal_pdf in self._signal_pdf_:
-            signal_funcs.append(zfit.run(signal_pdf.pdf(x_plot, norm_range=obs)))
-        for refl_pdf in self._refl_pdf_:
-            refl_funcs.append(zfit.run(refl_pdf.pdf(x_plot, norm_range=obs)))
-        for bkg_pdf in self._background_pdf_:
-            bkg_funcs.append(zfit.run(bkg_pdf.pdf(x_plot, norm_range=obs)))
+        if not self.no_signal:
+            for signal_pdf in self._signal_pdfs_:
+                signal_funcs.append(zfit.run(signal_pdf.get_pdf().pdf(x_plot, norm_range=obs)))
+        if not self.no_background:
+            for bkg_pdf in self._background_pdfs_:
+                bkg_funcs.append(zfit.run(bkg_pdf.get_pdf().pdf(x_plot, norm_range=obs)))
 
         signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
 
         # first draw backgrounds
         for ibkg, (bkg_func, bkg_frac) in enumerate(zip(bkg_funcs, bkg_fracs)):
             plt.plot(x_plot, bkg_func * norm_total_pdf * bkg_frac / self._ratio_truncated_,
-                     color=self._bkg_cmap_(ibkg), ls='--', label=self.label_bkg_pdf[ibkg])
+                     color=self._bkg_cmap_(ibkg), ls='--', label=self._background_pdfs_[ibkg].get_label())
         # then draw signals
-        for isgn, (signal_func, frac) in enumerate(zip(signal_funcs, signal_fracs)):
+        for isgn, (signal_func, frac) in enumerate(zip(signal_funcs, signal_fracs+refl_fracs)):
             plt.plot(x_plot, signal_func * norm_total_pdf * frac / self._ratio_truncated_, color=self._sgn_cmap_(isgn))
             plt.fill_between(x_plot, signal_func * norm_total_pdf * frac / self._ratio_truncated_,
                              color=self._sgn_cmap_(isgn),
-                             alpha=0.5, label=self.label_signal_pdf[isgn])
-
-        # finally draw reflected signals (if any)
-        for irefl, (refl_func, frac) in enumerate(zip(refl_funcs, refl_fracs)):
-            if self._kind_refl_pdf_[irefl] is None:
-                continue
-            plt.plot(x_plot, refl_func * norm_total_pdf * frac / self._ratio_truncated_, color=self._refl_cmap_(irefl))
-            plt.fill_between(x_plot, refl_func * norm_total_pdf * frac / self._ratio_truncated_,
-                             color=self._refl_cmap_(irefl),
-                             alpha=0.5, label=f'reflected signal {irefl}')
+                             alpha=0.5, label=self._signal_pdfs_[isgn].get_label())
 
         plt.plot(x_plot, total_func * norm_total_pdf, color='xkcd:blue', label='total fit')
         plt.xlim(limits[0], limits[1])
@@ -1221,14 +1072,14 @@ class F2MassFitter:
                                               frameon=False)
             # signal and background info for all signals
             text = []
-            for idx, signal_kind in enumerate(self._kind_signal_pdf_):
+            for idx, signal_pdf in enumerate(self._signal_pdfs_):
                 mass, mass_unc = self.get_mass(idx)
                 sigma, sigma_unc = None, None
                 gamma, gamma_unc = None, None
                 rawyield, rawyield_err = self.get_raw_yield(idx=idx)
-                if signal_kind.has_sigma():
+                if signal_pdf.has_sigma():
                     sigma, sigma_unc = self.get_sigma(idx)
-                if signal_kind in [PDFType.CAUCHY, PDFType.VOIGTIAN]:
+                if signal_pdf.kind == PDFType.CAUCHY or signal_pdf.kind == PDFType.VOIGTIAN:
                     gamma, gamma_unc = self.get_signal_parameter(idx, 'gamma')
                 extra_info = fr'{self.label_signal_pdf[idx]}''\n' \
                     + fr'  $\mu = {mass*1000:.1f}\pm{mass_unc*1000:.1f}$ MeV$/c^2$''\n'
@@ -1238,7 +1089,7 @@ class F2MassFitter:
                     extra_info += fr'  $\Gamma/2 = {gamma*1000:.1f}\pm{gamma_unc*1000:.1f}$ MeV$/c^2$''\n'
 
                 extra_info += fr'  $S={rawyield:.0f} \pm {rawyield_err:.0f}$''\n'
-                if self._kind_background_pdf_[0] != PDFType.NO_BKG:
+                if not self.no_background:
                     if mass_range is not None:
                         interval = f'[{mass_range[0]:.3f}, {mass_range[1]:.3f}]'
                         bkg, bkg_err = self.get_background(idx=idx, min=mass_range[0], max=mass_range[1])
@@ -1327,12 +1178,15 @@ class F2MassFitter:
                          filename=filename, option='update')
 
         signal_funcs, bkg_funcs, refl_funcs = ([] for _ in range(3))
-        for signal_pdf in self._signal_pdf_:
-            signal_funcs.append(zfit.run(signal_pdf.pdf(x_plot, norm_range=obs)))
-        for refl_pdf in self._refl_pdf_:
-            refl_funcs.append(zfit.run(refl_pdf.pdf(x_plot, norm_range=obs)))
-        for bkg_pdf in self._background_pdf_:
-            bkg_funcs.append(zfit.run(bkg_pdf.pdf(x_plot, norm_range=obs)))
+        for signal_pdf in self._signal_pdfs_:
+            signal_funcs.append(zfit.run(signal_pdf.get_pdf().pdf(x_plot, norm_range=obs)))
+        for bkg_pdf in self._background_pdfs_:
+            bkg_funcs.append(zfit.run(bkg_pdf.get_pdf().pdf(x_plot, norm_range=obs)))
+
+        for i_refl, refl_idx in enumerate(self._refl_idx_):
+            if refl_idx is None:
+                continue
+            refl_funcs.append(signal_funcs.pop(refl_idx))
 
         signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
 
@@ -1423,6 +1277,8 @@ class F2MassFitter:
         for (data, model) in zip(data_values, model_values):
             if data == 0:
                 continue
+            if (data - model)**2/data > 1:
+                print(f"Large contribution to chi2: data={data}, model={model}, contrib={(data - model)**2/data}")
             chi2 += (data - model)**2/data
 
         return float(chi2)
@@ -1497,7 +1353,7 @@ class F2MassFitter:
 
         x_plot = np.linspace(limits[0], limits[1], num=1000)
         signal_funcs, refl_funcs = ([] for _ in range(2))
-        for signal_pdf in self._signal_pdf_:
+        for signal_pdf in self._signal_pdfs_:
             signal_funcs.append(zfit.run(signal_pdf.pdf(x_plot, norm_range=obs)))
         for refl_pdf in self._refl_pdf_:
             refl_funcs.append(zfit.run(refl_pdf.pdf(x_plot, norm_range=obs)))
@@ -1513,7 +1369,7 @@ class F2MassFitter:
         # finally draw reflected signals (if any)
         is_there_refl = False
         for irefl, (refl_func, frac) in enumerate(zip(refl_funcs, refl_fracs)):
-            if self._kind_refl_pdf_[irefl] is None:
+            if self._refl_pdfs_[irefl] is None:
                 continue
             is_there_refl = True
             plt.plot(x_plot, refl_func * norm * frac / self._ratio_truncated_, color=self._refl_cmap_(irefl))
@@ -1669,7 +1525,7 @@ class F2MassFitter:
 
         if nhwhm is not None:
             use_nsigma = False
-            if not self._kind_signal_pdf_[idx].has_hwhm():
+            if not self._signal_pdfs_[idx].has_hwhm():
                 Logger('HWHM not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -1678,7 +1534,7 @@ class F2MassFitter:
             max_value = mass + nhwhm * hwhm
 
         if use_nsigma:
-            if not self._kind_signal_pdf_[idx].has_sigma():
+            if not self._signal_pdfs_[idx].has_sigma():
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -1718,17 +1574,17 @@ class F2MassFitter:
         mass_err: float
             The mass error obtained from the fit
         """
-        if self._kind_signal_pdf_[idx].is_hist():
-            hist = self._signal_pdf_[idx].to_hist()
+        if self._signal_pdfs_[idx].is_hist():
+            hist = self._signal_pdfs_[idx].to_hist()
             bin_limits = hist.to_numpy()[1]
             centres = [0.5 * (minn + maxx) for minn, maxx in zip(bin_limits[1:],  bin_limits[:-1])]
             counts = hist.values()
             mass = np.average(centres, weights=counts)
             mass_err = 0.
         else:
-            mass_name = 'm' if self._kind_signal_pdf_[idx].uses_m_not_mu() else 'mu'
-            if self._fix_sgn_pars_[idx][mass_name]:
-                mass = self._init_sgn_pars_[idx][mass_name]
+            mass_name = 'm' if self._signal_pdfs_[idx].uses_m_not_mu() else 'mu'
+            if self._signal_pdfs_[idx].get_fix_par(mass_name):
+                mass = self._signal_pdfs_[idx].get_init_par(mass_name)
                 mass_err = 0.
             else:
                 mass = self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['value']
@@ -1752,23 +1608,23 @@ class F2MassFitter:
         sigma_err: float
             The sigma error obtained from the fit
         """
-        if not self._kind_signal_pdf_[idx].has_sigma():
-            Logger(f'Sigma parameter not defined for {self._kind_signal_pdf_[idx].value} pdf!', 'ERROR')
+        if not self._signal_pdfs_[idx].has_sigma():
+            Logger(f'Sigma parameter not defined for {self._signal_pdfs_[idx].kind} pdf!', 'ERROR')
             return 0., 0.
 
         # if histogram, the rms is used as proxy
-        if self._kind_signal_pdf_[idx].is_hist():
-            Logger(f'RMS used as proxy for sigma parameter of {self._kind_signal_pdf_[idx].value} pdf!', 'WARNING')
+        if self._signal_pdfs_[idx].is_hist():
+            Logger(f'RMS used as proxy for sigma parameter of {self._signal_pdfs_[idx].kind} pdf!', 'WARNING')
             mean = self.get_mass(idx)[0]
-            hist = self._signal_pdf_[idx].to_hist()
+            hist = self._signal_pdfs_[idx].to_hist()
             bin_limits = hist.to_numpy()[1]
             centres = [0.5 * (minn + maxx) for minn, maxx in zip(bin_limits[1:],  bin_limits[:-1])]
             counts = hist.values()
             sigma = np.sqrt(np.average((centres - mean)**2, weights=counts))
             sigma_err = 0.
         else:
-            if self._fix_sgn_pars_[idx]['sigma']:
-                sigma = self._init_sgn_pars_[idx]['sigma']
+            if self._signal_pdfs_[idx].get_fix_par('sigma'):
+                sigma = self._signal_pdfs_[idx].get_init_par('sigma')
                 sigma_err = 0.
             else:
                 sigma = self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['value']
@@ -1792,18 +1648,18 @@ class F2MassFitter:
         hwhm_err: float
             The sigma error obtained from the fit
         """
-        if not self._kind_signal_pdf_[idx].has_hwhm():
-            Logger(f'HFWM parameter not defined for {str(self._kind_signal_pdf_[idx])} pdf!', 'ERROR')
+        if not self._signal_pdfs_[idx].has_hwhm():
+            Logger(f'HFWM parameter not defined for {self._signal_pdfs_[idx].kind} pdf!', 'ERROR')
             return 0., 0.
 
-        if self._kind_signal_pdf_[idx] == PDFKind.GAUSSIAN:
+        if self._signal_pdfs_[idx].kind == PDFKind.GAUSSIAN:
             mult_fact = np.sqrt(2 * np.log(2))
             hwhm, hwhm_err = self.get_sigma(idx)
             hwhm *= mult_fact
             hwhm_err *= mult_fact
-        elif self._kind_signal_pdf_[idx] == PDFKind.CAUCHY:
+        elif self._signal_pdfs_[idx].kind == PDFKind.CAUCHY:
             hwhm, hwhm_err = self.get_signal_parameter(idx, 'gamma')
-        elif self._kind_signal_pdf_[idx] == PDFKind.VOIGTIAN:
+        elif self._signal_pdfs_[idx].kind == PDFKind.VOIGTIAN:
             mult_fact = np.sqrt(2 * np.log(2))
             sigma, sigma_err = self.get_sigma(idx)
             sigma *= mult_fact
@@ -1843,8 +1699,8 @@ class F2MassFitter:
                    'https://zfit.readthedocs.io/en/latest/user_api/pdf/_generated/basic/zfit.pdf.Cauchy.html',
                    'WARNING')
 
-        if self._fix_sgn_pars_[idx][par_name]:
-            parameter = self._init_sgn_pars_[idx][par_name]
+        if self._signal_pdfs_[idx].get_fix_par(par_name):
+            parameter = self._signal_pdfs_[idx].get_init_par(par_name)
             parameter_err = 0.
         else:
             parameter = self._fit_result_.params[f'{self._name_}_{par_name}_signal{idx}']['value']
@@ -1872,8 +1728,8 @@ class F2MassFitter:
 
         """
 
-        if self._fix_bkg_pars_[idx][par_name]:
-            parameter = self._init_bkg_pars_[idx][par_name]
+        if self._background_pdfs_[idx].get_fix_par(par_name):
+            parameter = self._background_pdfs_[idx].get_init_par(par_name)
             parameter_err = 0.
         else:
             parameter = self._fit_result_.params[f'{self._name_}_{par_name}_bkg{idx}']['value']
@@ -1928,7 +1784,7 @@ class F2MassFitter:
 
         if nhwhm is not None:
             use_nsigma = False
-            if not self._kind_signal_pdf_[idx].has_hwhm():
+            if not self._signal_pdfs_[idx].has_hwhm():
                 Logger('HWHM not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -1937,7 +1793,7 @@ class F2MassFitter:
             max_value = mass + nhwhm * hwhm
 
         if use_nsigma:
-            if not self._kind_signal_pdf_[idx].has_sigma():
+            if not self._signal_pdfs_[idx].has_sigma():
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -1946,15 +1802,15 @@ class F2MassFitter:
             max_value = mass + nsigma * sigma
 
         # pylint: disable=missing-kwoa
-        signal = self._signal_pdf_[idx].integrate((min_value, max_value))
+        signal = self._signal_pdfs_[idx].get_pdf().integrate((min_value, max_value))
 
         signal_fracs, _, refl_fracs, signal_err_fracs, _, _ = self.__get_all_fracs()
 
-        if len(self._background_pdf_) > 0:
+        if len(self._background_pdfs_) > 0:
             frac = signal_fracs[idx]
             frac_err = signal_err_fracs[idx]
         else:
-            if len(self._signal_pdf_) == 1:
+            if len(self._signal_pdfs_) == 1:
                 frac = 1.
                 frac_err = 0.
             if idx < len(signal_fracs):
@@ -2002,7 +1858,7 @@ class F2MassFitter:
             The background error obtained from the fit
         """
 
-        if not self._background_pdf_:
+        if not self._background_pdfs_:
             Logger('Background not fitted', 'ERROR')
             return 0., 0.
 
@@ -2021,7 +1877,7 @@ class F2MassFitter:
 
         if nhwhm is not None:
             use_nsigma = False
-            if not self._kind_signal_pdf_[idx].has_hwhm():
+            if not self._signal_pdfs_[idx].has_hwhm():
                 Logger('HWHM not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -2030,7 +1886,7 @@ class F2MassFitter:
             max_value = mass + nhwhm * hwhm
 
         if use_nsigma:
-            if not self._kind_signal_pdf_[idx].has_sigma():
+            if not self._signal_pdfs_[idx].has_sigma():
                 Logger('Sigma not defined, I cannot compute the signal for this pdf', 'ERROR')
                 return 0., 0.
             mass, _ = self.get_mass(idx)
@@ -2046,12 +1902,12 @@ class F2MassFitter:
 
         # pylint: disable=missing-kwoa
         background, background_err = 0., 0.
-        for idx2, bkg in enumerate(self._background_pdf_):
+        for idx2, bkg in enumerate(self._background_pdfs_):
 
             norm = self._total_pdf_norm_ * bkg_fracs[idx2]
             norm_err = norm * bkg_err_fracs[idx2]
 
-            bkg_int = float(bkg.integrate((min_value, max_value)))
+            bkg_int = float(bkg.get_pdf().integrate((min_value, max_value)))
             background += bkg_int * norm
             background_err += (bkg_int * norm_err)**2
 
@@ -2157,15 +2013,15 @@ class F2MassFitter:
             model = self._total_pdf_.get_models()[0]  # Get the SumPDF object (not the truncated one)
             # Create a new model removing the reflections if needed
             sweights_model = []
-            for i_pdf, pdf_name in enumerate(self._name_signal_pdf_):
+            for i_pdf, pdf_name in enumerate(self._name_signal_pdfs_):
                 if pdf_name is not None:
                     sweights_model.append(i_pdf)
             for i_pdf, pdf_name in enumerate(self._name_refl_pdf_):
                 if pdf_name is not None:
-                    sweights_model.append(i_pdf + len(self._name_signal_pdf_))
-            for i_pdf, pdf_name in enumerate(self._name_background_pdf_):
+                    sweights_model.append(i_pdf + len(self._name_signal_pdfs_))
+            for i_pdf, pdf_name in enumerate(self._name_background_pdfs_):
                 if pdf_name is not None:
-                    sweights_model.append(i_pdf + len(self._name_signal_pdf_) + len(self._name_refl_pdf_))
+                    sweights_model.append(i_pdf + len(self._name_signal_pdfs_) + len(self._name_refl_pdf_))
             model = zfit.pdf.SumPDF(
                 [model.get_models()[i] for i in sweights_model],
                 extended=self._data_handler_.get_norm(),
@@ -2174,10 +2030,10 @@ class F2MassFitter:
             )
 
             sweights = compute_sweights(model, self._data_handler_.get_data())
-            names = self._name_signal_pdf_+self._name_refl_pdf_+self._name_background_pdf_
+            names = self._name_signal_pdfs_+self._name_refl_pdf_+self._name_background_pdfs_
             names = [names[i] for i in sweights_model]
             for new_name, old_name in zip(
-                self._name_signal_pdf_+self._name_refl_pdf_+self._name_background_pdf_,
+                self._name_signal_pdfs_+self._name_refl_pdf_+self._name_background_pdfs_,
                 list(sweights.keys())
             ):
                 sweights[new_name] = sweights.pop(old_name)
@@ -2195,13 +2051,13 @@ class F2MassFitter:
 
         total_signal_yields = 0.
         total_bkg_yields = 0.
-        for pdf, frac in zip(self._signal_pdf_, signal_fracs):
+        for pdf, frac in zip(self._signal_pdfs_, signal_fracs):
             signal_pdf_extended.append(pdf.create_extended(frac * norm))
             total_signal_yields += frac * norm
         for pdf, frac in zip(self._refl_pdf_, refl_fracs):
             refl_pdf_extended.append(pdf.create_extended(frac * norm))
             total_signal_yields += frac * norm
-        for pdf, frac in zip(self._background_pdf_, bkg_fracs):
+        for pdf, frac in zip(self._background_pdfs_, bkg_fracs):
             bkg_pdf_extended.append(pdf.create_extended(frac * norm))
             total_bkg_yields += frac * norm
 
@@ -2256,7 +2112,7 @@ class F2MassFitter:
             - fix: bool
                 fix the mass parameter
         """
-        mass_name = 'm' if self._kind_signal_pdf_[idx].uses_m_not_mu() else 'mu'
+        mass_name = 'm' if self._signal_pdfs_[idx].uses_m_not_mu() else 'mu'
         mass = 0.
         if 'mass' in kwargs:
             mass = kwargs['mass']
@@ -2267,11 +2123,11 @@ class F2MassFitter:
         else:
             Logger(f'"mass", "pdg_id", and "pdg_name" not provided, mass value for signal {idx} will not be set',
                    'ERROR')
-        self._init_sgn_pars_[idx][mass_name] = mass
+        self._signal_pdfs_[idx].set_init_par(mass_name, mass)
         if 'limits' in kwargs:
-            self._limits_sgn_pars_[idx][mass_name] = kwargs['limits']
+            self._signal_pdfs_[idx].set_limits_par(mass_name, kwargs['limits'])
         if 'fix' in kwargs:
-            self._fix_sgn_pars_[idx][mass_name] = kwargs['fix']
+            self._signal_pdfs_[idx].set_fix_par(mass_name, kwargs['fix'])
 
     def set_signal_initpar(self, idx, par_name, init_value, **kwargs):
         """
@@ -2300,11 +2156,11 @@ class F2MassFitter:
                    'https://zfit.readthedocs.io/en/latest/user_api/pdf/_generated/basic/zfit.pdf.Cauchy.html',
                    'WARNING')
 
-        self._init_sgn_pars_[idx][par_name] = init_value
+        self._signal_pdfs_[idx].set_init_par(par_name, init_value)
         if 'limits' in kwargs:
-            self._limits_sgn_pars_[idx][par_name] = kwargs['limits']
+            self._signal_pdfs_[idx].set_limits_par(par_name, kwargs['limits'])
         if 'fix' in kwargs:
-            self._fix_sgn_pars_[idx][par_name] = kwargs['fix']
+            self._signal_pdfs_[idx].set_fix_par(par_name, kwargs['fix'])
 
     def set_background_initpar(self, idx, par_name, init_value, **kwargs):
         """
@@ -2327,11 +2183,11 @@ class F2MassFitter:
             - fix: bool
                 fix the mass parameter
         """
-        self._init_bkg_pars_[idx][par_name] = init_value
+        self._background_pdfs_[idx].set_init_par(par_name, init_value)
         if 'limits' in kwargs:
-            self._limits_bkg_pars_[idx][par_name] = kwargs['limits']
+            self._background_pdfs_[idx].set_limits_par(par_name, kwargs['limits'])
         if 'fix' in kwargs:
-            self._fix_bkg_pars_[idx][par_name] = kwargs['fix']
+            self._background_pdfs_[idx].set_fix_par(par_name, kwargs['fix'])
 
     def __get_parameter_fix_frac(self, factor, name):
         """
@@ -2369,12 +2225,12 @@ class F2MassFitter:
                 'cannot constrain the fraction to itself',
                 'FATAL'
             )
-        if target_pdf_type == 'signal' and target_pdf > len(self._signal_pdf_):
+        if target_pdf_type == 'signal' and target_pdf > len(self._signal_pdfs_):
             Logger(
                 f'Target signal index {target_pdf} is out of range',
                 'FATAL'
             )
-        if target_pdf_type == 'bkg' and target_pdf > len(self._background_pdf_):
+        if target_pdf_type == 'bkg' and target_pdf > len(self._background_pdfs_):
             Logger(
                 f'Target background index {target_pdf} is out of range',
                 'FATAL'
@@ -2548,8 +2404,8 @@ class F2MassFitter:
             Logger(f'The data and the reflection template {idx} have different bin edges:'
                    f' \n       -> reflection template: {edges_refl}, data -> {edges_data}', 'FATAL')
 
-        self._hist_refl_sample_[idx] = sample
-        self._refl_over_sgn_[idx] = r_over_s
+        self._signal_pdfs_[self._refl_idx_[idx]].hist_sample = sample
+        self.fix_signal_frac_to_signal_pdf(self._refl_idx_[idx], idx, factor=r_over_s)
 
     # pylint: disable=line-too-long
     def set_reflection_kde(self, idx, sample, r_over_s, **kwargs):
@@ -2569,10 +2425,9 @@ class F2MassFitter:
             https://zfit.readthedocs.io/en/latest/user_api/pdf/_generated/kde_api/zfit.pdf.KDE1DimGrid.html#zfit.pdf.KDE1DimGrid
             for more details
         """
-
-        self._kde_signal_sample_[idx] = sample
-        self._kde_signal_option_[idx] = kwargs
-        self._refl_over_sgn_[idx] = r_over_s
+        self._signal_pdfs_[self._refl_idx_[idx]].kde_sample = sample
+        self._signal_pdfs_[self._refl_idx_[idx]].kde_option = kwargs
+        self.fix_signal_frac_to_signal_pdf(idx, self._refl_idx_[idx], factor=r_over_s)
 
     # pylint: disable=line-too-long
     def set_background_template(self, idx, sample):
@@ -2596,7 +2451,7 @@ class F2MassFitter:
             Logger(f'The data and the background template {idx} have different bin edges:'
                    f' \n       -> background template: {edges_bkg}, data -> {edges_data}', 'FATAL')
 
-        self._hist_bkg_sample_[idx] = sample
+        self._background_pdfs_[idx].hist_sample = sample
 
     # pylint: disable=line-too-long
     def set_background_kde(self, idx, sample, **kwargs):
@@ -2615,8 +2470,8 @@ class F2MassFitter:
             for more details
         """
 
-        self._kde_bkg_sample_[idx] = sample
-        self._kde_bkg_option_[idx] = kwargs
+        self._background_pdfs_[idx].kde_sample = sample
+        self._background_pdfs_[idx].kde_option = kwargs
 
     def __write_data(self, hdata, histname='hdata', filename='output.root', option='recreate'):
         """
@@ -2687,19 +2542,20 @@ class F2MassFitter:
         """
         Return the signal pdf names
         """
-        return [str(kind) for kind in self._kind_signal_pdf_]
+        return [str(pdf.kind) for pdf in self._signal_pdfs_[:-self._n_refl_]]
 
     def get_name_background_pdf(self):
         """
         Return the background pdf names
         """
-        return [str(kind) for kind in self._kind_background_pdf_]
+        return [str(pdf.kind) for pdf in self._background_pdfs_]
 
     def get_name_refl_pdf(self):
         """
         Return the reflection pdf names
         """
-        return [str(kind) for kind in self._kind_refl_pdf_]
+
+        return [str(pdf.kind) for pdf in self._signal_pdfs_[-self._n_refl_:]]
 
     def get_signal_pars(self):
         """
@@ -2707,7 +2563,7 @@ class F2MassFitter:
         """
         fracs = self.__get_all_fracs()
         signal_pars = []
-        for i_sgn, sgn_par in enumerate(self._sgn_pars_):
+        for i_sgn, sgn_par in enumerate(self._sgn_pars_[:-self._n_refl_]):
             signal_pars.append({})
             for key, value in sgn_par.items():
                 par_name = key.split(f'{self._name_}_')[-1]
@@ -2722,7 +2578,7 @@ class F2MassFitter:
         """
         fracs = self.__get_all_fracs()
         signal_pars_uncs = []
-        for i_sgn, sgn_par in enumerate(self._sgn_pars_):
+        for i_sgn, sgn_par in enumerate(self._sgn_pars_[:-self._n_refl_]):
             signal_pars_uncs.append({})
             for key in sgn_par:
                 par_name = key.split(f'{self._name_}_')[-1]
