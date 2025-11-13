@@ -1375,9 +1375,7 @@ class F2MassFitter:
         x_plot = np.linspace(limits[0], limits[1], num=1000)
         signal_funcs, refl_funcs = ([] for _ in range(2))
         for signal_pdf in self._signal_pdfs_:
-            signal_funcs.append(zfit.run(signal_pdf.pdf(x_plot, norm_range=obs)))
-        for refl_pdf in self._refl_pdfs_:
-            refl_funcs.append(zfit.run(refl_pdf.pdf(x_plot, norm_range=obs)))
+            signal_funcs.append(zfit.run(signal_pdf.get_pdf().pdf(x_plot, norm_range=obs)))
 
         signal_fracs, _, refl_fracs, _, _, _ = self.__get_all_fracs()
 
@@ -2559,7 +2557,8 @@ class F2MassFitter:
         """
         Return the signal pdf names
         """
-        return [str(pdf.kind) for pdf in self._signal_pdfs_[:-self._n_refl_]]
+        signal_slice = self._signal_pdfs_[:-self._n_refl_] if self._n_refl_ > 0 else self._signal_pdfs_
+        return [str(pdf.kind) for pdf in signal_slice]
 
     def get_name_background_pdf(self):
         """
@@ -2580,7 +2579,8 @@ class F2MassFitter:
         """
         fracs = self.__get_all_fracs()
         signal_pars = []
-        for i_sgn, pdf in enumerate(self._signal_pdfs_[:-self._n_refl_]):
+        signal_slice = self._signal_pdfs_[:-self._n_refl_] if self._n_refl_ > 0 else self._signal_pdfs_
+        for i_sgn, pdf in enumerate(signal_slice):
             signal_pars.append({})
             for key, value in pdf.parameters.items():
                 par_name = key.split(f'{self._name_}_')[-1]
@@ -2595,7 +2595,8 @@ class F2MassFitter:
         """
         fracs = self.__get_all_fracs()
         signal_pars_uncs = []
-        for i_sgn, pdf in enumerate(self._signal_pdfs_[:-self._n_refl_]):
+        signal_slice = self._signal_pdfs_[:-self._n_refl_] if self._n_refl_ > 0 else self._signal_pdfs_
+        for i_sgn, pdf in enumerate(signal_slice):
             signal_pars_uncs.append({})
             for key in pdf.parameters:
                 par_name = key.split(f'{self._name_}_')[-1]
