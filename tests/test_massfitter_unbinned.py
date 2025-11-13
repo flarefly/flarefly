@@ -37,13 +37,14 @@ DATABKG = np.random.exponential(scale=0.1, size=30000) + LIMITS[0]
 DATA = DataHandler(np.concatenate((DATASGN, DATABKG), axis=0),
                    var_name=r'$M$ (GeV/$c^{2}$)', limits=LIMITS)
 
-FITRES, FITTER, FIGS = [], [], []
+FITRES, FITTER, FIGS, RESIDUAL_FIGS = [], [], [], []
 FITTER.append(F2MassFitter(DATA, name_signal_pdf=['gaussian'],
                            name_background_pdf=['expo'],
                            minuit_mode=1))
 FITTER[TestCases.GAUS_EXPO].set_background_initpar(0, 'lam', -10, limits=[-15., -5.], fix=False)
 FITRES.append(FITTER[TestCases.GAUS_EXPO].mass_zfit(True, prefit_excluded_regions=[1.8, 1.95]))
-FIGS.append(FITTER[TestCases.GAUS_EXPO].plot_mass_fit(figsize=(10, 10)))
+FIGS.append(FITTER[TestCases.GAUS_EXPO].plot_mass_fit(figsize=(10, 10), show_extra_info=True))
+RESIDUAL_FIGS.append(FITTER[TestCases.GAUS_EXPO].plot_raw_residuals(figsize=(10, 10)))
 FITTER[TestCases.GAUS_EXPO].dump_to_root("test.root", num=100)
 
 # Also consider extended case
@@ -53,7 +54,8 @@ FITTER.append(F2MassFitter(DATA, name_signal_pdf=['gaussian'],
                            extended=True))
 FITTER[TestCases.GAUS_EXPO_EXTENDED].set_background_initpar(0, 'lam', -10, limits=[-15., -5.], fix=False)
 FITRES.append(FITTER[TestCases.GAUS_EXPO_EXTENDED].mass_zfit(True, prefit_excluded_regions=[1.8, 1.95]))
-FIGS.append(FITTER[TestCases.GAUS_EXPO_EXTENDED].plot_mass_fit(figsize=(10, 10)))
+FIGS.append(FITTER[TestCases.GAUS_EXPO_EXTENDED].plot_mass_fit(figsize=(10, 10), show_extra_info=True))
+RESIDUAL_FIGS.append(FITTER[TestCases.GAUS_EXPO_EXTENDED].plot_raw_residuals(figsize=(10, 10)))
 
 # test also nobkg case
 DATANOBKG = DataHandler(DATASGN, var_name=r'$M$ (GeV/$c^{2}$)', limits=LIMITS)
@@ -62,7 +64,8 @@ FITTER.append(F2MassFitter(DATANOBKG, name_signal_pdf=['gaussian'],
                            minuit_mode=1,
                            name="nobkg"))
 FITRES.append(FITTER[TestCases.NOBKG].mass_zfit())
-FIGS.append(FITTER[TestCases.NOBKG].plot_mass_fit(figsize=(10, 10)))
+FIGS.append(FITTER[TestCases.NOBKG].plot_mass_fit(figsize=(10, 10), show_extra_info=True))
+RESIDUAL_FIGS.append(FITTER[TestCases.NOBKG].plot_raw_residuals(figsize=(10, 10)))
 
 # no background, two signals
 DATANOBKG2 = DataHandler(np.concatenate((DATASGN, DATASGN2), axis=0),
@@ -75,7 +78,8 @@ FITTER.append(F2MassFitter(DATANOBKG2,
 FITTER[TestCases.NOBKG_2SIGNAL].set_signal_initpar(0, 'sigma', 0.01, limits=[0., 1.e6])
 FITTER[TestCases.NOBKG_2SIGNAL].set_signal_initpar(1, 'sigma', 0.01, limits=[0., 1.e6])
 FITRES.append(FITTER[TestCases.NOBKG_2SIGNAL].mass_zfit())
-FIGS.append(FITTER[TestCases.NOBKG_2SIGNAL].plot_mass_fit(figsize=(10, 10)))
+FIGS.append(FITTER[TestCases.NOBKG_2SIGNAL].plot_mass_fit(figsize=(10, 10), show_extra_info=True))
+RESIDUAL_FIGS.append(FITTER[TestCases.NOBKG_2SIGNAL].plot_raw_residuals(figsize=(10, 10)))
 
 # no background, extended
 FITTER.append(F2MassFitter(DATANOBKG, name_signal_pdf=['gaussian'],
@@ -83,7 +87,8 @@ FITTER.append(F2MassFitter(DATANOBKG, name_signal_pdf=['gaussian'],
                            minuit_mode=1,
                            extended=True))
 FITRES.append(FITTER[TestCases.NOBKG_EXTENDED].mass_zfit(True, prefit_excluded_regions=[1.8, 1.95]))
-FIGS.append(FITTER[TestCases.NOBKG_EXTENDED].plot_mass_fit(figsize=(10, 10)))
+FIGS.append(FITTER[TestCases.NOBKG_EXTENDED].plot_mass_fit(figsize=(10, 10), show_extra_info=True))
+RESIDUAL_FIGS.append(FITTER[TestCases.NOBKG_EXTENDED].plot_raw_residuals(figsize=(10, 10)))
 
 # test also nosignal case
 DATANOSGN = DataHandler(DATABKG, var_name=r'$M$ (GeV/$c^{2}$)', limits=LIMITS)
@@ -92,7 +97,8 @@ FITTER.append(F2MassFitter(DATANOSGN, name_signal_pdf=['nosignal'],
                            minuit_mode=1,
                            name="nosignal"))
 FITRES.append(FITTER[TestCases.NOSGN].mass_zfit())
-FIGS.append(FITTER[TestCases.NOSGN].plot_mass_fit(figsize=(10, 10)))
+FIGS.append(FITTER[TestCases.NOSGN].plot_mass_fit(figsize=(10, 10), show_extra_info=True))
+RESIDUAL_FIGS.append(FITTER[TestCases.NOSGN].plot_raw_residuals(figsize=(10, 10)))
 
 # test fixing the relative pdf fractions
 DATA2 = DataHandler(np.concatenate((DATASGN, DATASGN2, DATABKG), axis=0),
@@ -108,7 +114,8 @@ FITTER[TestCases.FIX_FRAC].set_signal_initpar(0, 'sigma', 0.01, limits=[0.005, 0
 FITTER[TestCases.FIX_FRAC].set_signal_initpar(1, 'sigma', 0.01, limits=[0.005, 0.03])
 FITTER[TestCases.FIX_FRAC].fix_signal_frac_to_signal_pdf(1, 0, 2)
 FITRES.append(FITTER[TestCases.FIX_FRAC].mass_zfit(True, prefit_exclude_nsigma=5.))
-FIGS.append(FITTER[TestCases.FIX_FRAC].plot_mass_fit(figsize=(10, 10)))
+FIGS.append(FITTER[TestCases.FIX_FRAC].plot_mass_fit(figsize=(10, 10), show_extra_info=True))
+RESIDUAL_FIGS.append(FITTER[TestCases.FIX_FRAC].plot_raw_residuals(figsize=(10, 10)))
 
 # test truncated pdfs
 FITTER.append(F2MassFitter(DATA2, name_signal_pdf=['gaussian'],
@@ -120,7 +127,8 @@ FITTER[TestCases.TRUNCATED].set_background_initpar(0, 'lam', -10, limits=[-15., 
 FITTER[TestCases.TRUNCATED].set_particle_mass(0, mass=1.85, limits=[1.84, 1.88])
 FITTER[TestCases.TRUNCATED].set_signal_initpar(0, 'sigma', 0.01, limits=[0.005, 0.03])
 FITRES.append(FITTER[TestCases.TRUNCATED].mass_zfit())
-FIGS.append(FITTER[TestCases.TRUNCATED].plot_mass_fit(figsize=(10, 10)))
+FIGS.append(FITTER[TestCases.TRUNCATED].plot_mass_fit(figsize=(10, 10), show_extra_info=True))
+RESIDUAL_FIGS.append(FITTER[TestCases.TRUNCATED].plot_raw_residuals(figsize=(10, 10)))
 
 
 def test_fitter():
@@ -129,6 +137,29 @@ def test_fitter():
     """
     for res in FITRES:
         assert isinstance(res, zfit.minimizers.fitresult.FitResult)
+    for i_fit, fit in enumerate(FITTER):
+        assert isinstance(fit.get_name_signal_pdf(), list)
+        assert isinstance(fit.get_name_background_pdf(), list)
+        assert isinstance(fit.get_name_refl_pdf(), list)
+
+        assert isinstance(fit.get_signal_pars(), list)
+        assert isinstance(fit.get_signal_pars_uncs(), list)
+        assert isinstance(fit.get_bkg_pars(), list)
+        assert isinstance(fit.get_bkg_pars_uncs(), list)
+
+        test_case = TestCases(i_fit)
+        if test_case != TestCases.NOSGN:
+            assert isinstance(fit.get_signal_pars()[0], dict)
+            assert "sigma" in fit.get_signal_pars()[0]
+            assert isinstance(fit.get_signal_pars_uncs()[0], dict)
+            assert "sigma" in fit.get_signal_pars_uncs()[0]
+
+        if test_case not in (TestCases.NOBKG, TestCases.NOBKG_2SIGNAL, TestCases.NOBKG_EXTENDED):
+            assert isinstance(fit.get_bkg_pars()[0], dict)
+            assert "lam" in fit.get_bkg_pars()[0]
+            assert isinstance(fit.get_bkg_pars_uncs()[0], dict)
+            assert "lam" in fit.get_bkg_pars_uncs()[0]
+
 
 
 def test_fitter_result():
@@ -166,10 +197,11 @@ def test_plot():
     """
     Test the mass fitter plot
     """
-    for ifig, fig in enumerate(FIGS):
-        fig[0].savefig(f"plots/test{ifig}.png")
+    for fig in FIGS:
         assert isinstance(fig[0], matplotlib.figure.Figure)
         assert isinstance(fig[1], matplotlib.figure.Axes)
+    for fig in RESIDUAL_FIGS:
+        assert isinstance(fig, matplotlib.figure.Figure)
 
 
 def test_dump():
