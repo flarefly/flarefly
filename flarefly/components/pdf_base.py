@@ -2,6 +2,7 @@
 from flarefly.utils import Logger
 from flarefly.components.pdf_kind import PDFKind, SignalBkgOrRefl
 
+
 class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-attributes
     """Base class for PDFs"""
 
@@ -11,7 +12,7 @@ class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-a
             label_pdf: str,
             signal_bkg_or_refl: str,
             **kwargs
-        ):
+    ):
         if not name_pdf.startswith("chebpol"):
             self._kind_pdf = PDFKind(name_pdf)
         else:
@@ -44,8 +45,8 @@ class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-a
 
     def __repr__(self):
         return (f"F2PDFBase(PDF={self._pdf}, label={self._label_pdf}, kind={self._kind_pdf}, "
-            f"Signal/Background/Reflection={self._signal_bkg_or_refl.name}, at_threshold={self._at_threshold}), "
-            f"parameter_setup={self._parameter_setup}, parameters={self._pars}")
+                f"Signal/Background/Reflection={self._signal_bkg_or_refl.name}, at_threshold={self._at_threshold}), "
+                f"parameter_setup={self._parameter_setup}, parameters={self._pars}")
 
     # ------------------
     # --- Properties ---

@@ -71,11 +71,13 @@ class PDFType(Enum):
         """Check if PDF has mass limits"""
         return self.value in ["powlaw", "expopow", "expopowext"]
 
+
 class SignalBkgOrRefl(Enum):
     """Enumeration of type of component"""
     SIGNAL = "signal"
     BACKGROUND = "background"
     REFLECTION = "reflection"
+
 
 @dataclass
 class PDFKind:
