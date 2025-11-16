@@ -1,6 +1,7 @@
 """Module defining PDF kinds"""
 from enum import Enum
 from dataclasses import dataclass
+from typing import Union
 
 
 class PDFType(Enum):
@@ -79,8 +80,8 @@ class SignalBkgOrRefl(Enum):
 @dataclass
 class PDFKind:
     """Class representing the kind of PDF"""
-    kind: PDFType | str
-    order: int | None = None
+    kind: Union[PDFType, str]
+    order: Union[int, None] = None
 
     def __post_init__(self):
         # Allow to use string representation for kind
