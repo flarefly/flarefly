@@ -69,9 +69,9 @@ SETUP = Setup(
         "Intended Audience :: Developers",
         "Topic :: Scientific/Engineering :: Physics",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11"
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12"
     ],
 
     # What does your project relate to?
@@ -86,10 +86,10 @@ SETUP = Setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
         "psutil", "dutil", "prophet>=1.0.1", "numpy<2.0.0", "pandas>=2.2", "uproot>=5.0",
-        "ipython>=7.16.1", "jedi>=0.17.2", "zfit<0.26.0", "mplhep>=0.3.46", "matplotlib>=3.9",
+        "ipython>=7.16.1", "jedi>=0.17.2", "zfit>=0.27.1", "mplhep>=0.3.46", "matplotlib>=3.9",
         "pdg>=0.1.3", "scipy>=1.13", "hepstats>=0.8.1"
     ],
-    python_requires=">=3.9",
+    python_requires=">=3.10",
 
     # List additional groups of dependencies here (e.g. development dependencies). You can install
     # these using the following syntax, for example:
