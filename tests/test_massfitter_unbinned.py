@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib
 from flarefly.data_handler import DataHandler
 from flarefly.fitter import F2MassFitter
+zfit.settings.set_seed(seed=42)
 
 
 class TestCases(IntEnum):
@@ -30,14 +31,30 @@ class TestCases(IntEnum):
     KDE = 8
 
 
+# pylint: disable=duplicate-code
+def create_sample(func_name, is_signal, size, **kwargs):
+    """
+    Create a sample from a given pdf function
+    """
+    fitter = F2MassFitter(DUMMY_DATA,
+                          name_signal_pdf=[func_name] if is_signal else ['nosignal'],
+                          name_background_pdf=[func_name] if not is_signal else ['nobkg'])
+    for key, value in kwargs.items():
+        if is_signal:
+            fitter.set_signal_initpar(0, key, value)
+        else:
+            fitter.set_background_initpar(0, key, value)
+    return fitter.sample_pdf(size)
+
+
 LIMITS = [1.75, 2.1]
-np.random.seed(42)
-DATASGN = np.random.normal(1.865, 0.010, size=10000)
-DATASGN2 = np.random.normal(1.968, 0.010, size=20000)
-DATABKG = np.random.exponential(scale=0.1, size=30000) + LIMITS[0]
+DUMMY_DATA = DataHandler(np.array(LIMITS), var_name='x', limits=LIMITS)
+DATASGN = create_sample('gaussian', True, 10000, mu=1.865, sigma=0.010)
+DATASGN2 = create_sample('gaussian', True, 20000, mu=1.968, sigma=0.010)
+DATABKG = create_sample('expo', False, 30000, lam=-10)
 DATA = DataHandler(np.concatenate((DATASGN, DATABKG), axis=0),
                    var_name=r'$M$ (GeV/$c^{2}$)', limits=LIMITS)
-
+FITRES, FITTER, FIGS, RESIDUAL_FIGS = [], [], [], []
 FITRES, FITTER, FIGS, RESIDUAL_FIGS = [], [], [], []
 FITTER.append(F2MassFitter(DATA, name_signal_pdf=['gaussian'],
                            name_background_pdf=['expo'],
@@ -177,6 +194,7 @@ def test_fitter():
             assert isinstance(fit.get_bkg_pars_uncs()[0], dict)
             assert "lam" in fit.get_bkg_pars_uncs()[0]
 
+        assert isinstance(fit.sample_pdf(1000), np.ndarray)
 
 
 def test_fitter_result():

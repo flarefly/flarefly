@@ -15,12 +15,14 @@ DATANP = np.random.normal(0, 1, size=10000)
 DATANP_2 = np.random.uniform(-3, 3, size=10000)
 DATAPD = pd.DataFrame(pd.DataFrame({'x': DATANP, 'y': DATANP_2}))
 DATAUPROOT = uproot.open(os.path.join(os.getcwd(), "tests/histos_dplus.root"))["hMass_20_40"]
+DATAZFIT = zfit.data.Data.from_numpy(DATANP, obs=zfit.Space('x', limits=(-3, 3)))
 
 DATAUNBINNED = [
     DataHandler(DATANP, var_name='x', limits=[1.75, 2.0]),
     DataHandler(DATANP, var_name='x'),
     DataHandler(DATAPD, var_name='x', limits=[1.75, 2.0]),
     DataHandler(DATAPD, var_name='x'),
+    DataHandler(DATAZFIT, var_name='x'),
     DataHandler(os.path.join(os.getcwd(), "tests/normal_distribution.parquet"), var_name='x', limits=[1.75, 2.0]),
     DataHandler(
         os.path.join(os.getcwd(), "tests/normal_distribution.root"),
