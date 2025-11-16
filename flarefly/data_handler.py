@@ -24,7 +24,8 @@ class DataHandler:
 
         Parameters
         ------------------------------------------------
-        data: numpy.array / pandas.DataFrame / uproot.behaviors.TH1.Histogram / ROOT.TH1 / string
+        data: numpy.array / pandas.DataFrame / uproot.behaviors.TH1.Histogram / ROOT.TH1 / string /
+              zfit.data.Data / zfit.data.BinnedData
             Data or path to data to be used in the fit
         var_name: str
             Name of the variable used in the fit
@@ -116,6 +117,10 @@ class DataHandler:
             if isinstance(data, pd.DataFrame):
                 self._limits_[0] = min(data[self._var_name_])
                 self._limits_[1] = max(data[self._var_name_])
+            elif isinstance(data, zfit.core.data.Data):
+                array = data.to_numpy()
+                self._limits_[0] = min(array)
+                self._limits_[1] = max(array)
             else:
                 self._limits_[0] = min(data)
                 self._limits_[1] = max(data)
@@ -218,6 +223,12 @@ class DataHandler:
         elif isinstance(data, pd.DataFrame):
             self.__check_set_format('pandas')
             data = self.__load_from_pandas(data, limits)
+        elif isinstance(data, zfit.data.Data):
+            self.__check_set_format('zfit_data')
+            data = self.__load_from_zfit_data(data, limits)
+        elif isinstance(data, zfit.data.BinnedData):
+            self.__check_set_format('zfit_data_binned')
+            data = self.__load_from_zfit_data_binned(data, limits)
         elif isinstance(data, uproot.behaviors.TH1.Histogram):
             self.__check_set_format('uproot')
             data = self.__load_from_histogram(data, limits)
@@ -274,6 +285,17 @@ class DataHandler:
         self.__check_binned_unbinned_(False)
         self.__check_set_limits_unbinned_obs_(df, limits)
         return zfit.data.Data.from_pandas(obs=self._obs_, df=df)
+
+    def __load_from_zfit_data(self, data, limits):
+        """Load a zfit Data object as unbinned data."""
+        self.__check_binned_unbinned_(False)
+        self.__check_set_limits_unbinned_obs_(data, limits)
+        return data
+
+    def __load_from_zfit_data_binned(self, data, limits):
+        """Load a zfit DataBinned object as binned data."""
+        self.__load_from_histogram(data, limits)
+        return data
 
     def __load_from_histogram(self, hist_obj, limits):
         """
@@ -524,6 +546,22 @@ class DataHandler:
         data_values, _ = np.histogram(data_np, self.get_nbins(), range=(limits[0], limits[1]))
 
         return data_values
+
+    def get_binned_data_handler_from_unbinned_data(self):
+        """
+        Get the binned obs from unbinned obs
+
+        Returns
+        -------------------------------------------------
+        binned_obs: zfit.core.space.Space
+            The observation space for unbinned data converted to binned data
+        """
+        return DataHandler(
+            self._data_.to_binned(self.get_binned_obs_from_unbinned_data()),
+            var_name=self.get_var_name(),
+            limits=self.get_limits(),
+            rebin=1
+        )
 
     def to_pandas(self):
         """
