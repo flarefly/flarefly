@@ -384,7 +384,6 @@ class F2MassFitter:
 
         # order of the pdfs is signal, background
 
-
         self.__build_signal_pdfs(obs)
         self.__build_background_pdfs(obs)
 
@@ -1081,7 +1080,7 @@ class F2MassFitter:
                         interval = f'[{mass_range[0]:.3f}, {mass_range[1]:.3f}]'
                         bkg, bkg_err = self.get_background(idx=idx, min=mass_range[0], max=mass_range[1])
                         s_over_b, s_over_b_err = self.get_signal_over_background(idx=idx, min=mass_range[0],
-                                                                                max=mass_range[1])
+                                                                                 max=mass_range[1])
                         signif, signif_err = self.get_significance(idx=idx, min=mass_range[0], max=mass_range[1])
                         extra_info += fr'  $B({interval})={bkg:.0f} \pm {bkg_err:.0f}$''\n'
                         extra_info += fr'  $S/B({interval})={s_over_b:.2f} \pm {s_over_b_err:.2f}$''\n'
@@ -1109,8 +1108,8 @@ class F2MassFitter:
                 chi2 = self.get_chi2()
                 ndf = self.get_ndf()
                 anchored_text_chi2 = AnchoredText(fr'$\chi^2 / \mathrm{{ndf}} =${chi2:.2f} / {ndf}',
-                                                loc=info_loc[0],
-                                                frameon=False)
+                                                  loc=info_loc[0],
+                                                  frameon=False)
                 axs.add_artist(anchored_text_chi2)
             axs.add_artist(anchored_text_signal)
 
@@ -2577,7 +2576,7 @@ class F2MassFitter:
                 par_name = par_name.split(f'_signal{i_sgn}')[0]
                 try:
                     par_unc = self._fit_result_.params[key]['hesse']['error']
-                except KeyError: # fixed parameter
+                except KeyError:  # fixed parameter
                     par_unc = 0.
                 signal_pars_uncs[-1][par_name] = par_unc
             signal_pars_uncs[-1]['frac'] = fracs[3][i_sgn]
@@ -2611,7 +2610,7 @@ class F2MassFitter:
                 par_name = par_name.split(f'_bkg{i_bkg}')[0]
                 try:
                     par_unc = self._fit_result_.params[key]['hesse']['error']
-                except KeyError: # fixed parameter
+                except KeyError:  # fixed parameter
                     par_unc = 0.
                 bkg_pars_uncs[-1][par_name] = par_unc
             bkg_pars_uncs[-1]['frac'] = fracs[4][i_bkg]

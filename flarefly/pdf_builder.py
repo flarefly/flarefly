@@ -8,6 +8,7 @@ import flarefly.custom_pdfs as cpdf
 from flarefly.components.pdf_kind import PDFType
 from flarefly.components.pdf_base import F2PDFBase
 
+
 class PDFBuilder:
     """Class to build signal and background PDFs using zfit."""
 
@@ -63,7 +64,7 @@ class PDFBuilder:
 
         pdf_args = {'obs': obs}
         for arg_name in config['pdf_args']:
-            if 'args_mapping' in config: # flarefly -> zfit argument name mapping
+            if 'args_mapping' in config:  # flarefly -> zfit argument name mapping
                 param_key = f"{name}_{config['args_mapping'][arg_name]}_signal{ipdf}"
             else:
                 param_key = f'{name}_{arg_name}_signal{ipdf}'
@@ -192,7 +193,6 @@ class PDFBuilder:
         # Update the input dictionaries with default values
         PDFBuilder._update_with_defaults(config, pdf)
 
-
         parameters = {}
         for par_name in config['parameters'].keys():
             param_name = f'{name}_{par_name}_bkg{ipdf}'
@@ -206,7 +206,7 @@ class PDFBuilder:
 
         pdf_args = {'obs': obs}
         for arg_name in config['pdf_args']:
-            if 'args_mapping' in config: # flarefly -> zfit argument name mapping
+            if 'args_mapping' in config:  # flarefly -> zfit argument name mapping
                 param_key = f"{name}_{config['args_mapping'][arg_name]}_bkg{ipdf}"
             else:
                 param_key = f'{name}_{arg_name}_bkg{ipdf}'
@@ -245,7 +245,6 @@ class PDFBuilder:
         coeff0 = parameters[f'{name}_c0_bkg{ipdf}']
         bkg_coeffs = [parameters[f'{name}_c{deg}_bkg{ipdf}'] for deg in range(1, pdf.kind.order + 1)]
 
-
         pdf.pdf = zfit.pdf.Chebyshev(obs=obs, coeff0=coeff0, coeffs=bkg_coeffs)
         pdf.parameters = parameters
 
@@ -271,7 +270,6 @@ class PDFBuilder:
             Logger(f'Missing datasample for Kernel Density Estimation of background {ipdf}!', 'FATAL')
 
         kde_options = pdf.kde_option or {}
-
 
         pdf.pdf = get_kde_pdf(pdf.kind)(
             data=pdf.kde_sample.get_data(),
