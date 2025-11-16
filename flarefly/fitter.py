@@ -213,6 +213,7 @@ class F2MassFitter:
                     self._refl_idx_[ipdf] = n_signal + self._n_refl_
                     self._n_refl_ += 1
 
+        self._is_pdf_built_ = False
         self._total_pdf_ = None
         self._total_pdf_binned_ = None
         self._fit_result_ = None
@@ -853,6 +854,7 @@ class F2MassFitter:
 
         self.__build_total_pdf()
         self.__build_total_pdf_binned()
+        self._is_pdf_built_ = True
 
         # do prefit
         if do_prefit:
@@ -2614,3 +2616,24 @@ class F2MassFitter:
                 bkg_pars_uncs[-1][par_name] = par_unc
             bkg_pars_uncs[-1]['frac'] = fracs[4][i_bkg]
         return bkg_pars_uncs
+
+    def sample_pdf(self, num=1000):
+        """
+        Sample the total pdf
+
+        Parameters
+        -------------------------------------------------
+        num: int
+            Number of points to sample
+
+        Returns
+        -------------------------------------------------
+        samples: numpy array
+            Array of sampled points
+        """
+        if not self._is_pdf_built_:
+            self.__build_total_pdf()
+            self.__build_total_pdf_binned()
+            self._is_pdf_built_ = True
+        sample = self._total_pdf_.sample(num).to_numpy()
+        return sample.flatten()
