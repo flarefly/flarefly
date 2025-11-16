@@ -3,7 +3,7 @@ dutil
 numpy<2.0.0
 pandas>=2.2.0
 uproot>=5.0
-zfit<0.26.0
+zfit>=0.27.1
 mplhep>=0.3.46
 matplotlib>=3.9
 pdg>=0.1.3
