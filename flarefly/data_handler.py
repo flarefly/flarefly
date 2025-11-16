@@ -18,7 +18,7 @@ class DataHandler:
     Class for storing and managing the data of (ROOT tree, TH1, numpy array, etc.)
     """
 
-    def __init__(self, data=None, var_name='', limits=None, use_zfit=True, **kwargs):
+    def __init__(self, data=None, var_name='xaxis', limits=None, use_zfit=True, **kwargs):
         """
         Initialize the DataHandler class
 
@@ -178,9 +178,9 @@ class DataHandler:
                 self._nbins_,
                 self._limits_[0],
                 self._limits_[1],
-                name="xaxis"
+                name=self._var_name_
             )
-            self._obs_ = zfit.Space("xaxis", binning=binning)
+            self._obs_ = zfit.Space(self._var_name_, binning=binning)
         else:
             idx_min = np.argmin(np.abs(data[1] - self._limits_[0]))
             idx_max = np.argmin(np.abs(data[1] - self._limits_[1]))
@@ -188,7 +188,7 @@ class DataHandler:
                 self._nbins_,
                 self._limits_[0],
                 self._limits_[1],
-                name="xaxis"
+                name=self._var_name_
             )
             bin_edges = []
             for i in range(self._nbins_):
@@ -446,7 +446,7 @@ class DataHandler:
             The observation space for binned data converted to unbinned data
         """
         limits = self.get_limits()
-        obs = zfit.Space("xaxis", lower=limits[0], upper=limits[1])
+        obs = zfit.Space(self._var_name_, lower=limits[0], upper=limits[1])
 
         return obs
 
