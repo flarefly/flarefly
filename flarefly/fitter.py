@@ -353,20 +353,20 @@ class F2MassFitter:
                     )
                 else:  # fix to background PDF
                     self._fracs_[frac_fix_info['fixed_pdf_idx']] = self.__get_constrained_frac_par(
-                        self._fracs_[frac_fix_info['target_pdf_idx'] + 2 * len(self._signal_pdfs_)],
+                        self._fracs_[frac_fix_info['target_pdf_idx'] + len(self._signal_pdfs_)],
                         frac_fix_info['factor']
                     )
             else:  # fix background fraction
                 if frac_fix_info['target_pdf_type'] == 'signal':
-                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + 2 * len(self._signal_pdfs_)] = \
+                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + len(self._signal_pdfs_)] = \
                         self.__get_constrained_frac_par(
                             self._fracs_[frac_fix_info['target_pdf_idx']],
                             frac_fix_info['factor']
                         )
                 else:  # fix to background PDF
-                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + 2 * len(self._signal_pdfs_)] = \
+                    self._fracs_[frac_fix_info['fixed_pdf_idx'] + len(self._signal_pdfs_)] = \
                         self.__get_constrained_frac_par(
-                            self._fracs_[frac_fix_info['target_pdf_idx'] + 2 * len(self._signal_pdfs_)],
+                            self._fracs_[frac_fix_info['target_pdf_idx'] + len(self._signal_pdfs_)],
                             frac_fix_info['factor']
                         )
 
