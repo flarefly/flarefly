@@ -27,6 +27,7 @@ class TestCases(IntEnum):
     NOSGN = 5
     FIX_FRAC = 6
     TRUNCATED = 7
+    KDE = 8
 
 
 LIMITS = [1.75, 2.1]
@@ -129,6 +130,22 @@ FITTER[TestCases.TRUNCATED].set_signal_initpar(0, 'sigma', 0.01, limits=[0.005, 
 FITRES.append(FITTER[TestCases.TRUNCATED].mass_zfit())
 FIGS.append(FITTER[TestCases.TRUNCATED].plot_mass_fit(figsize=(10, 10), show_extra_info=True))
 RESIDUAL_FIGS.append(FITTER[TestCases.TRUNCATED].plot_raw_residuals(figsize=(10, 10)))
+
+# test kde
+FITTER.append(F2MassFitter(DATA2, name_signal_pdf=['gaussian', 'kde_grid'],
+                            name_background_pdf=["expo"],
+                            minuit_mode=1,
+                            name="kde"))
+FITTER[TestCases.KDE].set_background_initpar(0, 'lam', -10, limits=[-15., -5.], fix=False)
+FITTER[TestCases.KDE].set_particle_mass(0, mass=1.85, limits=[1.84, 1.88])
+FITTER[TestCases.KDE].set_signal_initpar(0, 'sigma', 0.01, limits=[0.005, 0.03])
+data_hdl_kde = DataHandler(DATASGN2,
+                           var_name=r"$M$ (GeV/$c^{2}$)",
+                           limits=LIMITS)
+FITTER[TestCases.KDE].set_signal_kde(1, data_hdl_kde)
+FITRES.append(FITTER[TestCases.KDE].mass_zfit())
+FIGS.append(FITTER[TestCases.KDE].plot_mass_fit(figsize=(10, 10)))
+RESIDUAL_FIGS.append(FITTER[TestCases.KDE].plot_raw_residuals(figsize=(10, 10)))
 
 
 def test_fitter():

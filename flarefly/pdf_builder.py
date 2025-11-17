@@ -114,7 +114,7 @@ class PDFBuilder:
         kde_options = pdf.kde_option or {}
 
         pdf.pdf = get_kde_pdf(pdf.kind)(
-            data=pdf.kde_sample,
+            data=pdf.kde_sample.get_data(),
             obs=pdf.kde_sample.get_obs(),
             name=f'{name}_kde_signal{ipdf}',
             **kde_options
@@ -270,11 +270,11 @@ class PDFBuilder:
         if not pdf.kde_sample:
             Logger(f'Missing datasample for Kernel Density Estimation of background {ipdf}!', 'FATAL')
 
-        kde_options = pdf.kde_options or {}
+        kde_options = pdf.kde_option or {}
 
 
         pdf.pdf = get_kde_pdf(pdf.kind)(
-            data=pdf.kde_sample,
+            data=pdf.kde_sample.get_data(),
             obs=pdf.kde_sample.get_obs(),
             name=f'{name}_kde_bkg{ipdf}',
             **kde_options
