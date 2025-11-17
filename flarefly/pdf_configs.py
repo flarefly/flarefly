@@ -416,10 +416,10 @@ BACKGROUND_PDF_CONFIGS = {
 }
 
 KDE_MAP = {
-    'kde_exact': zfit.pdf.KDE1DimExact,
-    'kde_grid': zfit.pdf.KDE1DimGrid,
-    'kde_fft': zfit.pdf.KDE1DimFFT,
-    'kde_isj': zfit.pdf.KDE1DimISJ
+    PDFType.KDE_EXACT: zfit.pdf.KDE1DimExact,
+    PDFType.KDE_GRID: zfit.pdf.KDE1DimGrid,
+    PDFType.KDE_FFT: zfit.pdf.KDE1DimFFT,
+    PDFType.KDE_ISJ: zfit.pdf.KDE1DimISJ
 }
 
 
