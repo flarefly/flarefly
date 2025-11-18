@@ -15,7 +15,7 @@ DATANP = np.random.normal(0, 1, size=10000)
 DATANP_2 = np.random.uniform(-3, 3, size=10000)
 DATAPD = pd.DataFrame(pd.DataFrame({'x': DATANP, 'y': DATANP_2}))
 DATAUPROOT = uproot.open(os.path.join(os.getcwd(), "tests/histos_dplus.root"))["hMass_20_40"]
-DATAZFIT = zfit.data.Data.from_numpy(DATANP, obs=zfit.Space('x', limits=(-3, 3)))
+DATAZFIT = zfit.data.Data.from_numpy(zfit.Space('x', limits=(-3, 3)), DATANP)
 
 DATAUNBINNED = [
     DataHandler(DATANP, var_name='x', limits=[1.75, 2.0]),

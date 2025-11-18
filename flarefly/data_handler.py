@@ -575,7 +575,7 @@ class DataHandler:
         if self.__format__ == 'pandas':
             Logger('Data already in pandas format.', 'WARNING')
             return self._input_
-        if self.__format__ in ['numpy', 'parquet', 'root'] and not self._isbinned_:
+        if self.__format__ in ['numpy', 'parquet', 'root', 'zfit_data'] and not self._isbinned_:
             return self._data_.to_pandas()
 
         Logger('Data format not supported yet for pandas conversion.', 'ERROR')
