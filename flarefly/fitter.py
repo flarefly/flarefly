@@ -202,7 +202,8 @@ class F2MassFitter:
         if not all(pdf.kind == PDFType.NONE for pdf in self._refl_pdfs_):
             Logger(
                 'Reflection pdfs will be deprecated in future versions, ' \
-                'please use background pdfs instead',
+                'please use background pdfs instead and fix the normalisation ' \
+                'with fix_bkg_frac_to_signal_pdf',
                 'WARNING'
             )
             n_signal = len(self._signal_pdfs_)
