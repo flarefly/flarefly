@@ -68,13 +68,13 @@ for sgn_pdf_name, bkg_pdf_name in zip(
         [SGN_PDFS_NAMES[0]]*len(BKG_PDFS_NAMES) + SGN_PDFS_NAMES,
         BKG_PDFS_NAMES + [BKG_PDFS_NAMES[0]]*len(SGN_PDFS_NAMES)):
     # We do gaussian with all backgrounds and all signals with expo background
-    DATA = DataHandler(
+    data_hdl = DataHandler(
         np.concatenate((SGN_DATA[sgn_pdf_name], BKG_DATA[bkg_pdf_name]), axis=0),
         var_name=r'$M$ (GeV/$c^{2}$)', limits=LIMITS, rebin=4
     )
-    DATA = DATA.get_binned_data_handler_from_unbinned_data()
+    data_hdl = data_hdl.get_binned_data_handler_from_unbinned_data()
     FITTERS.append(F2MassFitter(
-        DATA,
+        data_hdl,
         name_signal_pdf=[sgn_pdf_name],
         name_background_pdf=[bkg_pdf_name],
         name=f"{sgn_pdf_name}_{bkg_pdf_name}",
@@ -89,16 +89,16 @@ for sgn_pdf_name, bkg_pdf_name in zip(
     PDFS.append((sgn_pdf_name, bkg_pdf_name))
 
 # Reflection test
-DATA = DataHandler(
+data_hdl = DataHandler(
     np.concatenate((SGN_DATA["gaussian"], BKG_DATA["expo"], REFL_DATA), axis=0),
     var_name=r'$M$ (GeV/$c^{2}$)', limits=LIMITS, rebin=4
 )
-DATA_REFL = DataHandler(REFL_DATA, var_name=r'$M$ (GeV/$c^{2}$)', limits=LIMITS)
-DATA = DATA.get_binned_data_handler_from_unbinned_data()
-DATA_REFL = DATA_REFL.get_binned_data_handler_from_unbinned_data()
+data_hdl_refl = DataHandler(REFL_DATA, var_name=r'$M$ (GeV/$c^{2}$)', limits=LIMITS)
+data_hdl = data_hdl.get_binned_data_handler_from_unbinned_data()
+data_hdl_refl = data_hdl_refl.get_binned_data_handler_from_unbinned_data()
 
 FITTER_REFL = F2MassFitter(
-    DATA,
+    data_hdl,
     name_signal_pdf=["gaussian"],
     name_refl_pdf=["hist"],
     name_background_pdf=["expo"],
@@ -109,7 +109,7 @@ for key, value in SGN_PARAMS["gaussian"].items():
     FITTER_REFL.set_signal_initpar(0, key, value)
 for key, value in BKG_PARAMS["expo"].items():
     FITTER_REFL.set_background_initpar(0, key, value)
-FITTER_REFL.set_reflection_template(0, DATA_REFL, 0.5)
+FITTER_REFL.set_reflection_template(0, data_hdl_refl, 0.5)
 FITRES.append(FITTER_REFL.mass_zfit())
 FIGS.append(FITTER_REFL.plot_mass_fit(figsize=(10, 10)))
 PDFS.append(("gaussian_template", "expo"))
