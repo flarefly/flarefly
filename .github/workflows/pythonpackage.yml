@@ -13,40 +13,64 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+
+      - name: Create virtual environment & install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade setuptools
-          pip install -r requirements.txt
-      - name: Test with ${{ matrix.test-tool }}
+          python -m venv venv
+          source venv/bin/activate
+
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r requirements.txt
+          python -m pip install ${{ matrix.test-tool }}
+
+          # Debug: show installed packages
+          python -m pip list
+          python -m pip show numpy pyarrow
+        shell: bash
+
+      - name: Run tests in virtual environment
         run: |
-          pip install ${{ matrix.test-tool }}
-          tests/run_tests.sh ${{ matrix.test-tool }}
+          source venv/bin/activate
+          tests/run_tests.sh "${{ matrix.test-tool }}"
+        shell: bash
 
   build-macos-latest:
     runs-on: macOS-latest
     strategy:
-      max-parallel: 4
+      max-parallel: 1
       matrix:
         python-version: [3.12.x]
         test-tool: [pytest]
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+
+      - name: Create virtual environment & install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade setuptools
-          pip install -r requirements.txt
-      - name: Test with ${{ matrix.test-tool }}
+          python -m venv venv
+          source venv/bin/activate
+
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -r requirements.txt
+          python -m pip install ${{ matrix.test-tool }}
+
+          # Debug: show installed packages
+          python -m pip list
+          python -m pip show numpy pyarrow
+        shell: bash
+
+      - name: Run tests in virtual environment
         run: |
-          pip install ${{ matrix.test-tool }}
-          tests/run_tests.sh ${{ matrix.test-tool }}
+          source venv/bin/activate
+          tests/run_tests.sh "${{ matrix.test-tool }}"
+        shell: bash
