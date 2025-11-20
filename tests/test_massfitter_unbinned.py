@@ -9,8 +9,7 @@ import zfit
 import uproot
 import numpy as np
 import matplotlib
-from flarefly.data_handler import DataHandler
-from flarefly.fitter import F2MassFitter
+from flarefly import DataHandler, F2MassFitter
 zfit.settings.set_seed(seed=42)
 
 

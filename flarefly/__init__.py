@@ -1,4 +1,8 @@
 """flarefly module"""
+from .fitter import F2MassFitter
+from .data_handler import DataHandler
+
+__all__ = ["F2MassFitter", "DataHandler"]
 
 
 def entrypoint():

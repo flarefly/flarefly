@@ -7,8 +7,7 @@ os.environ["ZFIT_DISABLE_TF_WARNINGS"] = "1"  # pylint: disable=wrong-import-pos
 import zfit
 import numpy as np
 import matplotlib
-from flarefly.data_handler import DataHandler
-from flarefly.fitter import F2MassFitter
+from flarefly import DataHandler, F2MassFitter
 zfit.settings.set_seed(seed=42)
 
 
