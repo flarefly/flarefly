@@ -1,39 +1,62 @@
 #!/bin/bash -e
-# standing on the shoulders of [giants](https://github.com/alidock/alidock/blob/master/alidock-installer.sh)
+# run_tests.sh - entrypoint for tests, fully venv-aware and auto-installs test tools
 
 TEST=$1
 set -o pipefail
 cd "$(dirname "$0")"/..
 
+# Ensure we're in a virtual environment
+if [[ -z "$VIRTUAL_ENV" ]]; then
+    echo "Activating virtual environment..."
+    if [[ -f "venv/bin/activate" ]]; then
+        source venv/bin/activate
+    else
+        echo "Virtual environment not found. Creating one..."
+        python -m venv venv
+        source venv/bin/activate
+    fi
+fi
+
+# Use venv pip and python explicitly
+PIP="python -m pip"
+PYTHON="python"
+
 function pinfo() { echo -e "\033[32m${1}\033[m" >&2; }
 function pwarn() { echo -e "\033[33m${1}\033[m" >&2; }
 function perr() { echo -e "\033[31m${1}\033[m" >&2; }
 
+# Install flarefly into the venv
 setup-flarefly() {
-    pinfo "installing: flarefly"
-    pip3 install --upgrade --force-reinstall --no-deps -e .
+    pinfo "Installing flarefly in virtual environment..."
+    $PIP install --upgrade --force-reinstall --no-deps -e .
+}
+
+# Install a test tool if not already installed
+install-tool() {
+    TOOL=$1
+    if ! type $TOOL &>/dev/null; then
+        pinfo "Installing $TOOL..."
+        $PIP install $TOOL
+    fi
 }
 
 test-pylint() {
-    pinfo "running test: pylint"
-    type pylint
-    find . -name '*.py' -a -not -path './dist/*' \
-        -a -not -path './build/*' | xargs pylint
+    install-tool pylint
+    pinfo "Running test: pylint"
+    find flarefly -name '*.py' | xargs pylint
 }
 
 test-flake8() {
-    pinfo "running test: flake8"
-    type flake8
-    # stop the build if there are Python syntax errors or undefined names
-    flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-    # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-    flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-}
+    install-tool flake8
+    pinfo "Running test: flake8"
+    flake8 flarefly --count --select=E9,F63,F7,F82 --show-source --statistics
+    flake8 flarefly --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+ }
 
 test-pytest() {
     setup-flarefly
-    pinfo "running test: pytest"
-    type pytest
+    install-tool pytest
+    pinfo "Running test: pytest"
     pytest tests/test_data_handler.py
     pytest tests/test_massfitter_binned.py
     pytest tests/test_massfitter_unbinned.py
@@ -49,7 +72,6 @@ test-all() {
 [[ $# == 0 ]] && test-all
 while [[ $# -gt 0 ]]; do
     case "$1" in
-
     all) test-all ;;
     pylint) test-pylint ;;
     flake8) test-flake8 ;;
