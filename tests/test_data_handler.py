@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import uproot
 from hist import Hist
-from flarefly.data_handler import DataHandler
+from flarefly import DataHandler
 
 DATANP = np.random.normal(0, 1, size=10000)
 DATANP_2 = np.random.uniform(-3, 3, size=10000)
