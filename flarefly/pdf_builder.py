@@ -293,12 +293,12 @@ class PDFBuilder:
             name: Base name for the PDF
             ipdf: Index of the PDF
         """
-        if not pdf.hist_bkg_sample:
+        if not pdf.hist_sample:
             Logger(f'Missing datasample for histogram template of background {ipdf}!', 'FATAL')
 
         pdf.pdf = zfit.pdf.SplinePDF(
             zfit.pdf.HistogramPDF(
-                pdf.hist_bkg_sample.get_binned_data(),
+                pdf.hist_sample.get_binned_data(),
                 name=f'{name}_hist_bkg{ipdf}'
             ),
             order=3,

@@ -113,6 +113,24 @@ FITRES.append(FITTER_REFL.mass_zfit())
 FIGS.append(FITTER_REFL.plot_mass_fit(figsize=(10, 10)))
 PDFS.append(("gaussian_template", "expo"))
 
+# Histogram test
+FITTER_HIST = F2MassFitter(
+    data_hdl,
+    name_signal_pdf=["gaussian"],
+    name_background_pdf=["hist", "expo"],
+    name="hist_test",
+    chi2_loss=True, tol=1.e-3
+)
+for key, value in SGN_PARAMS["gaussian"].items():
+    FITTER_HIST.set_signal_initpar(0, key, value)
+for key, value in BKG_PARAMS["expo"].items():
+    FITTER_HIST.set_background_initpar(1, key, value)
+FITTER_HIST.set_background_template(0, data_hdl_refl)
+FITTER_HIST.fix_bkg_frac_to_signal_pdf(0, 0, 0.5)
+FITRES.append(FITTER_HIST.mass_zfit())
+FIGS.append(FITTER_HIST.plot_mass_fit(figsize=(10, 10)))
+PDFS.append(("gaussian", "expo"))
+
 
 def test_fitter():
     """
