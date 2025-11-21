@@ -241,7 +241,7 @@ class F2MassFitter:
         )
         if 'limits' in kwargs and self._data_handler_.get_is_binned():
             Logger('Restriction of fit limits is not yet implemented in binned fits!', 'FATAL')
-        if 'limits' in kwargs and self._signal_pdfs_[0].kind != PDFType.NO_SIGNAL:
+        if 'limits' in kwargs and not self.no_signal:
             Logger('Using signal PDFs while restricting fit limits!', 'WARNING')
         self._limits_ = kwargs.get(
             'limits', self._data_handler_.get_limits())

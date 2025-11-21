@@ -27,7 +27,8 @@ class TestCases(IntEnum):
     NOSGN = 5
     FIX_FRAC = 6
     TRUNCATED = 7
-    KDE = 8
+    TRUNCATED_NO_SGN = 8
+    KDE = 9
 
 
 # pylint: disable=duplicate-code
@@ -147,6 +148,16 @@ FITRES.append(FITTER[TestCases.TRUNCATED].mass_zfit())
 FIGS.append(FITTER[TestCases.TRUNCATED].plot_mass_fit(figsize=(10, 10), show_extra_info=True))
 RESIDUAL_FIGS.append(FITTER[TestCases.TRUNCATED].plot_raw_residuals(figsize=(10, 10)))
 
+FITTER.append(F2MassFitter(DATA2, name_signal_pdf=['nosignal'],
+                           name_background_pdf=['expo'],
+                           limits=[[1.75, 1.92], [2.02, 2.1]],
+                           minuit_mode=1,
+                           name="truncated_bkg_only"))
+FITTER[TestCases.TRUNCATED_NO_SGN].set_background_initpar(0, 'lam', -10, limits=[-15., -5.], fix=False)
+FITRES.append(FITTER[TestCases.TRUNCATED_NO_SGN].mass_zfit())
+FIGS.append(FITTER[TestCases.TRUNCATED_NO_SGN].plot_mass_fit(figsize=(10, 10), show_extra_info=True))
+RESIDUAL_FIGS.append(FITTER[TestCases.TRUNCATED_NO_SGN].plot_raw_residuals(figsize=(10, 10)))
+
 # test kde
 FITTER.append(F2MassFitter(DATA2, name_signal_pdf=['gaussian', 'kde_grid'],
                             name_background_pdf=["expo"],
@@ -181,7 +192,7 @@ def test_fitter():
         assert isinstance(fit.get_bkg_pars_uncs(), list)
 
         test_case = TestCases(i_fit)
-        if test_case != TestCases.NOSGN:
+        if test_case not in (TestCases.NOSGN, TestCases.TRUNCATED_NO_SGN):
             assert isinstance(fit.get_signal_pars()[0], dict)
             assert "sigma" in fit.get_signal_pars()[0]
             assert isinstance(fit.get_signal_pars_uncs()[0], dict)
@@ -202,7 +213,7 @@ def test_fitter_result():
     """
     for i_fit, fit in enumerate(FITTER):
         test_case = TestCases(i_fit)
-        if test_case != TestCases.NOSGN:
+        if test_case not in (TestCases.NOSGN, TestCases.TRUNCATED_NO_SGN):
             rawy, rawy_err = fit.get_raw_yield()
             rawy_bc, rawy_bc_err = fit.get_raw_yield_bincounting()
             assert np.isclose(10000, rawy, atol=3*rawy_err)
@@ -214,7 +225,10 @@ def test_fitter_result():
             assert np.isclose(20000, rawy2, atol=3*rawy2_err)
             assert np.isclose(20000, rawy2_bc, atol=3*rawy2_bc_err)
         # test the cases with background
-        if test_case not in (TestCases.NOBKG, TestCases.NOBKG_2SIGNAL, TestCases.NOBKG_EXTENDED):
+        if test_case not in (
+            TestCases.NOBKG, TestCases.NOBKG_2SIGNAL,
+            TestCases.NOBKG_EXTENDED, TestCases.TRUNCATED_NO_SGN
+        ):
             bkg_fit, bkg_fit_err = fit.get_background(min=1.8, max=1.95)
             true_bkg = np.count_nonzero(DATABKG[(DATABKG > 1.8) & (DATABKG < 1.95)])
             if test_case is TestCases.NOSGN:
@@ -222,7 +236,7 @@ def test_fitter_result():
             else:
                 atol = 5*bkg_fit_err
             assert np.isclose(true_bkg, bkg_fit, atol=atol)
-        if test_case != TestCases.TRUNCATED:
+        if test_case not in (TestCases.TRUNCATED, TestCases.TRUNCATED_NO_SGN):
             chi2_ndf = fit.get_chi2_ndf()
             assert chi2_ndf < 2
 
