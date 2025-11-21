@@ -56,7 +56,7 @@ SETUP = Setup(
     name="flarefly",
 
     # LAST-TAG is a placeholder. Automatically replaced at deploy time with the right tag
-    version="0.0.17",
+    version="0.1.0",
     description="FLexible And REliable Fitting LibrarY for particle physics analysis",
     url="https://github.com/flarefly/flarefly",
     author="flarefly-developers",
@@ -71,7 +71,8 @@ SETUP = Setup(
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.12"
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13"
     ],
 
     # What does your project relate to?
@@ -85,9 +86,9 @@ SETUP = Setup(
     # installed. For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        "psutil", "dutil", "prophet>=1.0.1", "numpy<2.0.0", "pandas>=2.2", "uproot>=5.0",
-        "ipython>=7.16.1", "jedi>=0.17.2", "zfit==0.27.1", "mplhep>=0.3.46", "matplotlib>=3.9",
-        "pdg>=0.1.3", "scipy>=1.13", "hepstats>=0.8.1", "pyarrow>14"
+        "psutil", "dutil", "fastparquet", "prophet>=1.0.1", "numpy>=1.26.4", "pandas>=2.2", "uproot>=5.0",
+        "ipython>=7.16.1", "jedi>=0.17.2", "zfit>=0.27.1", "mplhep>=0.3.46", "matplotlib>=3.9",
+        "pdg>=0.1.3", "scipy>=1.13", "hepstats>=0.8.1"
     ],
     python_requires=">=3.10",
 
