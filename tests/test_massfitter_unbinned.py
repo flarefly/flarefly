@@ -52,6 +52,9 @@ DUMMY_DATA = DataHandler(np.array(LIMITS), var_name='x', limits=LIMITS)
 DATASGN = create_sample('gaussian', True, 10000, mu=1.865, sigma=0.010)
 DATASGN2 = create_sample('gaussian', True, 20000, mu=1.968, sigma=0.010)
 DATABKG = create_sample('expo', False, 30000, lam=-10)
+LIFETIMEDATASGN = create_sample('expo', False, 10000, lam=-3)  # For sweights test
+LIFETIMEDATASGN2 = create_sample('gaussian', True, 20000, mu=1.9, sigma=0.1)  # For sweights test
+LIFETIMEDATABKG = create_sample('expo', False, 30000, lam=10)  # For sweights test
 DATA = DataHandler(np.concatenate((DATASGN, DATABKG), axis=0),
                    var_name=r'$M$ (GeV/$c^{2}$)', limits=LIMITS)
 FITRES, FITTER, FIGS, RESIDUAL_FIGS = [], [], [], []
@@ -239,7 +242,37 @@ def test_fitter_result():
         if test_case not in (TestCases.TRUNCATED, TestCases.TRUNCATED_NO_SGN):
             chi2_ndf = fit.get_chi2_ndf()
             assert chi2_ndf < 2
+        if test_case in (TestCases.GAUS_EXPO, TestCases.GAUS_EXPO_EXTENDED):
+            sweights = fit.get_sweights()
+            bin_edges = np.linspace(*LIMITS, 101)
+            hist_sweights_sgn, _ = np.histogram(np.concatenate([LIFETIMEDATASGN, LIFETIMEDATABKG]), bins=bin_edges, weights=sweights["signal0"])
+            hist_sweights_bkg, _ = np.histogram(np.concatenate([LIFETIMEDATASGN, LIFETIMEDATABKG]), bins=bin_edges, weights=sweights["bkg0"])
+            hist_true_sgn, _ = np.histogram(LIFETIMEDATASGN, bins=bin_edges)
+            hist_true_bkg, _ = np.histogram(LIFETIMEDATABKG, bins=bin_edges)
 
+            # check that the shapes are roughly correct (chi2 test)
+            chi2_sgn = np.sum((hist_sweights_sgn - hist_true_sgn)**2 / (hist_true_sgn + 1e-6))
+            chi2_bkg = np.sum((hist_sweights_bkg - hist_true_bkg)**2 / (hist_true_bkg + 1e-6))
+            assert chi2_sgn < 200
+            assert chi2_bkg < 200
+
+        if test_case == TestCases.FIX_FRAC:
+            sweights = fit.get_sweights()
+            bin_edges = np.linspace(*LIMITS, 101)
+            hist_sweights_sgn, _ = np.histogram(np.concatenate([LIFETIMEDATASGN, LIFETIMEDATASGN2, LIFETIMEDATABKG]), bins=bin_edges, weights=sweights["signal0"])
+            hist_sweights_sgn2, bins1 = np.histogram(np.concatenate([LIFETIMEDATASGN, LIFETIMEDATASGN2, LIFETIMEDATABKG]), bins=bin_edges, weights=sweights["signal1"])
+            hist_sweights_bkg, _ = np.histogram(np.concatenate([LIFETIMEDATASGN, LIFETIMEDATASGN2, LIFETIMEDATABKG]), bins=bin_edges, weights=sweights["bkg0"])
+            hist_true_sgn, _ = np.histogram(LIFETIMEDATASGN, bins=bin_edges)
+            hist_true_sgn2, bins2 = np.histogram(LIFETIMEDATASGN2, bins=bin_edges)
+            hist_true_bkg, _ = np.histogram(LIFETIMEDATABKG, bins=bin_edges)
+
+            # check that the shapes are roughly correct (chi2 test)
+            chi2_sgn = np.sum((hist_sweights_sgn - hist_true_sgn)**2 / (hist_true_sgn + 1e-6))
+            chi2_sgn2 = np.sum((hist_sweights_sgn2 - hist_true_sgn2)**2 / (hist_true_sgn2 + 1e-6))
+            chi2_bkg = np.sum((hist_sweights_bkg - hist_true_bkg)**2 / (hist_true_bkg + 1e-6))
+            assert chi2_sgn < 200
+            assert chi2_sgn2 < 200
+            assert chi2_bkg < 200
 
 def test_plot():
     """
