@@ -60,6 +60,7 @@ test-pytest() {
     pytest tests/test_data_handler.py
     pytest tests/test_massfitter_binned.py
     pytest tests/test_massfitter_unbinned.py
+    pytest tests/test_pdf_base.py
 }
 
 test-all() {
