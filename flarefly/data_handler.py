@@ -119,8 +119,8 @@ class DataHandler:
                 self._limits_[1] = max(data[self._var_name_])
             elif isinstance(data, zfit.core.data.Data):
                 array = data.to_numpy()
-                self._limits_[0] = min(array)
-                self._limits_[1] = max(array)
+                self._limits_[0] = min(array)[0]
+                self._limits_[1] = max(array)[0]
             else:
                 self._limits_[0] = min(data)
                 self._limits_[1] = max(data)
@@ -290,7 +290,7 @@ class DataHandler:
         """Load a zfit Data object as unbinned data."""
         self.__check_binned_unbinned_(False)
         self.__check_set_limits_unbinned_obs_(data, limits)
-        return data
+        return data.with_obs(self._obs_)
 
     def __load_from_zfit_data_binned(self, data, limits):
         """Load a zfit DataBinned object as binned data."""
@@ -542,8 +542,7 @@ class DataHandler:
             The binned data obtained from unbinned data
         """
         limits = self.get_limits()
-        data_np = zfit.run(self.get_data()[self._var_name_])
-        data_values, _ = np.histogram(data_np, self.get_nbins(), range=(limits[0], limits[1]))
+        data_values, _ = np.histogram(self._data_.to_numpy(), self._nbins_, range=(limits[0], limits[1]))
 
         return data_values
 
