@@ -116,32 +116,12 @@ class F2ComposedPDF:
                 Optional name for the fitter,
                 needed in case of multiple fitters defined in the same script
 
-            - chi2_loss: bool
-                chi2 minimization if True, nll minmization else,
-                default value to False
-
             - extended: bool
                 If True, the pdf is considered extended, i.e. the yield is a parameter to fit.
                 default value to False
 
-            - minuit_mode:
-                A number used by minuit to define the internal minimization strategy, either 0, 1 or 2.
-                0 is the fastest, 2 is the slowest
-                (see more details in
-                https://zfit.readthedocs.io/en/latest/user_api/minimize/_generated/minimizers/zfit.minimize.Minuit.html#zfit.minimize.Minuit)
-                Default value to 0
-
             - limits: list
                 list of fit limits to include in the fit
-
-            - tol: float
-                Termination value for the convergence/stopping criterion of the algorithm in order to determine
-                if the minimum has been found.
-                Default value to 0.001
-
-            - verbosity: int
-                verbosity level (from 0 to 10)
-                Default value to 0
 
             - signal_at_threshold: list
                 list of booleans which indicate whether the signal PDFs are at threshold or not.
@@ -514,16 +494,16 @@ class F2ComposedPDF:
         """
         if fixed_type == target_type and idx_pdf == target_pdf:
             Logger(
-                f'Index {idx_pdf} is the same as {target_pdf},'
+                f'Index {idx_pdf} is the same as {target_pdf}, '
                 'cannot constrain the fraction to itself',
                 'FATAL'
             )
-        if target_type == 'signal' and target_pdf > len(self.signal_pdfs):
+        if target_type == 'signal' and target_pdf >= len(self.signal_pdfs):
             Logger(
                 f'Target signal index {target_pdf} is out of range',
                 'FATAL'
             )
-        if target_type == 'bkg' and target_pdf > len(self.background_pdfs):
+        if target_type == 'bkg' and target_pdf >= len(self.background_pdfs):
             Logger(
                 f'Target background index {target_pdf} is out of range',
                 'FATAL'
