@@ -21,7 +21,7 @@ class PDFBuilder:
         obs: zfit.Space,
         name: str,
         ipdf: int,
-    ) -> zfit.pdf.BasePDF:
+    ):
         """Build a signal PDF with configurable parameters.
 
         Args:
@@ -101,7 +101,7 @@ class PDFBuilder:
         pdf: F2PDFBase,
         name: str,
         ipdf: int,
-    ) -> zfit.pdf.BasePDF:
+    ):
         """Build a signal KDE PDF.
 
         Args:
@@ -127,7 +127,7 @@ class PDFBuilder:
         obs: zfit.Space,
         name: str,
         ipdf: int,
-    ) -> zfit.pdf.BasePDF:
+    ):
         """Build a signal PDF from a histogram template.
 
         Args:
@@ -157,7 +157,7 @@ class PDFBuilder:
         obs: zfit.Space,
         name: str,
         ipdf: int,
-    ) -> zfit.pdf.BasePDF:
+    ):
         """Build a background PDF with configurable parameters.
 
         Args:
@@ -253,7 +253,7 @@ class PDFBuilder:
         pdf: F2PDFBase,
         name: str,
         ipdf: int,
-    ) -> zfit.pdf.BasePDF:
+    ):
         """Build a background KDE PDF.
 
         Args:
@@ -284,7 +284,7 @@ class PDFBuilder:
         obs: zfit.Space,
         name: str,
         ipdf: int,
-    ) -> zfit.pdf.BasePDF:
+    ):
         """Build a bkg PDF from a histogram template.
 
         Args:
