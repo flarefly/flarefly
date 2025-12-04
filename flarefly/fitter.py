@@ -17,7 +17,8 @@ from hepstats.splot import compute_sweights
 import pdg
 from flarefly.utils import Logger
 from flarefly.pdf_builder import PDFBuilder
-from flarefly.components import PDFKind, PDFType, F2PDFBase, F2ComposedPDF
+from flarefly.components import PDFKind, PDFType, F2PDFBase
+from flarefly.components.composed_pdf import F2ComposedPDF
 
 
 # pylint: disable=too-many-instance-attributes, too-many-lines, too-many-public-methods

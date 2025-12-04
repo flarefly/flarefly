@@ -6,7 +6,7 @@ import pytest
 import uproot
 import zfit
 
-from flarefly.components import F2ComposedPDF
+from flarefly.components.composed_pdf import F2ComposedPDF
 from flarefly import DataHandler
 
 # -----------------

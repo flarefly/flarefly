@@ -6,6 +6,7 @@ import numpy as np
 import zfit
 from flarefly.utils import Logger
 from flarefly.components import PDFType, F2PDFBase
+from flarefly.pdf_builder import PDFBuilder
 
 if TYPE_CHECKING:
     # No need to import during runtime, only for type checking
@@ -277,7 +278,6 @@ class F2ComposedPDF:
             Logger('Performing fit with no signal pdf', 'WARNING')
             return
 
-        from flarefly.pdf_builder import PDFBuilder
         for ipdf, pdf in enumerate(self.signal_pdfs):
             PDFBuilder.build_signal_pdf(
                 pdf,
@@ -294,7 +294,6 @@ class F2ComposedPDF:
             Logger('Performing fit with no background pdf', 'WARNING')
             return
 
-        from flarefly.pdf_builder import PDFBuilder
         for ipdf, pdf in enumerate(self.background_pdfs):
             PDFBuilder.build_bkg_pdf(
                 pdf,
