@@ -16,8 +16,7 @@ import mplhep
 from hepstats.splot import compute_sweights
 import pdg
 from flarefly.utils import Logger
-from flarefly.pdf_builder import PDFBuilder
-from flarefly.components import PDFKind, PDFType, F2PDFBase
+from flarefly.components import PDFKind, PDFType
 from flarefly.components.composed_pdf import F2ComposedPDF
 
 
@@ -181,15 +180,16 @@ class F2MassFitter:
             mode=kwargs.get('minuit_mode', 0),
             tol=kwargs.get('tol', 0.001)
         )
-        
+
         self._raw_residuals_ = []
         self._raw_residual_variances_ = []
         self._std_residuals_ = []
-        
+
         self._rawyield_ = [0. for _ in name_signal_pdf]
         self._rawyield_err_ = [0. for _ in name_signal_pdf]
         self._ratio_truncated_ = None
-        
+        self._ndf_ = None
+
         self._base_sgn_cmap_ = plt.colormaps.get_cmap('viridis')
         self._sgn_cmap_ = ListedColormap(self._base_sgn_cmap_(np.linspace(0.4, 0.65, len(self.model.signal_pdfs))))
         n_bkg_colors = len(self.model.background_pdfs) if len(self.model.background_pdfs) > 0 else 1
@@ -430,7 +430,6 @@ class F2MassFitter:
             variances = data_values  # poissonian errors
 
         # access model predicted values for background
-        self.__build_total_pdf_binned()
         model_values = self._total_pdf_binned_.values()*norm/self._ratio_truncated_
         for ibin, (data, model, variance) in enumerate(zip(data_values, model_values, variances)):
             if variance == 0:
@@ -547,7 +546,7 @@ class F2MassFitter:
         self._std_residuals_ = []
 
         self.model.build()
-        self._total_pdf_ = self.model.total_pdf 
+        self._total_pdf_ = self.model.total_pdf
         self._total_pdf_binned_ = self.model.total_pdf_binned
 
         # do prefit
@@ -1839,53 +1838,6 @@ class F2MassFitter:
         if 'fix' in kwargs:
             self._background_pdfs_[idx].set_fix_par(par_name, kwargs['fix'])
 
-    def __get_parameter_fix_frac(self, factor, name):
-        """
-        Get the parameter fix for the fraction
-
-        Parameters
-        -------------------------------------------------
-        idx_pdf: int
-            Index of the pdf
-        target_pdf: int
-            Index of the target pdf
-        factor: float
-            Factor to multiply the fraction parameter
-        """
-        return zfit.Parameter(name, factor, floating=False)
-
-    def __check_consistency_fix_frac(self, idx_pdf, target_pdf, idx_pdf_type, target_pdf_type):
-        """
-        Checks the consistency of fixing the fraction between PDFs.
-
-        Parameters
-        -------------------------------------------------
-        idx_pdf: int
-            The index of the PDF to check.
-        target_pdf: int
-            The target PDF to compare against.
-        idx_pdf_type: 'signal' or 'bkg'
-            The type of the PDF to check.
-        target_pdf_type: 'signal' or 'bkg'
-            The type of the target PDF to compare against.
-        """
-        if idx_pdf_type == target_pdf_type and idx_pdf == target_pdf:
-            Logger(
-                f'Index {idx_pdf} is the same as {target_pdf},'
-                'cannot constrain the fraction to itself',
-                'FATAL'
-            )
-        if target_pdf_type == 'signal' and target_pdf > len(self._signal_pdfs_):
-            Logger(
-                f'Target signal index {target_pdf} is out of range',
-                'FATAL'
-            )
-        if target_pdf_type == 'bkg' and target_pdf > len(self._background_pdfs_):
-            Logger(
-                f'Target background index {target_pdf} is out of range',
-                'FATAL'
-            )
-
     def fix_signal_frac_to_signal_pdf(self, idx_pdf, target_pdf, factor=1):
         """
         Fix the frac parameter of a signal to the frac parameter of another signal
@@ -2259,7 +2211,7 @@ class F2MassFitter:
         """
         if self._total_pdf_ is None or self._total_pdf_binned_ is None:
             self.model.build()
-            self._total_pdf_ = self.model.total_pdf 
+            self._total_pdf_ = self.model.total_pdf
             self._total_pdf_binned_ = self.model.total_pdf_binned
         sample = self._total_pdf_.sample(num).to_numpy()
         return sample.flatten()
