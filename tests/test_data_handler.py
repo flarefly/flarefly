@@ -224,10 +224,14 @@ def test_unbinned_tight_limits_reduce_data(handler_unbinned_with_limits, handler
     """Test that tight limits reduce the amount of data"""
     norm_with_limits = handler_unbinned_with_limits.get_norm()
     norm_no_limits = handler_unbinned_no_limits.get_norm()
+    norm_pandas_with_limits = len(handler_unbinned_with_limits.to_pandas())
+    norm_pandas_no_limits = len(handler_unbinned_no_limits.to_pandas())
 
     # Data with tight limits should have fewer points
     assert norm_with_limits < norm_no_limits
     assert norm_with_limits > 0
+    assert norm_pandas_with_limits < norm_pandas_no_limits
+    assert norm_pandas_with_limits > 0
 
 
 def test_unbinned_tight_limits_data_within_range(handler_unbinned_with_limits):
