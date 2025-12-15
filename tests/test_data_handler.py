@@ -357,6 +357,13 @@ def test_to_pandas_conversion(handler_unbinned_no_limits):
     assert len(df) == handler_unbinned_no_limits.get_norm()
 
 
+def test_to_numpy_conversion(handler_unbinned_no_limits):
+    """Test conversion to numpy array"""
+    arr = handler_unbinned_no_limits.to_numpy()
+    assert isinstance(arr, np.ndarray)
+    assert len(arr) == handler_unbinned_no_limits.get_norm()
+
+
 def test_to_hist_conversion_binned(handler_binned_no_limits):
     """Test conversion to Hist for binned data"""
     hist = handler_binned_no_limits.to_hist(varname='x')
@@ -367,6 +374,33 @@ def test_to_hist_conversion_unbinned(handler_unbinned_no_limits):
     """Test conversion to Hist for unbinned data"""
     hist = handler_unbinned_no_limits.to_hist(varname='x', nbins=50)
     assert isinstance(hist, Hist)
+
+
+def test_dump_to_root_binned(handler_binned_no_limits):
+    """Test dumping binned data to ROOT file"""
+    output_file = "binned_output.root"
+    handler_binned_no_limits.dump_to_root(str(output_file))
+
+    with uproot.open(str(output_file)) as f:
+        assert "hdata" in f
+        data = DataHandler(f["hdata"], var_name='x')
+    
+    assert data.get_is_binned() is True
+    assert data.get_norm() == handler_binned_no_limits.get_norm()
+    os.remove(output_file)
+
+def test_dump_to_root_unbinned(handler_unbinned_no_limits):
+    """Test dumping unbinned data to ROOT file"""
+    output_file = "unbinned_output.root"
+    handler_unbinned_no_limits.dump_to_root(str(output_file))
+
+    with uproot.open(str(output_file)) as f:
+        assert "treedata" in f
+    data = DataHandler(output_file, treename="treedata", var_name='x')
+    
+    assert data.get_is_binned() is False
+    assert data.get_norm() == handler_unbinned_no_limits.get_norm()
+    os.remove(output_file)
 
 
 # -------------------------------
