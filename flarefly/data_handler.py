@@ -577,6 +577,64 @@ class DataHandler:
         Logger('Data format not supported yet for pandas conversion.', 'ERROR')
         return None
 
+    def to_numpy(self):
+        """
+        returns data in numpy array
+
+        Returns
+        -------------------------------------------------
+        data: numpy.ndarray
+            The data in a numpy array
+        """
+        if self.__format__ in ['pandas', 'numpy', 'parquet', 'root', 'zfit_data'] and not self._isbinned_:
+            return self._data_.to_numpy()
+
+        Logger('Data format not supported yet for numpy conversion.', 'ERROR')
+        return None
+
+    def dump_to_root(self, filename, **kwargs):
+        """
+        dumps data in ROOT file
+
+        Parameters
+        ------------------------------------------------
+        filename: str
+            The name of the ROOT file to dump the data to
+
+        **kwargs: dict
+            Additional optional arguments:
+            - option: str
+                option (recreate or update)
+
+            - suffix: str
+                suffix to append to objects
+
+            - folder: str
+                folder in the ROOT file to store the objects
+        """
+
+        suffix = kwargs.get('suffix', '')
+        option = kwargs.get('option', 'recreate')
+        folder = kwargs.get('folder', '')
+
+        if option not in ['recreate', 'update']:
+            Logger('Illegal option to save outputs in ROOT file!', 'FATAL')
+
+        if self._isbinned_:
+            obj = self.to_hist()
+            name = f"hdata{suffix}"
+        else:
+            obj = self.to_pandas()
+            name = f"treedata{suffix}"
+
+        data_path = f"{folder}/{name}" if folder != "" else name
+        if option == 'recreate':
+            with uproot.recreate(filename) as ofile:
+                ofile[data_path] = obj
+        else:
+            with uproot.update(filename) as ofile:
+                ofile[data_path] = obj
+
     def to_hist(self, **kwargs):
         """
         returns data in NamedHist
