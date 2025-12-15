@@ -19,6 +19,7 @@ class PDFType(Enum):
     DOUBLE_CB = "doublecb"
     DOUBLE_CB_SYMM = "doublecbsymm"
     GENER_CRYSTAL_BALL = "genercrystalball"
+    GENER_GAUSS = "genergaussian"
     CAUCHY = "cauchy"
     VOIGTIAN = "voigtian"
     KDE_EXACT = "kde_exact"

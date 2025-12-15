@@ -30,8 +30,8 @@ def create_sample(func_name, is_signal, size, **kwargs):
 LIMITS = [0.15, 1]
 DUMMY_DATA = DataHandler(np.array(LIMITS), var_name='x', limits=LIMITS)
 SGN_PDFS_NAMES = [
-    "gaussian", "crystalball", "doublegaus", "doublecb", "doublecbsymm",
-    "genercrystalball", "gausexptail", "genergausexptail", "genergausexptailsymm"
+    "gaussian", "crystalball", "doublegaus", "doublecb", "doublecbsymm", "genercrystalball",
+    "gausexptail", "genergausexptail", "genergausexptailsymm", "genergaussian"
 ]
 BKG_PDFS_NAMES = ["expo", "chebpol2", "expopow", "powlaw", "expopowext", "powlaw", "expopowext"]
 SGN_PARAMS = {
@@ -44,6 +44,7 @@ SGN_PARAMS = {
     "gausexptail": {"mu": 0.4, "sigma": 0.03, "alpha": 4},
     "genergausexptail": {"mu": 0.4, "sigmal": 0.03, "sigmar": 0.03, "alphal": 4, "alphar": 4},
     "genergausexptailsymm": {"mu": 0.4, "sigma": 0.03, "alpha": 4},
+    "genergaussian": {"mu": 0.4, "sigma": 0.03, "beta": 4},
 }
 BKG_PARAMS = {
     "expo": {"lam": -6},
