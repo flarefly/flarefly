@@ -65,6 +65,8 @@ class F2MassFitter:
 
             - 'voigtian'
 
+            - 'genergaussian'
+
             - 'kde_exact' (requires to set the datasample and options)
 
             - 'kde_grid' (requires to set the datasample and options)
