@@ -620,20 +620,18 @@ class DataHandler:
         if option not in ['recreate', 'update']:
             Logger('Illegal option to save outputs in ROOT file!', 'FATAL')
 
-        if self._isbinned_:
-            obj = self.to_hist()
-            name = f"hdata{suffix}"
-        else:
-            obj = self.to_pandas()
-            name = f"treedata{suffix}"
+        open_file = uproot.recreate if option == 'recreate' else uproot.update
 
-        data_path = f"{folder}/{name}" if folder != "" else name
-        if option == 'recreate':
-            with uproot.recreate(filename) as ofile:
-                ofile[data_path] = obj
-        else:
-            with uproot.update(filename) as ofile:
-                ofile[data_path] = obj
+        with open_file(filename) as ofile:
+            name = '' if folder == '' else folder + '/'
+            if self._isbinned_:
+                hist = self.to_hist()
+                name += f"hdata{suffix}"
+                ofile[name] = hist
+            else:
+                tree = self.to_pandas()
+                name += f"treedata{suffix}"
+                ofile.mktree(name, tree)
 
     def to_hist(self, **kwargs):
         """
