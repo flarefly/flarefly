@@ -296,7 +296,7 @@ class DataHandler:
         """Load a zfit DataBinned object as binned data."""
         self.__load_from_histogram(data, limits)
         return data
-    
+
     def is_th1_weighted(self, hist):
         """
         Check if a ROOT.TH1 histogram is weighted.
