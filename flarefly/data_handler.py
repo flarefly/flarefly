@@ -327,15 +327,20 @@ class DataHandler:
             xmin = hist_obj.GetXaxis().GetXmin()
             xmax = hist_obj.GetXaxis().GetXmax()
 
-            storage = "weight" if self.is_th1_weighted(hist_obj) else "double"
+            is_weighted = self.is_th1_weighted(hist_obj)
+            storage = "weight" if is_weighted else "double"
 
             hist = Hist(Regular(nbins, xmin, xmax, name="x"), storage=storage)
             contents = np.array([hist_obj.GetBinContent(i+1) for i in range(nbins)])
             errors2 = np.array([hist_obj.GetBinError(i+1)**2 for i in range(nbins)])
 
-            view = hist.view(flow=False)
-            view.value = contents
-            view.variance = errors2
+            if is_weighted:
+                view = hist.view(flow=False)
+                view.value = contents
+                view.variance = errors2
+            else:
+                hist.view(flow=False)[...] = contents
+                hist.variances(flow=False)[...] = errors2
         else:
             hist = hist_obj.to_hist()
         hist = eval(f"hist[::{self._rebin_}j]")  # pylint: disable=eval-used

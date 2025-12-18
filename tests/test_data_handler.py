@@ -51,6 +51,32 @@ def root_histo_file():
     """Path to ROOT histogram file"""
     return os.path.join(os.getcwd(), "tests/histos_dplus.root")
 
+@pytest.fixture
+def th1_unweighted():
+    """Load unweighted TH1 histogram from ROOT file"""
+    ROOT = pytest.importorskip("ROOT")
+    min, max = 1.6, 2.1
+    nbins = 500
+    dx = (max - min) / nbins
+    histo = ROOT.TH1D("histo_unweighted", "histo_unweighted", nbins, min, max)
+    for i in range(1, nbins + 1):
+        for j in range(i):
+            histo.Fill(min + (i - 0.5) * dx)
+    return histo
+
+@pytest.fixture
+def th1_weighted():
+    """Load weighted TH1 histogram from ROOT file"""
+    ROOT = pytest.importorskip("ROOT")
+    min, max = 1.6, 2.1
+    nbins = 500
+    dx = (max - min) / nbins
+    histo = ROOT.TH1D("histo_unweighted", "histo_unweighted", nbins, min, max)
+    for i in range(1, nbins + 1):
+        histo.Fill(min + (i - 0.5) * dx, i)
+        histo.SetBinError(i, i/3)  # set some arbitrary error
+    return histo
+
 # -------------------------------
 # HANDLER FIXTURES - NO LIMITS
 # -------------------------------
@@ -78,23 +104,38 @@ def handler_unbinned_no_limits(request, numpy_data, pandas_data, zfit_data, parq
     return DataHandler(data, **kwargs)
 
 
-@pytest.fixture(params=["uproot", "root_file"])
-def handler_binned_no_limits(request, uproot_histogram, root_histo_file):
+@pytest.fixture(params=["uproot", "root_file", "TH1_unweighted"])
+def handler_binned_unweighted_no_limits(request, uproot_histogram, root_histo_file, th1_unweighted):
     """
     Binned data handlers without explicit limits
 
     Creates DataHandler instances for various binned data formats:
     - Uproot histogram
     - ROOT histogram file
+    - ROOT TH1 histogram 
     """
     configs = {
         "uproot": (uproot_histogram, {"var_name": "x"}),
         "root_file": (root_histo_file, {"var_name": "x", "histoname": "hMass_20_40"}),
+        "TH1_unweighted": (th1_unweighted, {"var_name": "x"})
     }
 
     data, kwargs = configs[request.param]
     return DataHandler(data, **kwargs)
 
+@pytest.fixture(params=["TH1_weighted"])
+def handler_binned_weighted_no_limits(request, th1_weighted):
+    """Binned data handlers without explicit limits"""
+    if request.param == "TH1_weighted":
+        # skip TH1 if ROOT not available
+        pytest.importorskip("ROOT")
+
+    configs = {
+        "TH1_weighted": (th1_weighted, {"var_name": "x"}),
+    }
+
+    data, kwargs = configs[request.param]
+    return DataHandler(data, **kwargs)
 
 # -------------------------------
 # HANDLER FIXTURES - WITH LIMITS
@@ -129,12 +170,31 @@ def handler_unbinned_larger_limits(request, numpy_data, pandas_data, zfit_data, 
     return DataHandler(data, **kwargs)
 
 
-@pytest.fixture(params=["uproot", "root_file"])
-def handler_binned_with_limits(request, uproot_histogram, root_histo_file):
+@pytest.fixture(params=["uproot", "root_file", "TH1_unweighted"])
+def handler_binned_unweighted_with_limits(request, uproot_histogram, root_histo_file, th1_unweighted, th1_weighted):
     """Binned data handlers with limits [1.75, 2.05]"""
+    if request.param == "TH1_unweighted":
+        # skip TH1 if ROOT not available
+        pytest.importorskip("ROOT")
+
     configs = {
         "uproot": (uproot_histogram, {"var_name": "x", "limits": [1.75, 2.05], "rebin": 2}),
         "root_file": (root_histo_file, {"var_name": "x", "histoname": "hMass_20_40", "limits": [1.75, 2.05]}),
+        "TH1_unweighted": (th1_unweighted, {"var_name": "x", "limits": [1.75, 2.05]}),
+    }
+
+    data, kwargs = configs[request.param]
+    return DataHandler(data, **kwargs)
+
+@pytest.fixture(params=["TH1_weighted"])
+def handler_binned_weighted_with_limits(request, th1_weighted):
+    """Binned data handlers with limits [1.75, 2.05]"""
+    if request.param == "TH1_weighted":
+        # skip TH1 if ROOT not available
+        pytest.importorskip("ROOT")
+
+    configs = {
+        "TH1_weighted": (th1_weighted, {"var_name": "x", "limits": [1.75, 2.05]}),
     }
 
     data, kwargs = configs[request.param]
@@ -184,28 +244,28 @@ def test_unbinned_limits_set(handler_unbinned_no_limits):
 # -------------------------------
 # BASIC TESTS - BINNED
 # -------------------------------
-def test_binned_data_type(handler_binned_no_limits):
+def test_binned_data_type(handler_binned_unweighted_no_limits):
     """Test that binned data returns correct zfit.BinnedData type"""
-    assert isinstance(handler_binned_no_limits.get_binned_data(), zfit.data.BinnedData)
-    assert handler_binned_no_limits.get_is_binned() is True
+    assert isinstance(handler_binned_unweighted_no_limits.get_binned_data(), zfit.data.BinnedData)
+    assert handler_binned_unweighted_no_limits.get_is_binned() is True
 
 
-def test_binned_var_name(handler_binned_no_limits):
+def test_binned_var_name(handler_binned_unweighted_no_limits):
     """Test that variable name is correctly set for binned data"""
-    assert handler_binned_no_limits.get_var_name() == 'x'
+    assert handler_binned_unweighted_no_limits.get_var_name() == 'x'
 
 
-def test_binned_obs(handler_binned_no_limits):
+def test_binned_obs(handler_binned_unweighted_no_limits):
     """Test that binned observation space is created"""
-    obs = handler_binned_no_limits.get_obs()
+    obs = handler_binned_unweighted_no_limits.get_obs()
     assert isinstance(obs, zfit.core.space.Space)
     assert obs.obs[0] == 'x'
     assert obs.binning is not None
 
 
-def test_binned_norm_positive(handler_binned_no_limits):
+def test_binned_norm_positive(handler_binned_unweighted_no_limits):
     """Test that binned normalization is positive"""
-    norm = handler_binned_no_limits.get_norm()
+    norm = handler_binned_unweighted_no_limits.get_norm()
     assert norm > 0
     assert isinstance(norm, float)
 
@@ -272,17 +332,17 @@ def test_unbinned_larger_limits_data_range_unchanged(handler_unbinned_larger_lim
 # -------------------------------
 # LIMITS TESTS - BINNED DATA
 # -------------------------------
-def test_binned_limits_applied(handler_binned_with_limits):
+def test_binned_limits_applied(handler_binned_unweighted_with_limits):
     """Test that limits are correctly applied to binned data"""
-    limits = handler_binned_with_limits.get_limits()
+    limits = handler_binned_unweighted_with_limits.get_limits()
     assert np.isclose(limits[0], 1.75, atol=0.01)
     assert np.isclose(limits[1], 2.05, atol=0.01)
 
 
-def test_binned_limits_reduce_bins(handler_binned_with_limits, handler_binned_no_limits):
+def test_binned_limits_reduce_bins(handler_binned_unweighted_with_limits, handler_binned_unweighted_no_limits):
     """Test that limits reduce the number of bins"""
-    nbins_with_limits = handler_binned_with_limits.get_nbins()
-    nbins_no_limits = handler_binned_no_limits.get_nbins()
+    nbins_with_limits = handler_binned_unweighted_with_limits.get_nbins()
+    nbins_no_limits = handler_binned_unweighted_no_limits.get_nbins()
 
     assert nbins_with_limits < nbins_no_limits
 
@@ -366,7 +426,7 @@ def test_to_numpy_conversion(handler_unbinned_no_limits):
 
 def test_to_hist_conversion_binned(handler_binned_no_limits):
     """Test conversion to Hist for binned data"""
-    hist = handler_binned_no_limits.to_hist(varname='x')
+    hist = handler_binned_unweighted_no_limits.to_hist(varname='x')
     assert isinstance(hist, Hist)
 
 
@@ -413,9 +473,9 @@ def test_get_binned_obs_from_unbinned(handler_unbinned_no_limits):
     assert binned_obs.binning is not None
 
 
-def test_get_unbinned_obs_from_binned(handler_binned_no_limits):
+def test_get_unbinned_obs_from_binned(handler_binned_unweighted_no_limits):
     """Test creating unbinned observable from binned data"""
-    unbinned_obs = handler_binned_no_limits.get_unbinned_obs_from_binned_data()
+    unbinned_obs = handler_binned_unweighted_no_limits.get_unbinned_obs_from_binned_data()
     assert isinstance(unbinned_obs, zfit.core.space.Space)
     assert unbinned_obs.binning is None
 
@@ -430,18 +490,18 @@ def test_binned_data_handler_from_unbinned(handler_unbinned_no_limits):
 # -------------------------------
 # BIN INFO TESTS
 # -------------------------------
-def test_get_bin_center_binned(handler_binned_no_limits):
+def test_get_bin_center_binned(handler_binned_unweighted_no_limits):
     """Test getting bin centers for binned data"""
-    bin_centers = handler_binned_no_limits.get_bin_center()
-    assert len(bin_centers) == handler_binned_no_limits.get_nbins()
+    bin_centers = handler_binned_unweighted_no_limits.get_bin_center()
+    assert len(bin_centers) == handler_binned_unweighted_no_limits.get_nbins()
     assert all(isinstance(x, (int, float)) for x in bin_centers)
 
 
-def test_get_bin_edges_binned(handler_binned_no_limits):
+def test_get_bin_edges_binned(handler_binned_unweighted_no_limits):
     """Test getting bin edges for binned data"""
-    bin_edges = handler_binned_no_limits.get_bin_edges()
+    bin_edges = handler_binned_unweighted_no_limits.get_bin_edges()
     # Should have n_bins + 1 edges
-    assert len(bin_edges) == handler_binned_no_limits.get_nbins() + 1
+    assert len(bin_edges) == handler_binned_unweighted_no_limits.get_nbins() + 1
     assert all(isinstance(x, (int, float)) for x in bin_edges)
     # Edges should be monotonically increasing
     assert all(bin_edges[i] < bin_edges[i+1] for i in range(len(bin_edges)-1))
@@ -459,3 +519,22 @@ def test_get_binned_data_from_unbinned(handler_unbinned_no_limits):
     assert isinstance(binned_values, np.ndarray)
     assert len(binned_values) == handler_unbinned_no_limits.get_nbins()
     assert np.sum(binned_values) <= handler_unbinned_no_limits.get_norm()
+
+# -------------------------------
+# HISTOGRAM ERRORS TEST
+# -------------------------------
+def test_weighted_histos_uncertainties(handler_binned_weighted_no_limits):
+    hist = handler_binned_weighted_no_limits.to_hist()
+    values = hist.values()
+    variances = hist.variances()
+
+    assert np.all(variances >= 0)
+    assert np.allclose(np.sqrt(variances), values/3)
+
+def test_unweighted_histos_uncertainties(handler_binned_unweighted_no_limits):
+    hist = handler_binned_unweighted_no_limits.to_hist()
+    values = hist.values()
+    variances = hist.variances()
+
+    assert np.all(variances >= 0)
+    assert np.allclose(variances, values)
