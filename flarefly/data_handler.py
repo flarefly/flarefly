@@ -296,6 +296,25 @@ class DataHandler:
         """Load a zfit DataBinned object as binned data."""
         self.__load_from_histogram(data, limits)
         return data
+    
+    def is_th1_weighted(self, hist):
+        """
+        Check if a ROOT.TH1 histogram is weighted.
+        Adapted from uproot weighted property in TH1 behavior.
+
+        Parameters
+        ------------------------------------------------
+        hist: ROOT.TH1
+            The histogram to be checked.
+
+        Returns
+        -------------------------------------------------
+        is_weighted: bool
+            True if the histogram is weighted, False otherwise.
+        """
+        ncells = hist.GetNcells()
+        sumw2 = hist.GetSumw2()
+        return sumw2 is not None and len(sumw2) == ncells
 
     def __load_from_histogram(self, hist_obj, limits):
         """
@@ -308,12 +327,15 @@ class DataHandler:
             xmin = hist_obj.GetXaxis().GetXmin()
             xmax = hist_obj.GetXaxis().GetXmax()
 
-            hist = Hist(Regular(nbins, xmin, xmax, name="x"))
+            storage = "weight" if self.is_th1_weighted(hist_obj) else "double"
+
+            hist = Hist(Regular(nbins, xmin, xmax, name="x"), storage=storage)
             contents = np.array([hist_obj.GetBinContent(i+1) for i in range(nbins)])
             errors2 = np.array([hist_obj.GetBinError(i+1)**2 for i in range(nbins)])
 
-            hist.view(flow=False)[...] = contents
-            hist.variances(flow=False)[...] = errors2
+            view = hist.view(flow=False)
+            view.value = contents
+            view.variance = errors2
         else:
             hist = hist_obj.to_hist()
         hist = eval(f"hist[::{self._rebin_}j]")  # pylint: disable=eval-used
