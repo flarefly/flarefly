@@ -12,7 +12,7 @@ from hist.axis import Regular
 from flarefly.utils import Logger
 
 
-# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-branches
+# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-branches, too-many-public-methods
 class DataHandler:
     """
     Class for storing and managing the data of (ROOT tree, TH1, numpy array, etc.)
