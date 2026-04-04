@@ -1901,7 +1901,8 @@ class F2MassFitter:
             norm = self._total_pdf_norm_ * bkg_fracs[idx2]
             norm_err = norm * bkg_err_fracs[idx2]
 
-            bkg_int = float(bkg.pdf.integrate((min_value, max_value)))
+            bkg_int = bkg.pdf.integrate((min_value, max_value))
+            bkg_int = float(bkg_int.numpy().item())
             background += bkg_int * norm
             background_err += (bkg_int * norm_err)**2
 
