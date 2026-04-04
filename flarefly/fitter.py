@@ -1797,6 +1797,7 @@ class F2MassFitter:
 
         # pylint: disable=missing-kwoa
         signal = self._signal_pdfs_[idx].pdf.integrate((min_value, max_value))
+        signal = float(signal.numpy().item())
 
         signal_fracs, _, refl_fracs, signal_err_fracs, _, _ = self.__get_all_fracs()
 
