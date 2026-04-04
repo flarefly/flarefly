@@ -662,8 +662,8 @@ class F2MassFitter:
         limits = self._data_handler_.get_limits()
         sidebands_integral, total_integral = 0., 0.
         for i_pdf, pdf in enumerate(self._signal_pdfs_ + self._background_pdfs_):
-            sidebands_integral += float(sum(pdf.pdf.integrate(lim) * fracs[i_pdf] for lim in self._limits_))
-            total_integral += float(pdf.pdf.integrate(limits) * fracs[i_pdf])
+            sidebands_integral += float(sum(float(pdf.pdf.integrate(lim).numpy().item()) * fracs[i_pdf] for lim in self._limits_))
+            total_integral += float(float(pdf.pdf.integrate(limits).numpy().item()) * fracs[i_pdf])
 
         self._ratio_truncated_ = sidebands_integral / total_integral
 
