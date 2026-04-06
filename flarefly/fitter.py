@@ -662,8 +662,9 @@ class F2MassFitter:
         limits = self._data_handler_.get_limits()
         sidebands_integral, total_integral = 0., 0.
         for i_pdf, pdf in enumerate(self._signal_pdfs_ + self._background_pdfs_):
-            sidebands_integral += float(sum(pdf.pdf.integrate(lim) * fracs[i_pdf] for lim in self._limits_))
-            total_integral += float(pdf.pdf.integrate(limits) * fracs[i_pdf])
+            sidebands_integral += float(
+                sum(float(pdf.pdf.integrate(lim).numpy().item()) * fracs[i_pdf] for lim in self._limits_))
+            total_integral += float(float(pdf.pdf.integrate(limits).numpy().item()) * fracs[i_pdf])
 
         self._ratio_truncated_ = sidebands_integral / total_integral
 
@@ -1797,6 +1798,7 @@ class F2MassFitter:
 
         # pylint: disable=missing-kwoa
         signal = self._signal_pdfs_[idx].pdf.integrate((min_value, max_value))
+        signal = float(signal.numpy().item())
 
         signal_fracs, _, refl_fracs, signal_err_fracs, _, _ = self.__get_all_fracs()
 
@@ -1901,7 +1903,8 @@ class F2MassFitter:
             norm = self._total_pdf_norm_ * bkg_fracs[idx2]
             norm_err = norm * bkg_err_fracs[idx2]
 
-            bkg_int = float(bkg.pdf.integrate((min_value, max_value)))
+            bkg_int = bkg.pdf.integrate((min_value, max_value))
+            bkg_int = float(bkg_int.numpy().item())
             background += bkg_int * norm
             background_err += (bkg_int * norm_err)**2
 
