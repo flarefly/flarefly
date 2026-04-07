@@ -2,9 +2,6 @@
 Simple module with a class to manage the data used in the analysis
 """
 
-import sys
-
-
 # pylint: disable=too-few-public-methods
 class Logger:
     """
@@ -39,8 +36,7 @@ class Logger:
         elif level == 'ERROR':
             print(f'{Logger.ERROR}ERROR{Logger.ENDC}: {text}')
         elif level == 'FATAL':
-            print(f'{Logger.FATAL}FATAL{Logger.ENDC}: {text}')
-            sys.exit(0)
+            raise RuntimeError(text)
         elif level == 'RESULT':
             print(f'\n\n{text}\n\n')
         else:

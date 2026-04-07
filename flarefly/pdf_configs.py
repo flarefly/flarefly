@@ -324,6 +324,27 @@ SIGNAL_PDF_CONFIGS = {
         },
         'pdf_class': zfit.pdf.GeneralizedCB,
         'pdf_args': ['mu', 'sigmar', 'sigmal', 'alphal', 'nl', 'alphar', 'nr']
+    },
+    PDFType.GENER_GAUSS: {
+        'parameters': {
+            'mu': {
+                'init': 1.865,
+                'limits': [0., None],
+                'fix': False
+            },
+            'sigma': {
+                'init': 0.010,
+                'limits': [0., None],
+                'fix': False
+            },
+            'beta': {
+                'init': 2,
+                'limits': [0., None],
+                'fix': False
+            }
+        },
+        'pdf_class': zfit.pdf.GeneralizedGauss,
+        'pdf_args': ['mu', 'sigma', 'beta']
     }
 }
 

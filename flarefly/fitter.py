@@ -65,6 +65,8 @@ class F2MassFitter:
 
             - 'voigtian'
 
+            - 'genergaussian'
+
             - 'kde_exact' (requires to set the datasample and options)
 
             - 'kde_grid' (requires to set the datasample and options)
@@ -660,8 +662,9 @@ class F2MassFitter:
         limits = self._data_handler_.get_limits()
         sidebands_integral, total_integral = 0., 0.
         for i_pdf, pdf in enumerate(self._signal_pdfs_ + self._background_pdfs_):
-            sidebands_integral += float(sum(pdf.pdf.integrate(lim) * fracs[i_pdf] for lim in self._limits_))
-            total_integral += float(pdf.pdf.integrate(limits) * fracs[i_pdf])
+            sidebands_integral += float(
+                sum(float(pdf.pdf.integrate(lim).numpy().item()) * fracs[i_pdf] for lim in self._limits_))
+            total_integral += float(float(pdf.pdf.integrate(limits).numpy().item()) * fracs[i_pdf])
 
         self._ratio_truncated_ = sidebands_integral / total_integral
 
@@ -1795,6 +1798,7 @@ class F2MassFitter:
 
         # pylint: disable=missing-kwoa
         signal = self._signal_pdfs_[idx].pdf.integrate((min_value, max_value))
+        signal = float(signal.numpy().item())
 
         signal_fracs, _, refl_fracs, signal_err_fracs, _, _ = self.__get_all_fracs()
 
@@ -1899,7 +1903,8 @@ class F2MassFitter:
             norm = self._total_pdf_norm_ * bkg_fracs[idx2]
             norm_err = norm * bkg_err_fracs[idx2]
 
-            bkg_int = float(bkg.pdf.integrate((min_value, max_value)))
+            bkg_int = bkg.pdf.integrate((min_value, max_value))
+            bkg_int = float(bkg_int.numpy().item())
             background += bkg_int * norm
             background_err += (bkg_int * norm_err)**2
 
@@ -2002,72 +2007,44 @@ class F2MassFitter:
             Logger('sWeights not available for truncated fit', 'ERROR')
             return {'signal': None, 'bkg': None}
         if self._extended_:
-            model = self._total_pdf_.get_models()[0]  # Get the SumPDF object (not the truncated one)
-            sweights_model = []
-            for i_pdf, pdf in enumerate(self._signal_pdfs_):
-                sweights_model.append(i_pdf)
-            for i_pdf, pdf in enumerate(self._background_pdfs_):
-                sweights_model.append(i_pdf + len(self._signal_pdfs_))
-            model = zfit.pdf.SumPDF(
-                [model.get_models()[i] for i in sweights_model],
-                extended=self._data_handler_.get_norm(),
-                obs=self._data_handler_.get_obs(),
-                name=self._name_ + '_sweights'
-            )
-
-            sweights = compute_sweights(model, self._data_handler_.get_data())
-            names = self._signal_pdfs_+self._background_pdfs_
-            names = [names[i].kind.value for i in sweights_model]
+            sweights = compute_sweights(self._total_pdf_, self._data_handler_.get_data())
+            names = [f"signal{i}" for i in range(len(self._signal_pdfs_))] + \
+                    [f"bkg{i}" for i in range(len(self._background_pdfs_))]
             for new_name, old_name in zip(
-                self._signal_pdfs_+self._background_pdfs_,
+                names,
                 list(sweights.keys())
             ):
-                sweights[new_name.kind.value] = sweights.pop(old_name)
+                sweights[new_name] = sweights.pop(old_name)
             return sweights
 
         # Not extended case
         signal_pdf_extended = []
-        refl_pdf_extended = []
         bkg_pdf_extended = []
 
         norm = self._data_handler_.get_norm()
 
-        signal_fracs, bkg_fracs, refl_fracs, _, _, _ = self.__get_all_fracs()
-        bkg_fracs.append(1-sum(bkg_fracs)-sum(signal_fracs)-sum(refl_fracs))
+        signal_fracs, bkg_fracs, _, _, _, _ = self.__get_all_fracs()
 
         total_signal_yields = 0.
         total_bkg_yields = 0.
-        for pdf, frac in zip(self._signal_pdfs_, signal_fracs+refl_fracs):
-            signal_pdf_extended.append(pdf.create_extended(frac * norm))
+        for pdf, frac in zip(self._signal_pdfs_, signal_fracs):
+            signal_pdf_extended.append(pdf.pdf.create_extended(frac * norm))
             total_signal_yields += frac * norm
         for pdf, frac in zip(self._background_pdfs_, bkg_fracs):
-            bkg_pdf_extended.append(pdf.create_extended(frac * norm))
+            bkg_pdf_extended.append(pdf.pdf.create_extended(frac * norm))
             total_bkg_yields += frac * norm
 
-        total_signal_yields_par = zfit.Parameter('signal_yield', total_signal_yields)
-        total_bkg_yields_par = zfit.Parameter('bkg_yield', total_bkg_yields)
-
-        if len(signal_pdf_extended + refl_pdf_extended) > 1:
-            signal_pdf_for_sweights = zfit.pdf.SumPDF(
-                signal_pdf_extended,
-                extended=total_signal_yields_par
-            )
-        else:
-            signal_pdf_for_sweights = signal_pdf_extended[0]
-
-        if len(bkg_pdf_extended) > 1:
-            bkg_pdf_for_sweights = zfit.pdf.SumPDF(
-                bkg_pdf_extended + refl_pdf_extended,
-                extended=total_bkg_yields_par
-            )
-        else:
-            bkg_pdf_for_sweights = bkg_pdf_extended[0]
-
-        total_pdf_for_sweights = zfit.pdf.SumPDF([signal_pdf_for_sweights, bkg_pdf_for_sweights])
+        total_pdf_for_sweights = zfit.pdf.SumPDF(signal_pdf_extended + bkg_pdf_extended)
         sweights = compute_sweights(total_pdf_for_sweights, self._data_handler_.get_data())
-        sweights_labels = list(sweights.keys())
+        names = [f"signal{i}" for i in range(len(self._signal_pdfs_))] + \
+            [f"bkg{i}" for i in range(len(self._background_pdfs_))]
+        for new_name, old_name in zip(
+            names,
+            list(sweights.keys())
+        ):
+            sweights[new_name] = sweights.pop(old_name)
+        return sweights
 
-        return {'signal': sweights[sweights_labels[0]], 'bkg': sweights[sweights_labels[1]]}
 
     def set_particle_mass(self, idx, **kwargs):
         """

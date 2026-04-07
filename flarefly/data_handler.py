@@ -12,7 +12,7 @@ from hist.axis import Regular
 from flarefly.utils import Logger
 
 
-# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-branches
+# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-branches, too-many-public-methods
 class DataHandler:
     """
     Class for storing and managing the data of (ROOT tree, TH1, numpy array, etc.)
@@ -119,8 +119,8 @@ class DataHandler:
                 self._limits_[1] = max(data[self._var_name_])
             elif isinstance(data, zfit.core.data.Data):
                 array = data.to_numpy()
-                self._limits_[0] = min(array)
-                self._limits_[1] = max(array)
+                self._limits_[0] = min(array)[0]
+                self._limits_[1] = max(array)[0]
             else:
                 self._limits_[0] = min(data)
                 self._limits_[1] = max(data)
@@ -290,12 +290,31 @@ class DataHandler:
         """Load a zfit Data object as unbinned data."""
         self.__check_binned_unbinned_(False)
         self.__check_set_limits_unbinned_obs_(data, limits)
-        return data
+        return data.with_obs(self._obs_)
 
     def __load_from_zfit_data_binned(self, data, limits):
         """Load a zfit DataBinned object as binned data."""
         self.__load_from_histogram(data, limits)
         return data
+
+    def is_th1_weighted(self, hist):
+        """
+        Check if a ROOT.TH1 histogram is weighted.
+        Adapted from uproot weighted property in TH1 behavior.
+
+        Parameters
+        ------------------------------------------------
+        hist: ROOT.TH1
+            The histogram to be checked.
+
+        Returns
+        -------------------------------------------------
+        is_weighted: bool
+            True if the histogram is weighted, False otherwise.
+        """
+        ncells = hist.GetNcells()
+        sumw2 = hist.GetSumw2()
+        return sumw2 is not None and len(sumw2) == ncells
 
     def __load_from_histogram(self, hist_obj, limits):
         """
@@ -308,12 +327,20 @@ class DataHandler:
             xmin = hist_obj.GetXaxis().GetXmin()
             xmax = hist_obj.GetXaxis().GetXmax()
 
-            hist = Hist(Regular(nbins, xmin, xmax, name="x"))
+            is_weighted = self.is_th1_weighted(hist_obj)
+            storage = "weight" if is_weighted else "double"
+
+            hist = Hist(Regular(nbins, xmin, xmax, name="x"), storage=storage)
             contents = np.array([hist_obj.GetBinContent(i+1) for i in range(nbins)])
             errors2 = np.array([hist_obj.GetBinError(i+1)**2 for i in range(nbins)])
 
-            hist.view(flow=False)[...] = contents
-            hist.variances(flow=False)[...] = errors2
+            if is_weighted:
+                view = hist.view(flow=False)
+                view.value = contents
+                view.variance = errors2
+            else:
+                hist.view(flow=False)[...] = contents
+                hist.variances(flow=False)[...] = errors2
         else:
             hist = hist_obj.to_hist()
         hist = eval(f"hist[::{self._rebin_}j]")  # pylint: disable=eval-used
@@ -542,8 +569,7 @@ class DataHandler:
             The binned data obtained from unbinned data
         """
         limits = self.get_limits()
-        data_np = zfit.run(self.get_data()[self._var_name_])
-        data_values, _ = np.histogram(data_np, self.get_nbins(), range=(limits[0], limits[1]))
+        data_values, _ = np.histogram(self._data_.to_numpy(), self._nbins_, range=(limits[0], limits[1]))
 
         return data_values
 
@@ -572,14 +598,67 @@ class DataHandler:
         data: pandas.DataFrame
             The data in a pandas DataFrame
         """
-        if self.__format__ == 'pandas':
-            Logger('Data already in pandas format.', 'WARNING')
-            return self._input_
-        if self.__format__ in ['numpy', 'parquet', 'root', 'zfit_data'] and not self._isbinned_:
+        if self.__format__ in ['pandas', 'numpy', 'parquet', 'root', 'zfit_data'] and not self._isbinned_:
             return self._data_.to_pandas()
 
         Logger('Data format not supported yet for pandas conversion.', 'ERROR')
         return None
+
+    def to_numpy(self):
+        """
+        returns data in numpy array
+
+        Returns
+        -------------------------------------------------
+        data: numpy.ndarray
+            The data in a numpy array
+        """
+        if self.__format__ in ['pandas', 'numpy', 'parquet', 'root', 'zfit_data'] and not self._isbinned_:
+            return self._data_.to_numpy()
+
+        Logger('Data format not supported yet for numpy conversion.', 'ERROR')
+        return None
+
+    def dump_to_root(self, filename, **kwargs):
+        """
+        dumps data in ROOT file
+
+        Parameters
+        ------------------------------------------------
+        filename: str
+            The name of the ROOT file to dump the data to
+
+        **kwargs: dict
+            Additional optional arguments:
+            - option: str
+                option (recreate or update)
+
+            - suffix: str
+                suffix to append to objects
+
+            - folder: str
+                folder in the ROOT file to store the objects
+        """
+
+        suffix = kwargs.get('suffix', '')
+        option = kwargs.get('option', 'recreate')
+        folder = kwargs.get('folder', '')
+
+        if option not in ['recreate', 'update']:
+            Logger('Illegal option to save outputs in ROOT file!', 'FATAL')
+
+        open_file = uproot.recreate if option == 'recreate' else uproot.update
+
+        with open_file(filename) as ofile:
+            name = '' if folder == '' else folder + '/'
+            if self._isbinned_:
+                hist = self.to_hist()
+                name += f"hdata{suffix}"
+                ofile[name] = hist
+            else:
+                tree = self.to_pandas()
+                name += f"treedata{suffix}"
+                ofile.mktree(name, tree)
 
     def to_hist(self, **kwargs):
         """
