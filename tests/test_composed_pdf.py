@@ -6,7 +6,7 @@ import pytest
 import uproot
 import zfit
 
-from flarefly.components.composed_pdf import F2ComposedPDF
+from flarefly.components.pdf_composer import F2PDFComposer
 from flarefly import DataHandler
 
 # -----------------
@@ -28,7 +28,7 @@ def handler_binned():
 
 def test_init_basic_structure(handler_unbinned):
     """Test standard initialization with one S and one B PDF."""
-    model = F2ComposedPDF(handler_unbinned, ['gaussian'], ['expo'], name='test_fitter')
+    model = F2PDFComposer(handler_unbinned, ['gaussian'], ['expo'], name='test_fitter')
 
     assert model.name == 'test_fitter'
     assert model.extended is False
@@ -43,7 +43,7 @@ def test_init_basic_structure(handler_unbinned):
 
 def test_is_binned_is_set(handler_binned):
     """Test standard initialization with one S and one B PDF."""
-    model = F2ComposedPDF(handler_binned, ['gaussian'], ['expo'], name='test_fitter')
+    model = F2PDFComposer(handler_binned, ['gaussian'], ['expo'], name='test_fitter')
 
     assert model.is_binned is True
 
@@ -57,7 +57,7 @@ def test_is_binned_is_set(handler_binned):
 ])
 def test_no_signal_no_background(signal_name, background_name, no_signal, no_background, handler_unbinned):
     """Test no_signal and no_background flags."""
-    model = F2ComposedPDF(handler_unbinned, signal_name, background_name, name='test_fitter')
+    model = F2PDFComposer(handler_unbinned, signal_name, background_name, name='test_fitter')
 
     assert model.no_signal is no_signal
     assert model.no_background is no_background
@@ -65,11 +65,11 @@ def test_no_signal_no_background(signal_name, background_name, no_signal, no_bac
 def test_raises_with_no_pdfs(handler_unbinned):
     """Test that an error is raised when no signal and no background PDFs are provided."""
     with pytest.raises(RuntimeError, match="No signal nor background pdf defined"):
-        F2ComposedPDF(handler_unbinned, ['nosignal'], ['nobkg'], name='test_fitter')
+        F2PDFComposer(handler_unbinned, ['nosignal'], ['nobkg'], name='test_fitter')
 
 def test_init_reflection_handling(handler_unbinned):
     """Test reflection PDFs are correctly appended to signal_pdfs and refl_idx is set."""
-    model = F2ComposedPDF(
+    model = F2PDFComposer(
         handler_unbinned,
         ['gaussian', 'gaussian'],
         ['expo'],
@@ -84,7 +84,7 @@ def test_init_reflection_inconsistency_raises(handler_unbinned):
     """Test FATAL error when refl_pdfs length does not match signal_pdfs length."""
     # signal_pdf list size is 1, refl_pdf list size is 2
     with pytest.raises(RuntimeError, match='List of pdfs for signals and reflections different! Exit'):
-        F2ComposedPDF(
+        F2PDFComposer(
             handler_unbinned,
             ['gaussian'],
             ['expo'],
@@ -93,7 +93,7 @@ def test_init_reflection_inconsistency_raises(handler_unbinned):
 
 def test_add_frac_constraint_registration(handler_unbinned):
     """Test add_frac_constraint registers the constraint info."""
-    model = F2ComposedPDF(handler_unbinned, ['gaussian', 'gaussian'], ['expo', 'expo'])
+    model = F2PDFComposer(handler_unbinned, ['gaussian', 'gaussian'], ['expo', 'expo'])
 
     # Constraint S1 (idx 1) to B0 (target 0) with factor 0.5
     model.add_frac_constraint(
@@ -112,7 +112,7 @@ def test_add_frac_constraint_registration(handler_unbinned):
 
 def test_add_frac_constraint_invalid_index_fatal(handler_unbinned):
     """Test invalid index checks (e.g., target index out of range)."""
-    model = F2ComposedPDF(handler_unbinned, ['gaussian'], ['expo']) # S list size 1, B list size 1
+    model = F2PDFComposer(handler_unbinned, ['gaussian'], ['expo']) # S list size 1, B list size 1
 
     with pytest.raises(RuntimeError, match='Target signal index 1 is out of range'):
         model.add_frac_constraint(0, 1, target_type='signal')
@@ -125,7 +125,7 @@ def test_add_frac_constraint_invalid_index_fatal(handler_unbinned):
 
 def test_build_model_basic(handler_unbinned):
     """Test building the model with one S and one B PDF."""
-    model = F2ComposedPDF(handler_unbinned, ['gaussian'], ['expo'], name='test_fitter')
+    model = F2PDFComposer(handler_unbinned, ['gaussian'], ['expo'], name='test_fitter')
     model.build()
 
     assert model.is_pdf_built is True
@@ -136,7 +136,7 @@ def test_build_model_basic(handler_unbinned):
 
 def test_setup_fractions_creates_composed_parameter(handler_unbinned):
     """Test that _setup_fractions correctly turns a constrained frac into a ComposedParameter."""
-    model = F2ComposedPDF(handler_unbinned, ['gaussian', 'gaussian'], ['expo', 'expo']) # Fracs size 3: [s0, s1, b0]
+    model = F2PDFComposer(handler_unbinned, ['gaussian', 'gaussian'], ['expo', 'expo']) # Fracs size 3: [s0, s1, b0]
 
     model.add_frac_constraint(
         idx_pdf=0, target_pdf=0, factor=2.0, fixed_type='signal', target_type='bkg'

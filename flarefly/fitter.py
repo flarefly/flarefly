@@ -17,7 +17,7 @@ from hepstats.splot import compute_sweights
 import pdg
 from flarefly.utils import Logger
 from flarefly.components import PDFKind, PDFType
-from flarefly.components.composed_pdf import F2ComposedPDF
+from flarefly.components.pdf_composer import F2PDFComposer
 
 
 # pylint: disable=too-many-instance-attributes, too-many-lines, too-many-public-methods
@@ -164,7 +164,7 @@ class F2MassFitter:
         self._data_handler_ = data_handler
         self._name_ = kwargs.get('name', 'fitter')
 
-        self.model = F2ComposedPDF(
+        self.model = F2PDFComposer(
             data_handler, name_signal_pdf, name_background_pdf, **kwargs
         )
         self._signal_pdfs_ = self.model.signal_pdfs

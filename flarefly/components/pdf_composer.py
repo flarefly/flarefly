@@ -1,5 +1,5 @@
 """
-Module containing class for handling the different PDF components 
+Module containing class for handling the different PDF components
 """
 from typing import TYPE_CHECKING
 import numpy as np
@@ -12,8 +12,9 @@ if TYPE_CHECKING:
     # No need to import during runtime, only for type checking
     from flarefly.data_handler import DataHandler
 
+
 # pylint: disable=too-many-instance-attributes
-class F2ComposedPDF:
+class F2PDFComposer:
     """
     Class used to handle the PDF components for signal and background
     """
@@ -23,9 +24,9 @@ class F2ComposedPDF:
             name_signal_pdf: list[str],
             name_background_pdf: list[str],
             **kwargs
-        ):
+    ):
         """
-        Initialize the F2ComposedPDF class
+        Initialize the F2PDFComposer class
         Parameters
         -------------------------------------------------
         data_handler: flarefly.DataHandler
@@ -182,8 +183,8 @@ class F2ComposedPDF:
 
         if not all(pdf.kind == PDFType.NONE for pdf in self.refl_pdfs):
             Logger(
-                'Reflection pdfs will be deprecated in future versions, ' \
-                'please use background pdfs instead and fix the normalisation ' \
+                'Reflection pdfs will be deprecated in future versions, '
+                'please use background pdfs instead and fix the normalisation '
                 'with fix_bkg_frac_to_signal_pdf',
                 'WARNING'
             )
@@ -229,7 +230,6 @@ class F2ComposedPDF:
 
         if self.extended and self.is_binned:
             Logger('Binned fit with extended pdf not yet supported!', 'FATAL')
-
 
     def build(self):
         """Builds the total PDF and the binned version."""
@@ -295,7 +295,7 @@ class F2ComposedPDF:
             name: str,
             ref_par: zfit.Parameter | zfit.ComposedParameter,
             factor_par: zfit.Parameter | zfit.ComposedParameter
-        ) -> zfit.ComposedParameter:
+    ) -> zfit.ComposedParameter:
         """
         Helper function to create a zfit.ComposedParameter as the product of two parameters
         """
@@ -310,7 +310,7 @@ class F2ComposedPDF:
             frac_par: zfit.Parameter | zfit.ComposedParameter,
             factor_par: zfit.Parameter | zfit.ComposedParameter,
             refl: bool = False
-        ) -> zfit.ComposedParameter:
+    ) -> zfit.ComposedParameter:
         """
         Helper function to create a fraction zfit.ComposedParameter constrained to another frac_par
         multiplied by a factor factor_par
@@ -321,7 +321,6 @@ class F2ComposedPDF:
         return self._get_composed_parametr_product(
             name, frac_par, factor_par
         )
-
 
     def _set_frac_constraints(self):
         for info in self.fix_fracs_to_pdfs:
@@ -443,8 +442,10 @@ class F2ComposedPDF:
                 pdf.set_yield(y)
             self.total_pdf = zfit.pdf.SumPDF(pdfs_sum)
         else:
-            self.total_pdf = zfit.pdf.SumPDF([pdf.pdf for pdf in self.signal_pdfs+self.background_pdfs],
-                                               self.fracs)
+            self.total_pdf = zfit.pdf.SumPDF(
+                [pdf.pdf for pdf in self.signal_pdfs+self.background_pdfs],
+                self.fracs
+            )
 
         if not self.is_binned and self.is_truncated:
             self.total_pdf = self.total_pdf.to_truncated(limits=self.limits, obs=obs, norm=obs)
@@ -470,14 +471,13 @@ class F2ComposedPDF:
         self.total_pdf_binned = zfit.pdf.BinnedFromUnbinnedPDF(zfit.pdf.SumPDF(
             [pdf.pdf for pdf in self.signal_pdfs+self.background_pdfs], self.fracs), obs)
 
-
     def _check_consistency_fix_frac(
             self,
             idx_pdf: int,
             target_pdf: int,
-            fixed_type: str ='signal',
-            target_type: str ='signal'
-        ):
+            fixed_type: str = 'signal',
+            target_type: str = 'signal'
+    ):
         """
         Checks the consistency of fixing the fraction between PDFs.
 
@@ -513,10 +513,10 @@ class F2ComposedPDF:
             self,
             idx_pdf: int,
             target_pdf: int,
-            factor: float =1,
-            fixed_type: str ='signal',
-            target_type: str ='signal'
-        ):
+            factor: float = 1,
+            fixed_type: str = 'signal',
+            target_type: str = 'signal'
+    ):
         """
         Registers a fraction constraint to be applied during build.
 
