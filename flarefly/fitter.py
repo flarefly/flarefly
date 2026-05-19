@@ -687,6 +687,8 @@ class F2MassFitter:
         -------------------------------------------------
         fig: matplotlib.figure.Figure
             figure containing the mass fit plot
+        axs: matplotlib.axes.Axes
+            axes containing the mass fit plot
         """
 
         style = kwargs.get('style', 'LHCb2')
@@ -811,8 +813,6 @@ class F2MassFitter:
             axs.add_artist(anchored_text_signal)
 
         plt.legend(loc=legend_loc)
-
-        Logger('plot_mass_fit now returns a tuple (fig, axs) !', 'WARNING')
 
         return fig, axs
 
@@ -1008,6 +1008,8 @@ class F2MassFitter:
         -------------------------------------------------
         fig: matplotlib.figure.Figure
             figure containing the raw residuals plot
+        axs: matplotlib.axes.Axes
+            axes containing the mass fit plot
         """
 
         style = kwargs.get('style', 'LHCb2')
@@ -1019,7 +1021,7 @@ class F2MassFitter:
         obs = self._data_handler_.get_obs()
         limits = self._data_handler_.get_limits()
 
-        fig = plt.figure(figsize=figsize)
+        fig, axs = plt.subplots(figsize=figsize)
 
         if len(self._raw_residuals_) == 0:
             self.__get_raw_residuals()
@@ -1077,7 +1079,9 @@ class F2MassFitter:
         plt.ylabel(rf'(data - fitted bkg) / {(limits[1]-limits[0])/bins*1000:0.1f} MeV/$c^2$')
         plt.legend(loc='best')
 
-        return fig
+        Logger('plot_raw_residuals now returns a tuple (fig, axs) !', 'WARNING')
+
+        return fig, axs
 
     def plot_std_residuals(self, **kwargs):
         """
@@ -1101,6 +1105,8 @@ class F2MassFitter:
         -------------------------------------------------
         fig: matplotlib.figure.Figure
             figure containing the raw residuals plot
+        axs: matplotlib.axes.Axes
+            axes containing the mass fit plot
         """
 
         style = kwargs.get('style', 'LHCb2')
@@ -1117,7 +1123,7 @@ class F2MassFitter:
         xerr_upper = [bin_center[i+1] - bin_center[i] for i in range(len(bin_center)-1)]
         xerr_upper.append(bin_center[-1] - bin_center[-2])
 
-        fig = plt.figure(figsize=figsize)
+        fig, axs = plt.subplots(figsize=figsize)
 
         if len(self._std_residuals_) == 0:
             self.__get_std_residuals()
@@ -1146,7 +1152,9 @@ class F2MassFitter:
         plt.ylabel(fr"$\dfrac{{ \mathrm{{data}} - \mathrm{{total \ fit}} }}{{ \sigma_{{ \mathrm{{data}} }} }}$"
                    fr"/ {(limits[1]-limits[0])/bins*1000:0.1f} MeV/$c^2$")
 
-        return fig
+        Logger('plot_std_residuals now returns a tuple (fig, axs) !', 'WARNING')
+
+        return fig, axs
 
     def get_raw_yield(self, idx=0):
         """
