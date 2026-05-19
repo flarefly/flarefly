@@ -257,14 +257,9 @@ class PDFBuilder:
         """Build a background KDE PDF.
 
         Args:
-            pdf_kind: Kind of KDE ('kde_exact', 'kde_grid', 'kde_fft', 'kde_isj')
-            kde_sample: The sample data for KDE estimation
+            pdf: The PDF to build (must have kde_sample and kde_option set)
             name: Base name for the PDF
             ipdf: Index of the PDF
-            kde_options: Additional options for the KDE
-
-        Returns:
-            The constructed KDE PDF
         """
         if not pdf.kde_sample:
             Logger(f'Missing datasample for Kernel Density Estimation of background {ipdf}!', 'FATAL')

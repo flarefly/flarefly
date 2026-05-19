@@ -819,7 +819,7 @@ class F2MassFitter:
     # pylint: disable=too-many-statements, too-many-locals
     def dump_to_root(self, filename, **kwargs):
         """
-        Plot the mass fit
+        Dump the mass fit results (data histogram and PDF curves) to a ROOT file
 
         Parameters
         -------------------------------------------------
@@ -828,9 +828,6 @@ class F2MassFitter:
 
         **kwargs: dict
             Additional optional arguments:
-
-            - axis_title: str
-                x-axis title
 
             - num: int
                 number of bins to plot pdfs converted into histograms
@@ -1085,7 +1082,7 @@ class F2MassFitter:
 
     def plot_std_residuals(self, **kwargs):
         """
-        Plot the raw residuals
+        Plot the standardized residuals (data - total fit) / sigma_data
 
         Parameters
         -------------------------------------------------
@@ -1104,9 +1101,9 @@ class F2MassFitter:
         Returns
         -------------------------------------------------
         fig: matplotlib.figure.Figure
-            figure containing the std residuals plot
+            figure containing the standardized residuals plot
         axs: matplotlib.axes.Axes
-            axes containing the std residuals plot
+            axes containing the standardized residuals plot
         """
 
         style = kwargs.get('style', 'LHCb2')
@@ -1336,14 +1333,14 @@ class F2MassFitter:
         Parameters
         -------------------------------------------------
         idx: int
-            Index of the sigma to be returned (default: 0)
+            Index of the HWHM to be returned (default: 0)
 
         Returns
         -------------------------------------------------
         hwhm: float
-            The sigma value obtained from the fit
+            The HWHM value obtained from the fit
         hwhm_err: float
-            The sigma error obtained from the fit
+            The HWHM error obtained from the fit
         """
         if not self._signal_pdfs_[idx].has_hwhm():
             Logger(f'HFWM parameter not defined for {self._signal_pdfs_[idx].kind} pdf!', 'ERROR')

@@ -357,7 +357,7 @@ BACKGROUND_PDF_CONFIGS = {
                 'fix': False
             }
         },
-        'pdf_class': zfit.pdf.Exponential,
+        'pdf_class': zfit.pdf.Chebyshev,
         'pdf_args': ['coeff0', 'coeffs']
     },
     PDFType.EXPO: {
