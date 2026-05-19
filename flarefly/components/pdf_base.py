@@ -55,12 +55,12 @@ class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-a
     # --- pdf ---
     @property
     def pdf(self):
-        """Get the PDF name"""
+        """Get the PDF object"""
         return self._pdf
 
     @pdf.setter
     def pdf(self, value):
-        """Set the PDF name"""
+        """Set the PDF object"""
         self._pdf = value
 
     # --- parameters ---

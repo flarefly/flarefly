@@ -427,8 +427,8 @@ class DataHandler:
 
         Returns
         -------------------------------------------------
-        limits: list
-            The range limits of the x axis
+        use_zfit: bool
+            True if zfit is used to fit the data
         """
         return self._use_zfit_
 
@@ -575,12 +575,12 @@ class DataHandler:
 
     def get_binned_data_handler_from_unbinned_data(self):
         """
-        Get the binned obs from unbinned obs
+        Get a DataHandler with binned data built from unbinned data
 
         Returns
         -------------------------------------------------
-        binned_obs: zfit.core.space.Space
-            The observation space for unbinned data converted to binned data
+        binned_data_handler: DataHandler
+            A DataHandler containing the unbinned data converted to binned data
         """
         return DataHandler(
             self._data_.to_binned(self.get_binned_obs_from_unbinned_data()),
