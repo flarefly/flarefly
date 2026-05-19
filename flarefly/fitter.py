@@ -1009,7 +1009,7 @@ class F2MassFitter:
         fig: matplotlib.figure.Figure
             figure containing the raw residuals plot
         axs: matplotlib.axes.Axes
-            axes containing the mass fit plot
+            axes containing the raw residuals plot
         """
 
         style = kwargs.get('style', 'LHCb2')
@@ -1104,9 +1104,9 @@ class F2MassFitter:
         Returns
         -------------------------------------------------
         fig: matplotlib.figure.Figure
-            figure containing the raw residuals plot
+            figure containing the std residuals plot
         axs: matplotlib.axes.Axes
-            axes containing the mass fit plot
+            axes containing the std residuals plot
         """
 
         style = kwargs.get('style', 'LHCb2')

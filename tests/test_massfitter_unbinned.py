@@ -282,7 +282,8 @@ def test_plot():
         assert isinstance(fig[0], matplotlib.figure.Figure)
         assert isinstance(fig[1], matplotlib.figure.Axes)
     for fig in RESIDUAL_FIGS:
-        assert isinstance(fig, matplotlib.figure.Figure)
+        assert isinstance(fig[0], matplotlib.figure.Figure)
+        assert isinstance(fig[1], matplotlib.figure.Axes)
 
 
 def test_dump():
