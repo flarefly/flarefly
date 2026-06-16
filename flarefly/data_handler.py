@@ -294,8 +294,7 @@ class DataHandler:
 
     def __load_from_zfit_data_binned(self, data, limits):
         """Load a zfit DataBinned object as binned data."""
-        self.__load_from_histogram(data, limits)
-        return data
+        return self.__load_from_histogram(data, limits)
 
     def is_th1_weighted(self, hist):
         """
