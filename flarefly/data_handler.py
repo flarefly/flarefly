@@ -8,8 +8,24 @@ import zfit
 import pandas as pd
 import uproot
 from hist import Hist
-from hist.axis import Regular
 from flarefly.utils import Logger
+
+
+def _import_root():
+    """
+    Import the ROOT module, needed only by the RooFit backend.
+
+    Returns
+    -------------------------------------------------
+    ROOT: module
+        The ROOT module.
+    """
+    try:
+        import ROOT  # pylint: disable=import-outside-toplevel
+        return ROOT
+    except ImportError:
+        Logger('ROOT not available, cannot use RooFit backend', 'FATAL')
+        return None
 
 
 class ZfitDataHandler:
@@ -17,19 +33,20 @@ class ZfitDataHandler:
     Class for managing the data of (ROOT tree, TH1, numpy array, etc.) in zfit format
     """
 
-    @staticmethod
-    def data_range(data):
+    def data_range(self, data):
         """Get the range of the data."""
         arr = data.to_numpy()
         return float(arr.min()), float(arr.max())
 
-    @staticmethod
-    def make_unbinned_obs(var_name, limits):
+    def make_unbinned_obs(self, var_name, limits):
         """Make an unbinned observable for zfit."""
         return zfit.Space(obs=var_name, lower=limits[0], upper=limits[1])
 
-    @staticmethod
-    def make_binned_obs(var_name, limits, nbins):
+    def obs_name(self, obs):
+        """Get the variable name carried by the observable."""
+        return obs.obs[0]
+
+    def make_binned_obs(self, var_name, limits, nbins):
         """Make a binned observable for zfit."""
         binning = zfit.binned.RegularBinning(
             nbins,
@@ -39,36 +56,48 @@ class ZfitDataHandler:
         )
         return zfit.Space(var_name, binning=binning)
 
-    @staticmethod
-    def load_from_pandas(obs, df):
+    def load_from_pandas(self, obs, df):
         """Load a pandas DataFrame as unbinned data."""
         return zfit.data.Data.from_pandas(obs=obs, df=df)
 
-    @staticmethod
-    def load_from_numpy(obs, array):
+    def load_from_numpy(self, obs, array):
         """Load a numpy array as unbinned data."""
         return zfit.data.Data.from_numpy(obs=obs, array=array)
 
-    @staticmethod
-    def load_from_zfit_data(obs, data):
+    def load_from_zfit_data(self, obs, data):
         """Load a zfit Data object as unbinned data."""
         return data.with_obs(obs)
 
-    @staticmethod
-    def add_data(data_old, data_new, obs, isbinned):
+    def load_from_hist(self, obs, hist, limits):
+        """Load from a hist.Hist object as binned data."""
+        hist_array = hist.to_numpy()
+        idx_min = np.argmin(np.abs(hist_array[1] - limits[0]))
+        idx_max = np.argmin(np.abs(hist_array[1] - limits[1]))
+
+        data = zfit.data.BinnedData.from_tensor(
+            obs,
+            hist.values()[idx_min:idx_max],
+            hist.variances()[idx_min:idx_max]
+        )
+        return data
+
+    def norm(self, data, isbinned):
+        """Get the integral of the data."""
+        if isbinned:
+            return float(sum(data.values()))
+        return float(len(data.to_pandas()))
+
+    def add_data(self, data_old, data_new, obs, isbinned):
         """Add data to the existing dataset."""
         if isbinned:
             data = zfit.data.concat(
                 [data_old.to_unbinned(), data_new.to_unbinned()]
             ).to_binned(obs)
-            norm = float(sum(data.values()))
         else:
             data = zfit.data.concat([data_old, data_new])
-            norm = float(len(data.to_pandas()))
-        return data, norm
+        return data, self.norm(data, isbinned)
 
-    @staticmethod
-    def get_binned_obs_from_unbinned_data(bins, limits, var_name):
+    def get_binned_obs_from_unbinned_data(self, bins, limits, var_name):
         """
         Get the binned obs from unbinned obs
 
@@ -82,8 +111,7 @@ class ZfitDataHandler:
 
         return obs
 
-    @staticmethod
-    def get_unbinned_obs_from_binned_data(limits, var_name):
+    def get_unbinned_obs_from_binned_data(self, limits, var_name):
         """
         Get the unbinned obs from binned obs
 
@@ -96,26 +124,148 @@ class ZfitDataHandler:
 
         return obs
 
-    @staticmethod
-    def to_pandas(data):
+    def get_binning(self, obs):
+        """Get the binning of the data."""
+        return obs.binning[0]
+
+    def to_pandas(self, data):
         """Convert zfit data to pandas DataFrame."""
         return data.to_pandas()
 
-    @staticmethod
-    def to_numpy(data):
+    def to_numpy(self, data):
         """Convert zfit data to numpy array."""
-        return data.to_numpy()
+        return data.to_numpy()[:, 0]
 
-    @staticmethod
-    def to_binned(data, binned_obs):
+    def to_binned(self, data, binned_obs):
         """Convert zfit unbinned data to binned data."""
         return data.to_binned(binned_obs)
 
-    @staticmethod
-    def to_hist(data):
+    def to_hist(self, data):
         """Convert zfit data to hist.Hist."""
 
         return data.to_hist()
+
+
+# pylint: disable=no-member
+class RooFitDataHandler:
+    """
+    Class for managing the data of (ROOT tree, TH1, numpy array, etc.) in RooFit format
+    """
+    def __init__(self):
+        self.root = _import_root()
+
+    def data_range(self, data):
+        """Get the range of the data."""
+        arr = data.to_numpy()
+        return float(arr.min()), float(arr.max())
+
+    def make_unbinned_obs(self, var_name, limits):
+        """Make an unbinned observable for RooFit."""
+        return self.root.RooRealVar(var_name, var_name, limits[0], limits[1])
+
+    def obs_name(self, obs):
+        """Get the variable name carried by the observable."""
+        return obs.GetName()
+
+    def make_binned_obs(self, var_name, limits, nbins):
+        """Make a binned observable for RooFit."""
+        var = self.root.RooRealVar(var_name, var_name, limits[0], limits[1])
+        var.setBins(nbins)
+        return var
+
+    def load_from_pandas(self, obs, df):
+        """Load a pandas DataFrame as unbinned data."""
+        return self.root.RooDataSet.from_pandas(df, [obs])
+
+    def load_from_numpy(self, obs, array):
+        """Load a numpy array as unbinned data."""
+        return self.root.RooDataSet.from_numpy({obs.GetName(): array}, [obs])
+
+    def load_from_zfit_data(self, obs, data):
+        """Load a zfit Data object as unbinned data."""
+        return self.root.RooDataSet.from_numpy({obs.GetName(): data.to_numpy()}, [obs])
+
+    def load_from_hist(self, obs, hist, limits):
+        """Load from a hist.Hist object as binned data."""
+
+        hist_array = hist.to_numpy()
+        idx_min = np.argmin(np.abs(hist_array[1] - limits[0]))
+        idx_max = np.argmin(np.abs(hist_array[1] - limits[1]))
+
+        counts = hist.values(flow=False)[idx_min:idx_max]
+        variances = hist.variances(flow=False)[idx_min:idx_max]
+
+        hist = obs.createHistogram(obs.GetName())
+
+        for i, (c, v) in enumerate(zip(counts, variances)):
+            hist.SetBinContent(i + 1, c)
+            hist.SetBinError(i + 1, np.sqrt(v))
+
+        return self.root.RooDataHist(obs.GetName(), obs.GetName(), [obs], hist)
+
+    def norm(self, data, isbinned):  # pylint: disable=unused-argument
+        """Get the integral of the data."""
+        return float(data.sumEntries())
+
+    # pylint: disable=unused-argument
+    def add_data(self, data_old, data_new, obs, isbinned):
+        """Add data to the existing dataset."""
+        if isbinned:
+            data_old.add(data_new)
+        else:
+            data_old.append(data_new)
+        return data_old, self.norm(data_old, isbinned)
+
+    def get_binned_obs_from_unbinned_data(self, bins, limits, var_name):
+        """
+        Get the binned obs from unbinned obs
+
+        Returns
+        -------------------------------------------------
+        binned_obs: ROOT.RooRealVar
+            The variable for unbinned data converted to binned data
+        """
+        var = self.root.RooRealVar(var_name, var_name, limits[0], limits[1])
+        var.setBins(bins)
+
+        return var
+
+    def get_unbinned_obs_from_binned_data(self, limits, var_name):
+        """
+        Get the unbinned obs from binned obs
+
+        Returns
+        -------------------------------------------------
+        unbinned_obs: ROOT.RooRealVar
+            The variable for binned data converted to unbinned data
+        """
+        var = self.root.RooRealVar(var_name, var_name, limits[0], limits[1])
+
+        return var
+
+    def get_binning(self, obs):
+        """Get the binning of the data."""
+        binning = obs.getBinning()
+        return [(binning.binLow(i), binning.binHigh(i)) for i in range(binning.numBins())]
+
+    def to_pandas(self, data):
+        """Convert RooFit data to pandas DataFrame."""
+        return data.to_pandas()
+
+    def to_numpy(self, data):
+        """Convert RooFit data to numpy array."""
+        # data.get().first() retrieves the variable from the RooFit dataset.
+        return data.to_numpy()[data.get().first().GetName()]
+
+    def to_binned(self, data, binned_obs):
+        """Convert RooFit unbinned data to binned data."""
+        return self.root.RooDataHist("binnedData", "Binned Data", [binned_obs], data)
+
+    def to_hist(self, data):
+        """Convert RooFit data to hist.Hist."""
+        th1_hist = data.createHistogram(data.get().first().GetName())
+        return uproot.from_pyroot(th1_hist).to_hist()
+
 
 # pylint: disable=too-many-instance-attributes, too-many-public-methods
 class DataHandler:
@@ -175,10 +325,9 @@ class DataHandler:
         data = self._load_data(data, limits, **kwargs)
         if self._isbinned:
             self._binned_data = data
-            self._norm = float(sum(self._binned_data.values()))
         else:
             self._data = data
-            self._norm = float(len(self._data.to_pandas()))
+        self._norm = self._backend.norm(data, self._isbinned)
 
     def _make_backend(self, use_zfit):
         """
@@ -196,9 +345,7 @@ class DataHandler:
         """
         if use_zfit:
             return ZfitDataHandler()
-
-        Logger('Non-zfit data not available', 'FATAL')
-        return None
+        return RooFitDataHandler()
 
     def _check_set_format(self, format_name):
         """
@@ -274,7 +421,7 @@ class DataHandler:
         idx_min = np.argmin(np.abs(edges - self._limits[0]))
         idx_max = np.argmin(np.abs(edges - self._limits[1]))
         if self._obs is None:
-            self._nbins = idx_max - idx_min
+            self._nbins = int(idx_max - idx_min)
             self._obs = self._backend.make_binned_obs(
                 self._var_name, self._limits, self._nbins)
         else:
@@ -315,13 +462,21 @@ class DataHandler:
             data = self._load_from_zfit_data_binned(data, limits)
         elif isinstance(data, uproot.behaviors.TH1.Histogram):
             self._check_set_format('uproot')
-            data = self._load_from_histogram(data, limits)
+            data = self._load_from_uproot_histogram(data, limits)
         # Care the position: "TH1" is also in uproot type
         elif "TH1" in str(type(data)):
             self._check_set_format('root_hist')
-            data = self._load_from_histogram(data, limits)
+            tmp = data.Clone("temp_hist")
+            tmp.SetDirectory(0)
+            data = self._load_from_uproot_histogram(uproot.from_pyroot(tmp), limits)
+        elif "RooDataHist" in str(type(data)):
+            self._check_set_format('roofit_hist')
+            roo_hist = data.Clone("temp_roo_hist")
+            hist = data.createHistogram("temp_hist", roo_hist.get(0).first())
+            hist.SetDirectory(0)
+            data = self._load_from_uproot_histogram(uproot.from_pyroot(hist), limits)
         else:
-            Logger('Data format not supported', 'FATAL')
+            Logger(f'Data format {type(data)} not supported', 'FATAL')
 
         return data
 
@@ -344,7 +499,7 @@ class DataHandler:
             if 'histoname' in kwargs:
                 with uproot.open(filename, encoding="utf-8") as file:
                     hist = file[kwargs['histoname']]
-                return self._load_from_histogram(hist, limits)
+                return self._load_from_uproot_histogram(hist, limits)
             if 'treename' in kwargs:
                 with uproot.open(filename, encoding="utf-8") as file:
                     df = file[kwargs['treename']].arrays(library='pd')
@@ -381,68 +536,24 @@ class DataHandler:
 
     def _load_from_zfit_data_binned(self, data, limits):
         """Load a zfit DataBinned object as binned data."""
-        return self._load_from_histogram(data, limits)
-
-    def is_th1_weighted(self, hist):
-        """
-        Check if a ROOT.TH1 histogram is weighted.
-        Adapted from uproot weighted property in TH1 behavior.
-
-        Parameters
-        ------------------------------------------------
-        hist: ROOT.TH1
-            The histogram to be checked.
-
-        Returns
-        -------------------------------------------------
-        is_weighted: bool
-            True if the histogram is weighted, False otherwise.
-        """
-        ncells = hist.GetNcells()
-        sumw2 = hist.GetSumw2()
-        return sumw2 is not None and len(sumw2) == ncells
-
-    def _load_from_histogram(self, hist_obj, limits):
-        """
-        Load an uproot histogram object as binned data.
-        """
-
         self._check_binned_unbinned(True)
-        if self._format == 'root_hist':
-            nbins = hist_obj.GetNbinsX()
-            xmin = hist_obj.GetXaxis().GetXmin()
-            xmax = hist_obj.GetXaxis().GetXmax()
+        self._resolve_limits_binned(data.binning[0].edges, limits)
+        self._build_binned_obs(data.binning[0].edges)
+        return self._backend.load_from_hist(self._obs, data.to_hist(), self._limits)
 
-            is_weighted = self.is_th1_weighted(hist_obj)
-            storage = "weight" if is_weighted else "double"
+    def _load_from_uproot_histogram(self, hist_obj, limits):
+        """
+        Load a histogram object as binned data.
+        """
+        self._check_binned_unbinned(True)
 
-            hist = Hist(Regular(nbins, xmin, xmax, name="x"), storage=storage)
-            contents = np.array([hist_obj.GetBinContent(i+1) for i in range(nbins)])
-            errors2 = np.array([hist_obj.GetBinError(i+1)**2 for i in range(nbins)])
-
-            if is_weighted:
-                view = hist.view(flow=False)
-                view.value = contents
-                view.variance = errors2
-            else:
-                hist.view(flow=False)[...] = contents
-                hist.variances(flow=False)[...] = errors2
-        else:
-            hist = hist_obj.to_hist()
+        hist = hist_obj.to_hist()
         hist = eval(f"hist[::{self._rebin}j]")  # pylint: disable=eval-used
         hist_array = hist.to_numpy()
-
         self._resolve_limits_binned(hist_array[1], limits)
         self._build_binned_obs(hist_array[1])
-        idx_min = np.argmin(np.abs(hist_array[1] - self._limits[0]))
-        idx_max = np.argmin(np.abs(hist_array[1] - self._limits[1]))
 
-        data = zfit.data.BinnedData.from_tensor(
-            self._obs,
-            hist.values()[idx_min:idx_max],
-            hist.variances()[idx_min:idx_max]
-        )
-        return data
+        return self._backend.load_from_hist(self._obs, hist, self._limits)
 
     def add_data(self, data, **kwargs):
         """
@@ -530,6 +641,17 @@ class DataHandler:
         """
         return self._obs
 
+    def get_obs_name(self):
+        """
+        Get the variable name carried by the observation space
+
+        Returns
+        -------------------------------------------------
+        obs_name: str
+            The name of the variable the observation space is defined for
+        """
+        return self._backend.obs_name(self._obs)
+
     def get_binned_obs_from_unbinned_data(self):
         """
         Get the binned obs from unbinned obs
@@ -569,6 +691,19 @@ class DataHandler:
 
         return self._norm
 
+    def get_binning(self):
+        """
+        Get the binning of the data
+
+        Returns
+        -------------------------------------------------
+        binning: array
+            The binning of the data
+        """
+        if self._isbinned:
+            return self._backend.get_binning(self._obs)
+        return self._backend.get_binning(self.get_binned_obs_from_unbinned_data())
+
     def get_bin_center(self):
         """
         Get the center of the bins
@@ -578,12 +713,8 @@ class DataHandler:
         binning: array
             The bin center
         """
-        if self._isbinned:
-            binning = self._obs.binning[0]
-        else:
-            binning = self.get_binned_obs_from_unbinned_data().binning[0]
         bin_center = []
-        for bin_ in binning:
+        for bin_ in self.get_binning():
             bin_center.append((bin_[0] + bin_[1])/2)
         return bin_center
 
@@ -596,10 +727,7 @@ class DataHandler:
         bin_edges: list
             The bin edges
         """
-        if self._isbinned:
-            binning = self._obs.binning[0]
-        else:
-            binning = self.get_binned_obs_from_unbinned_data().binning[0]
+        binning = self.get_binning()
         bin_edges = []
         for bin_ in binning:
             bin_edges.append(bin_[0])
@@ -666,6 +794,7 @@ class DataHandler:
             self._backend.to_binned(self._data, self.get_binned_obs_from_unbinned_data()),
             var_name=self._var_name,
             limits=self._limits,
+            use_zfit=self._use_zfit,
             rebin=1
         )
 
