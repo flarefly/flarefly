@@ -12,7 +12,112 @@ from hist.axis import Regular
 from flarefly.utils import Logger
 
 
-# pylint: disable=too-many-instance-attributes,too-many-statements,too-many-branches, too-many-public-methods
+class ZfitDataHandler:
+    """
+    Class for managing the data of (ROOT tree, TH1, numpy array, etc.) in zfit format
+    """
+
+    @staticmethod
+    def data_range(data):
+        """Get the range of the data."""
+        arr = data.to_numpy()
+        return float(arr.min()), float(arr.max())
+
+    @staticmethod
+    def make_unbinned_obs(var_name, limits):
+        """Make an unbinned observable for zfit."""
+        return zfit.Space(obs=var_name, lower=limits[0], upper=limits[1])
+
+    @staticmethod
+    def make_binned_obs(var_name, limits, nbins):
+        """Make a binned observable for zfit."""
+        binning = zfit.binned.RegularBinning(
+            nbins,
+            limits[0],
+            limits[1],
+            name=var_name
+        )
+        return zfit.Space(var_name, binning=binning)
+
+    @staticmethod
+    def load_from_pandas(obs, df):
+        """Load a pandas DataFrame as unbinned data."""
+        return zfit.data.Data.from_pandas(obs=obs, df=df)
+
+    @staticmethod
+    def load_from_numpy(obs, array):
+        """Load a numpy array as unbinned data."""
+        return zfit.data.Data.from_numpy(obs=obs, array=array)
+
+    @staticmethod
+    def load_from_zfit_data(obs, data):
+        """Load a zfit Data object as unbinned data."""
+        return data.with_obs(obs)
+
+    @staticmethod
+    def add_data(data_old, data_new, obs, isbinned):
+        """Add data to the existing dataset."""
+        if isbinned:
+            data = zfit.data.concat(
+                [data_old.to_unbinned(), data_new.to_unbinned()]
+            ).to_binned(obs)
+            norm = float(sum(data.values()))
+        else:
+            data = zfit.data.concat([data_old, data_new])
+            norm = float(len(data.to_pandas()))
+        return data, norm
+
+    @staticmethod
+    def get_binned_obs_from_unbinned_data(bins, limits, var_name):
+        """
+        Get the binned obs from unbinned obs
+
+        Returns
+        -------------------------------------------------
+        binned_obs: zfit.core.space.Space
+            The observation space for unbinned data converted to binned data
+        """
+        binning = zfit.binned.RegularBinning(bins, limits[0], limits[1], name=var_name)
+        obs = zfit.Space(var_name, binning=binning)
+
+        return obs
+
+    @staticmethod
+    def get_unbinned_obs_from_binned_data(limits, var_name):
+        """
+        Get the unbinned obs from binned obs
+
+        Returns
+        -------------------------------------------------
+        unbinned_obs: zfit.core.space.Space
+            The observation space for binned data converted to unbinned data
+        """
+        obs = zfit.Space(var_name, lower=limits[0], upper=limits[1])
+
+        return obs
+
+    @staticmethod
+    def to_pandas(data):
+        """Convert zfit data to pandas DataFrame."""
+        return data.to_pandas()
+
+    @staticmethod
+    def to_numpy(data):
+        """Convert zfit data to numpy array."""
+        return data.to_numpy()
+
+    @staticmethod
+    def to_binned(data, binned_obs):
+        """Convert zfit unbinned data to binned data."""
+        return data.to_binned(binned_obs)
+
+    @staticmethod
+    def to_hist(data):
+        """Convert zfit data to hist.Hist."""
+
+        return data.to_hist()
+
+# pylint: disable=too-many-instance-attributes, too-many-public-methods
 class DataHandler:
     """
     Class for storing and managing the data of (ROOT tree, TH1, numpy array, etc.)
@@ -53,32 +158,49 @@ class DataHandler:
         nbins = kwargs.get('nbins', 100)
         rebin = kwargs.get('rebin', 1)
 
-        self._input_ = data
-        self._var_name_ = var_name
-        self._limits_ = [None, None]
-        self._use_zfit_ = use_zfit
-        self._obs_ = None
-        self._data_ = None
-        self._binned_data_ = None
-        self._nbins_ = nbins
-        self._isbinned_ = None
-        self._norm_ = 1.0
-        self._rebin_ = rebin
-        self.__format__ = None
+        self._backend = self._make_backend(use_zfit)
+        self._input = data
+        self._var_name = var_name
+        self._limits = [None, None]
+        self._use_zfit = use_zfit
+        self._obs = None
+        self._data = None
+        self._binned_data = None
+        self._nbins = nbins
+        self._isbinned = None
+        self._norm = 1.0
+        self._rebin = rebin
+        self._format = None
 
-        if use_zfit:
-            data = self.__load_data(data, limits, **kwargs)
-            # Update normalization: binned data sums over bin values, unbinned counts entries.
-            if self._isbinned_:
-                self._binned_data_ = data
-                self._norm_ = float(sum(self._binned_data_.values()))
-            else:
-                self._data_ = data
-                self._norm_ = float(len(self._data_.to_pandas()))
+        data = self._load_data(data, limits, **kwargs)
+        if self._isbinned:
+            self._binned_data = data
+            self._norm = float(sum(self._binned_data.values()))
         else:
-            Logger('Non-zfit data not available', 'FATAL')
+            self._data = data
+            self._norm = float(len(self._data.to_pandas()))
 
-    def __check_set_format(self, format_name):
+    def _make_backend(self, use_zfit):
+        """
+        Make the backend for the fit
+
+        Parameters
+        ------------------------------------------------
+        use_zfit: bool
+            If True, zfit package is used to fit the data
+
+        Returns
+        ------------------------------------------------
+        backend: zfit or None
+            Backend for the fit
+        """
+        if use_zfit:
+            return ZfitDataHandler()
+
+        Logger('Non-zfit data not available', 'FATAL')
+        return None
+
+    def _check_set_format(self, format_name):
         """
         Checks and sets the data format for the handler.
 
@@ -90,44 +212,12 @@ class DataHandler:
         format_name: str
             The data format to check and set.
         """
-        if self.__format__ is not None and self.__format__ != format_name:
-            Logger(f'Data format set to {self.__format__}, cannot use {format_name}', 'FATAL')
-        elif self.__format__ is None:
-            self.__format__ = format_name
+        if self._format is not None and self._format != format_name:
+            Logger(f'Data format set to {self._format}, cannot use {format_name}', 'FATAL')
+        elif self._format is None:
+            self._format = format_name
 
-    def __check_set_limits_unbinned_obs_(self, data, limits):
-        """
-        Check and set the limits for unbinned observations.
-
-        This method updates the limits and observation space for unbinned data if the limits are not already set.
-        It sets the lower limit to the minimum value in the data and the upper limit to the maximum value in the data.
-        The observation space is then updated with these new limits.
-
-        Parameters
-        ------------------------------------------------
-        data: iterable
-            The unbinned data to determine the limits from.
-        limits: list
-            The limits provided by the user.
-        """
-        if None in self._limits_ and limits is not None:
-            self._limits_[0] = limits[0]
-            self._limits_[1] = limits[1]
-        elif None in self._limits_:
-            if isinstance(data, pd.DataFrame):
-                self._limits_[0] = min(data[self._var_name_])
-                self._limits_[1] = max(data[self._var_name_])
-            elif isinstance(data, zfit.core.data.Data):
-                array = data.to_numpy()
-                self._limits_[0] = min(array)[0]
-                self._limits_[1] = max(array)[0]
-            else:
-                self._limits_[0] = min(data)
-                self._limits_[1] = max(data)
-        if self._obs_ is None:
-            self._obs_ = zfit.Space(self._var_name_, lower=self._limits_[0], upper=self._limits_[1])
-
-    def __check_binned_unbinned_(self, isbinned):
+    def _check_binned_unbinned(self, isbinned):
         """
         Checks and sets the binning status of the data.
 
@@ -141,62 +231,56 @@ class DataHandler:
         isbinned: bool
             The binning status to check against the current status.
         """
-        if self._isbinned_ is None:
-            self._isbinned_ = isbinned
-        elif self._isbinned_ is not None and self._isbinned_ != isbinned:
+        if self._isbinned is None:
+            self._isbinned = isbinned
+        elif self._isbinned is not None and self._isbinned != isbinned:
             Logger('Data format mismatch', 'FATAL')
 
-    def __check_set_limits_binned_obs_(self, data, limits):
-        """
-        Check and set the limits and binning for binned observations.
+    def _data_range(self, data):
+        if isinstance(data, pd.DataFrame):
+            return min(data[self._var_name]), max(data[self._var_name])
+        if isinstance(data, np.ndarray):
+            return data.min(), data.max()
+        return self._backend.data_range(data)  # zfit
 
-        This method checks if the limits for the binned observations are set. If not, it sets the number of bins,
-        the lower limit, and the upper limit based on the provided data. It then creates a regular binning and
-        observation space using zfit. If the limits are already set, it verifies that the bin edges match the
-        provided data. If the bin edges do not match, it logs a fatal error.
+    def _resolve_limits_unbinned(self, data, limits):
+        if None not in self._limits:  # Already set limits
+            return
 
-        Parameters
-        ------------------------------------------------
-        data: tuple
-            A tuple where the second element is an array-like structure containing the bin edges.
-        limits: list
-            The limits provided by the user.
-        """
-        if None in self._limits_ and limits is not None:
-            idx_min = np.argmin(np.abs(data[1] - limits[0]))
-            idx_max = np.argmin(np.abs(data[1] - limits[1]))
-            self._limits_[0] = data[1][idx_min]
-            self._limits_[1] = data[1][idx_max]
-        elif None in self._limits_:
-            self._limits_[0] = data[1][0]
-            self._limits_[1] = data[1][-1]
-        if self._obs_ is None:
-            idx_min = np.argmin(np.abs(data[1] - self._limits_[0]))
-            idx_max = np.argmin(np.abs(data[1] - self._limits_[1]))
-            self._nbins_ = idx_max - idx_min
-            binning = zfit.binned.RegularBinning(
-                self._nbins_,
-                self._limits_[0],
-                self._limits_[1],
-                name=self._var_name_
-            )
-            self._obs_ = zfit.Space(self._var_name_, binning=binning)
+        if limits is not None:
+            self._limits = [limits[0], limits[1]]
         else:
-            idx_min = np.argmin(np.abs(data[1] - self._limits_[0]))
-            idx_max = np.argmin(np.abs(data[1] - self._limits_[1]))
-            binning = zfit.binned.RegularBinning(
-                self._nbins_,
-                self._limits_[0],
-                self._limits_[1],
-                name=self._var_name_
-            )
-            bin_edges = []
-            for i in range(self._nbins_):
-                bin_edges.append(binning.bin(i)[0])
-            if not np.allclose(bin_edges, data[1][idx_min:idx_max]):
-                Logger('Bin edges do not match', 'FATAL')
+            self._limits = list(self._data_range(data))
 
-    def __load_data(self, data, limits, **kwargs):
+    def _resolve_limits_binned(self, edges, limits):
+        if None not in self._limits:
+            return
+        if limits is not None:
+            self._limits = [edges[np.argmin(np.abs(edges - limits[0]))],
+                            edges[np.argmin(np.abs(edges - limits[1]))]]
+        else:
+            self._limits = [edges[0], edges[-1]]
+
+    def _check_binning_matches(self, edges, idx_min, idx_max):
+        expected = np.linspace(self._limits[0], self._limits[1], self._nbins + 1)[:-1]
+        if not np.allclose(expected, edges[idx_min:idx_max]):
+            Logger('Bin edges do not match', 'FATAL')
+
+    def _build_unbinned_obs(self):
+        if self._obs is None:
+            self._obs = self._backend.make_unbinned_obs(self._var_name, self._limits)
+
+    def _build_binned_obs(self, edges):
+        idx_min = np.argmin(np.abs(edges - self._limits[0]))
+        idx_max = np.argmin(np.abs(edges - self._limits[1]))
+        if self._obs is None:
+            self._nbins = idx_max - idx_min
+            self._obs = self._backend.make_binned_obs(
+                self._var_name, self._limits, self._nbins)
+        else:
+            self._check_binning_matches(edges, idx_min, idx_max)
+
+    def _load_data(self, data, limits, **kwargs):
         """
         Load data from various formats.
 
@@ -216,32 +300,32 @@ class DataHandler:
             The loaded data in the appropriate format.
         """
         if isinstance(data, str):
-            data = self.__load_from_file(data, limits, **kwargs)
+            data = self._load_from_file(data, limits, **kwargs)
         elif isinstance(data, np.ndarray):
-            self.__check_set_format('numpy')
-            data = self.__load_from_numpy(data, limits)
+            self._check_set_format('numpy')
+            data = self._load_from_numpy(data, limits)
         elif isinstance(data, pd.DataFrame):
-            self.__check_set_format('pandas')
-            data = self.__load_from_pandas(data, limits)
+            self._check_set_format('pandas')
+            data = self._load_from_pandas(data, limits)
         elif isinstance(data, zfit.data.Data):
-            self.__check_set_format('zfit_data')
-            data = self.__load_from_zfit_data(data, limits)
+            self._check_set_format('zfit_data')
+            data = self._load_from_zfit_data(data, limits)
         elif isinstance(data, zfit.data.BinnedData):
-            self.__check_set_format('zfit_data_binned')
-            data = self.__load_from_zfit_data_binned(data, limits)
+            self._check_set_format('zfit_data_binned')
+            data = self._load_from_zfit_data_binned(data, limits)
         elif isinstance(data, uproot.behaviors.TH1.Histogram):
-            self.__check_set_format('uproot')
-            data = self.__load_from_histogram(data, limits)
+            self._check_set_format('uproot')
+            data = self._load_from_histogram(data, limits)
         # Care the position: "TH1" is also in uproot type
         elif "TH1" in str(type(data)):
-            self.__check_set_format('root_hist')
-            data = self.__load_from_histogram(data, limits)
+            self._check_set_format('root_hist')
+            data = self._load_from_histogram(data, limits)
         else:
             Logger('Data format not supported', 'FATAL')
 
         return data
 
-    def __load_from_file(self, filename, limits, **kwargs):
+    def _load_from_file(self, filename, limits, **kwargs):
         """
         Load data from file-based sources (ROOT or parquet).
 
@@ -255,46 +339,49 @@ class DataHandler:
             Additional keyword arguments to be passed to the specific data loading functions.
         """
         if filename.endswith('.root'):
-            if self.__format__ is None:
-                self.__check_set_format('root')
+            if self._format is None:
+                self._check_set_format('root')
             if 'histoname' in kwargs:
                 with uproot.open(filename, encoding="utf-8") as file:
                     hist = file[kwargs['histoname']]
-                return self.__load_from_histogram(hist, limits)
+                return self._load_from_histogram(hist, limits)
             if 'treename' in kwargs:
                 with uproot.open(filename, encoding="utf-8") as file:
                     df = file[kwargs['treename']].arrays(library='pd')
-                return self.__load_from_pandas(df, limits)
+                return self._load_from_pandas(df, limits)
             Logger('"histoname" not specified. Please specify the name of the histogram to be used', 'FATAL')
             return None
         if filename.endswith('.parquet') or filename.endswith('.parquet.gzip'):
-            self.__check_set_format('parquet')
+            self._check_set_format('parquet')
             df = pd.read_parquet(filename)
-            return self.__load_from_pandas(df, limits)
+            return self._load_from_pandas(df, limits)
         Logger('Data format not supported yet. Please use .root or .parquet', 'FATAL')
         return None
 
-    def __load_from_numpy(self, data, limits):
+    def _load_from_numpy(self, data, limits):
         """Load a numpy array as unbinned data."""
-        self.__check_binned_unbinned_(False)
-        self.__check_set_limits_unbinned_obs_(data, limits)
-        return zfit.data.Data.from_numpy(obs=self._obs_, array=data)
+        self._check_binned_unbinned(False)
+        self._resolve_limits_unbinned(data, limits)
+        self._build_unbinned_obs()
+        return self._backend.load_from_numpy(obs=self._obs, array=data)
 
-    def __load_from_pandas(self, df, limits):
+    def _load_from_pandas(self, df, limits):
         """Load a pandas DataFrame as unbinned data."""
-        self.__check_binned_unbinned_(False)
-        self.__check_set_limits_unbinned_obs_(df, limits)
-        return zfit.data.Data.from_pandas(obs=self._obs_, df=df)
+        self._check_binned_unbinned(False)
+        self._resolve_limits_unbinned(df, limits)
+        self._build_unbinned_obs()
+        return self._backend.load_from_pandas(obs=self._obs, df=df)
 
-    def __load_from_zfit_data(self, data, limits):
+    def _load_from_zfit_data(self, data, limits):
         """Load a zfit Data object as unbinned data."""
-        self.__check_binned_unbinned_(False)
-        self.__check_set_limits_unbinned_obs_(data, limits)
-        return data.with_obs(self._obs_)
+        self._check_binned_unbinned(False)
+        self._resolve_limits_unbinned(data, limits)
+        self._build_unbinned_obs()
+        return self._backend.load_from_zfit_data(obs=self._obs, data=data)
 
-    def __load_from_zfit_data_binned(self, data, limits):
+    def _load_from_zfit_data_binned(self, data, limits):
         """Load a zfit DataBinned object as binned data."""
-        return self.__load_from_histogram(data, limits)
+        return self._load_from_histogram(data, limits)
 
     def is_th1_weighted(self, hist):
         """
@@ -315,13 +402,13 @@ class DataHandler:
         sumw2 = hist.GetSumw2()
         return sumw2 is not None and len(sumw2) == ncells
 
-    def __load_from_histogram(self, hist_obj, limits):
+    def _load_from_histogram(self, hist_obj, limits):
         """
         Load an uproot histogram object as binned data.
         """
 
-        self.__check_binned_unbinned_(True)
-        if self.__format__ == 'root_hist':
+        self._check_binned_unbinned(True)
+        if self._format == 'root_hist':
             nbins = hist_obj.GetNbinsX()
             xmin = hist_obj.GetXaxis().GetXmin()
             xmax = hist_obj.GetXaxis().GetXmax()
@@ -342,15 +429,16 @@ class DataHandler:
                 hist.variances(flow=False)[...] = errors2
         else:
             hist = hist_obj.to_hist()
-        hist = eval(f"hist[::{self._rebin_}j]")  # pylint: disable=eval-used
+        hist = eval(f"hist[::{self._rebin}j]")  # pylint: disable=eval-used
         hist_array = hist.to_numpy()
 
-        self.__check_set_limits_binned_obs_(hist_array, limits)
-        idx_min = np.argmin(np.abs(hist_array[1] - self._limits_[0]))
-        idx_max = np.argmin(np.abs(hist_array[1] - self._limits_[1]))
+        self._resolve_limits_binned(hist_array[1], limits)
+        self._build_binned_obs(hist_array[1])
+        idx_min = np.argmin(np.abs(hist_array[1] - self._limits[0]))
+        idx_max = np.argmin(np.abs(hist_array[1] - self._limits[1]))
 
         data = zfit.data.BinnedData.from_tensor(
-            self._obs_,
+            self._obs,
             hist.values()[idx_min:idx_max],
             hist.variances()[idx_min:idx_max]
         )
@@ -369,16 +457,16 @@ class DataHandler:
         """
         if "limits" in kwargs:
             Logger('Limits not needed for adding data', 'FATAL')
-        data = self.__load_data(data, limits=None, **kwargs)
+        data = self._load_data(data, limits=None, **kwargs)
 
-        if self._isbinned_:
-            self._binned_data_ = zfit.data.concat(
-                [self._binned_data_.to_unbinned(), data.to_unbinned()]
-            ).to_binned(self._obs_)
-            self._norm_ = float(sum(self._binned_data_.values()))
+        data_add, self._norm = self._backend.add_data(
+            self._binned_data if self._isbinned else self._data,
+            data, obs=self._obs, isbinned=self._isbinned
+        )
+        if self._isbinned:
+            self._binned_data = data_add
         else:
-            self._data_ = zfit.data.concat([self._data_, data])
-            self._norm_ = float(len(self._data_.to_pandas()))
+            self._data = data_add
 
     def get_data(self, input_data=False):
         """
@@ -395,8 +483,8 @@ class DataHandler:
             The data instance
         """
         if not input_data:
-            return self._data_
-        return self._input_
+            return self._data
+        return self._input
 
     def get_var_name(self):
         """
@@ -407,7 +495,7 @@ class DataHandler:
         var_name: str
             The variable name
         """
-        return self._var_name_
+        return self._var_name
 
     def get_limits(self):
         """
@@ -418,7 +506,7 @@ class DataHandler:
         limits: list
             The range limits of the x axis
         """
-        return self._limits_
+        return self._limits
 
     def get_use_zfit(self):
         """
@@ -429,7 +517,7 @@ class DataHandler:
         use_zfit: bool
             True if zfit is used to fit the data
         """
-        return self._use_zfit_
+        return self._use_zfit
 
     def get_obs(self):
         """
@@ -440,11 +528,7 @@ class DataHandler:
         obs: zfit.core.space.Space
             The observation space
         """
-        if self._use_zfit_:
-            return self._obs_
-
-        Logger('Observable not available for non-zfit data', 'ERROR')
-        return None
+        return self._obs
 
     def get_binned_obs_from_unbinned_data(self):
         """
@@ -455,12 +539,10 @@ class DataHandler:
         binned_obs: zfit.core.space.Space
             The observation space for unbinned data converted to binned data
         """
-        bins = self.get_nbins()
-        limits = self.get_limits()
-        binning = zfit.binned.RegularBinning(bins, limits[0], limits[1], name=self._var_name_)
-        obs = zfit.Space(self._var_name_, binning=binning)
+        bins = self._nbins
+        limits = self._limits
 
-        return obs
+        return self._backend.get_binned_obs_from_unbinned_data(bins, limits, self._var_name)
 
     def get_unbinned_obs_from_binned_data(self):
         """
@@ -471,10 +553,9 @@ class DataHandler:
         unbinned_obs: zfit.core.space.Space
             The observation space for binned data converted to unbinned data
         """
-        limits = self.get_limits()
-        obs = zfit.Space(self._var_name_, lower=limits[0], upper=limits[1])
+        limits = self._limits
 
-        return obs
+        return self._backend.get_unbinned_obs_from_binned_data(limits, self._var_name)
 
     def get_norm(self):
         """
@@ -486,7 +567,7 @@ class DataHandler:
             The normalisation value
         """
 
-        return self._norm_
+        return self._norm
 
     def get_bin_center(self):
         """
@@ -497,8 +578,8 @@ class DataHandler:
         binning: array
             The bin center
         """
-        if self.get_is_binned():
-            binning = self.get_obs().binning[0]
+        if self._isbinned:
+            binning = self._obs.binning[0]
         else:
             binning = self.get_binned_obs_from_unbinned_data().binning[0]
         bin_center = []
@@ -515,8 +596,8 @@ class DataHandler:
         bin_edges: list
             The bin edges
         """
-        if self.get_is_binned():
-            binning = self.get_obs().binning[0]
+        if self._isbinned:
+            binning = self._obs.binning[0]
         else:
             binning = self.get_binned_obs_from_unbinned_data().binning[0]
         bin_edges = []
@@ -534,7 +615,7 @@ class DataHandler:
         nbins: int
             The number of bins
         """
-        return self._nbins_
+        return self._nbins
 
     def get_is_binned(self):
         """
@@ -545,7 +626,7 @@ class DataHandler:
         isbinnned: bool
             A flag that indicates if the data is binned
         """
-        return self._isbinned_
+        return self._isbinned
 
     def get_binned_data(self):
         """
@@ -556,7 +637,7 @@ class DataHandler:
         binned_data: zfit.data.BinnedData
             The binned data
         """
-        return self._binned_data_
+        return self._binned_data
 
     def get_binned_data_from_unbinned_data(self):
         """
@@ -567,8 +648,8 @@ class DataHandler:
         binned_data: float array
             The binned data obtained from unbinned data
         """
-        limits = self.get_limits()
-        data_values, _ = np.histogram(self._data_.to_numpy(), self._nbins_, range=(limits[0], limits[1]))
+        limits = self._limits
+        data_values, _ = np.histogram(self._backend.to_numpy(self._data), self._nbins, range=(limits[0], limits[1]))
 
         return data_values
 
@@ -582,9 +663,9 @@ class DataHandler:
             A DataHandler containing the unbinned data converted to binned data
         """
         return DataHandler(
-            self._data_.to_binned(self.get_binned_obs_from_unbinned_data()),
-            var_name=self.get_var_name(),
-            limits=self.get_limits(),
+            self._backend.to_binned(self._data, self.get_binned_obs_from_unbinned_data()),
+            var_name=self._var_name,
+            limits=self._limits,
             rebin=1
         )
 
@@ -597,8 +678,8 @@ class DataHandler:
         data: pandas.DataFrame
             The data in a pandas DataFrame
         """
-        if self.__format__ in ['pandas', 'numpy', 'parquet', 'root', 'zfit_data'] and not self._isbinned_:
-            return self._data_.to_pandas()
+        if self._format in ['pandas', 'numpy', 'parquet', 'root', 'zfit_data'] and not self._isbinned:
+            return self._backend.to_pandas(self._data)
 
         Logger('Data format not supported yet for pandas conversion.', 'ERROR')
         return None
@@ -612,11 +693,61 @@ class DataHandler:
         data: numpy.ndarray
             The data in a numpy array
         """
-        if self.__format__ in ['pandas', 'numpy', 'parquet', 'root', 'zfit_data'] and not self._isbinned_:
-            return self._data_.to_numpy()
+        if self._format in ['pandas', 'numpy', 'parquet', 'root', 'zfit_data'] and not self._isbinned:
+            return self._backend.to_numpy(self._data)
 
         Logger('Data format not supported yet for numpy conversion.', 'ERROR')
         return None
+
+    def to_hist(self, **kwargs):
+        """
+        returns data in NamedHist
+
+        Parameters
+        ------------------------------------------------
+        **kwargs: dict
+            Additional optional arguments:
+
+            - lower_edge: float
+                lower edge (only used in case of originally unbinned data)
+
+            - upper_edge: float
+                upper edge (only used in case of originally unbinned data)
+
+            - nbins: int
+                number of bins (only used in case of originally unbinned data)
+
+            - axis_title: str
+                label of x-axis (only used in case of originally unbinned data)
+
+            - varname: str
+                name of variable (needed in case of originally unbinned data)
+
+        Returns
+        -------------------------------------------------
+        hist: Hist
+            The data in a hist.Hist
+        """
+
+        if self._isbinned:
+            return self._backend.to_hist(self._binned_data)
+
+        if 'varname' not in kwargs:
+            Logger('Name of variable needed in case of unbinned data.', 'FATAL')
+
+        varname = kwargs['varname']
+        df_unbinned = self.to_pandas()
+        data = df_unbinned[varname].to_numpy()
+
+        nbins = kwargs.get('nbins', 100)
+        lower_edge = kwargs.get('lower_edge', min(data))
+        upper_edge = kwargs.get('upper_edge', max(data))
+        axis_title = kwargs.get('axis_title', varname)
+
+        hist = Hist.new.Reg(nbins, lower_edge, upper_edge, name="x", label=axis_title).Double()
+        hist.fill(x=data)
+
+        return hist
 
     def dump_to_root(self, filename, **kwargs):
         """
@@ -650,7 +781,7 @@ class DataHandler:
 
         with open_file(filename) as ofile:
             name = '' if folder == '' else folder + '/'
-            if self._isbinned_:
+            if self._isbinned:
                 hist = self.to_hist()
                 name += f"hdata{suffix}"
                 ofile[name] = hist
@@ -658,53 +789,3 @@ class DataHandler:
                 tree = self.to_pandas()
                 name += f"treedata{suffix}"
                 ofile.mktree(name, tree)
-
-    def to_hist(self, **kwargs):
-        """
-        returns data in NamedHist
-
-        Parameters
-        ------------------------------------------------
-        **kwargs: dict
-            Additional optional arguments:
-
-            - lower_edge: float
-                lower edge (only used in case of originally unbinned data)
-
-            - upper_edge: float
-                upper edge (only used in case of originally unbinned data)
-
-            - nbins: int
-                number of bins (only used in case of originally unbinned data)
-
-            - axis_title: str
-                label of x-axis (only used in case of originally unbinned data)
-
-            - varname: str
-                name of variable (needed in case of originally unbinned data)
-
-        Returns
-        -------------------------------------------------
-        hist: Hist
-            The data in a hist.Hist
-        """
-
-        if self._isbinned_:
-            return self._binned_data_.to_hist()
-
-        if 'varname' not in kwargs:
-            Logger('Name of variable needed in case of unbinned data.', 'FATAL')
-
-        varname = kwargs['varname']
-        df_unbinned = self._data_.to_pandas()
-        data = df_unbinned[varname].to_numpy()
-
-        nbins = kwargs.get('nbins', 100)
-        lower_edge = kwargs.get('lower_edge', min(data))
-        upper_edge = kwargs.get('upper_edge', max(data))
-        axis_title = kwargs.get('axis_title', varname)
-
-        hist = Hist.new.Reg(nbins, lower_edge, upper_edge, name="x", label=axis_title).Double()
-        hist.fill(x=data)
-
-        return hist
