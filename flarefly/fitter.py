@@ -511,8 +511,7 @@ class F2MassFitter:
 
         # re-initialise the parameters from those obtained in the prefit
         for par in res_prefit.params:
-            which_pdf = int(par.name[-1])
-            self._background_pdfs_[which_pdf].parameters[par.name].set_value(res_prefit.params[par.name]['value'])
+            par.set_value(res_prefit.params[par.name]['value'])
 
     # pylint: disable=too-many-nested-blocks
     def mass_zfit(self, do_prefit=False, **kwargs):
@@ -1281,8 +1280,8 @@ class F2MassFitter:
                 mass = self._signal_pdfs_[idx].get_init_par(mass_name)
                 mass_err = 0.
             else:
-                mass = self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['value']
-                mass_err = self._fit_result_.params[f'{self._name_}_{mass_name}_signal{idx}']['hesse']['error']
+                mass = self._fit_result_.params[self._signal_pdfs_[idx][mass_name].name]['value']
+                mass_err = self._fit_result_.params[self._signal_pdfs_[idx][mass_name].name]['hesse']['error']
 
         return mass, mass_err
 
@@ -1321,8 +1320,8 @@ class F2MassFitter:
                 sigma = self._signal_pdfs_[idx].get_init_par('sigma')
                 sigma_err = 0.
             else:
-                sigma = self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['value']
-                sigma_err = self._fit_result_.params[f'{self._name_}_sigma_signal{idx}']['hesse']['error']
+                sigma = self._fit_result_.params[self._signal_pdfs_[idx]['sigma'].name]['value']
+                sigma_err = self._fit_result_.params[self._signal_pdfs_[idx]['sigma'].name]['hesse']['error']
 
         return sigma, sigma_err
 
@@ -1397,8 +1396,8 @@ class F2MassFitter:
             parameter = self._signal_pdfs_[idx].get_init_par(par_name)
             parameter_err = 0.
         else:
-            parameter = self._fit_result_.params[f'{self._name_}_{par_name}_signal{idx}']['value']
-            parameter_err = self._fit_result_.params[f'{self._name_}_{par_name}_signal{idx}']['hesse']['error']
+            parameter = self._fit_result_.params[self._signal_pdfs_[idx][par_name].name]['value']
+            parameter_err = self._fit_result_.params[self._signal_pdfs_[idx][par_name].name]['hesse']['error']
 
         return parameter, parameter_err
 
@@ -1426,8 +1425,8 @@ class F2MassFitter:
             parameter = self._background_pdfs_[idx].get_init_par(par_name)
             parameter_err = 0.
         else:
-            parameter = self._fit_result_.params[f'{self._name_}_{par_name}_bkg{idx}']['value']
-            parameter_err = self._fit_result_.params[f'{self._name_}_{par_name}_bkg{idx}']['hesse']['error']
+            parameter = self._fit_result_.params[self._background_pdfs_[idx][par_name].name]['value']
+            parameter_err = self._fit_result_.params[self._background_pdfs_[idx][par_name].name]['hesse']['error']
 
         return parameter, parameter_err
 
@@ -2143,11 +2142,7 @@ class F2MassFitter:
         signal_pars = []
         signal_slice = self._signal_pdfs_[:-self.model.n_refl] if self.model.n_refl > 0 else self._signal_pdfs_
         for i_sgn, pdf in enumerate(signal_slice):
-            signal_pars.append({})
-            for key, value in pdf.parameters.items():
-                par_name = key.split(f'{self._name_}_')[-1]
-                par_name = par_name.split(f'_signal{i_sgn}')[0]
-                signal_pars[-1][par_name] = value.numpy()
+            signal_pars.append(self._get_shape_pars(pdf))
             signal_pars[-1]['frac'] = fracs[0][i_sgn]
         return signal_pars
 
@@ -2159,15 +2154,7 @@ class F2MassFitter:
         signal_pars_uncs = []
         signal_slice = self._signal_pdfs_[:-self.model.n_refl] if self.model.n_refl > 0 else self._signal_pdfs_
         for i_sgn, pdf in enumerate(signal_slice):
-            signal_pars_uncs.append({})
-            for key in pdf.parameters:
-                par_name = key.split(f'{self._name_}_')[-1]
-                par_name = par_name.split(f'_signal{i_sgn}')[0]
-                try:
-                    par_unc = self._fit_result_.params[key]['hesse']['error']
-                except KeyError:  # fixed parameter
-                    par_unc = 0.
-                signal_pars_uncs[-1][par_name] = par_unc
+            signal_pars_uncs.append(self._get_shape_pars_uncs(pdf))
             signal_pars_uncs[-1]['frac'] = fracs[3][i_sgn]
         return signal_pars_uncs
 
@@ -2178,11 +2165,7 @@ class F2MassFitter:
         fracs = self.__get_all_fracs()
         bkg_pars = []
         for i_bkg, pdf in enumerate(self._background_pdfs_):
-            bkg_pars.append({})
-            for key, value in pdf.parameters.items():
-                par_name = key.split(f'{self._name_}_')[-1]
-                par_name = par_name.split(f'_bkg{i_bkg}')[0]
-                bkg_pars[-1][par_name] = value.numpy()
+            bkg_pars.append(self._get_shape_pars(pdf))
             bkg_pars[-1]['frac'] = fracs[1][i_bkg]
         return bkg_pars
 
@@ -2193,17 +2176,37 @@ class F2MassFitter:
         fracs = self.__get_all_fracs()
         bkg_pars_uncs = []
         for i_bkg, pdf in enumerate(self._background_pdfs_):
-            bkg_pars_uncs.append({})
-            for key in pdf.parameters:
-                par_name = key.split(f'{self._name_}_')[-1]
-                par_name = par_name.split(f'_bkg{i_bkg}')[0]
-                try:
-                    par_unc = self._fit_result_.params[key]['hesse']['error']
-                except KeyError:  # fixed parameter
-                    par_unc = 0.
-                bkg_pars_uncs[-1][par_name] = par_unc
+            bkg_pars_uncs.append(self._get_shape_pars_uncs(pdf))
             bkg_pars_uncs[-1]['frac'] = fracs[4][i_bkg]
         return bkg_pars_uncs
+
+    def _get_shape_pars(self, pdf):
+        """
+        Return the fitted shape parameters of a pdf, keyed by short name
+        """
+        pars = {}
+        for par_name, par in pdf.parameters.items():
+            if par_name == 'frac':
+                continue
+            try:
+                pars[par_name] = self._fit_result_.params[par.name]['value']
+            except KeyError:  # fixed parameter
+                pars[par_name] = par.value
+        return pars
+
+    def _get_shape_pars_uncs(self, pdf):
+        """
+        Return the uncertainties of the shape parameters of a pdf, keyed by short name
+        """
+        uncs = {}
+        for par_name, par in pdf.parameters.items():
+            if par_name == 'frac':
+                continue
+            try:
+                uncs[par_name] = self._fit_result_.params[par.name]['hesse']['error']
+            except KeyError:  # fixed parameter
+                uncs[par_name] = 0.
+        return uncs
 
     def sample_pdf(self, num=1000):
         """

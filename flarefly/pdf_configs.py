@@ -476,3 +476,42 @@ def get_kde_pdf(kde_kind: PDFKind):
         )
 
     return KDE_MAP[kde_kind]
+
+
+def get_default_parameters(pdf_kind: PDFKind, at_threshold: bool = False):
+    """
+    Get the default setup of all the parameters of a PDF.
+
+    Parameters
+    -------------------------------------------------
+    pdf_kind: PDFKind
+        The kind of the PDF
+    at_threshold: bool
+        Whether the signal PDF is multiplied by a threshold power law
+
+    Returns
+    -------------------------------------------------
+    defaults: dict
+        Dictionary {name: {'init', 'limits', 'fix'}} with the default setup of each parameter
+    """
+    if pdf_kind in (PDFType.NO_SIGNAL, PDFType.NO_BKG, PDFType.NONE):
+        return {}
+
+    if pdf_kind == PDFType.CHEBPOL:
+        coeff_default = BACKGROUND_PDF_CONFIGS[PDFType.CHEBPOL]['parameters']['c']
+        defaults = {f'c{deg}': coeff_default for deg in range(pdf_kind.order + 1)}
+    elif pdf_kind in SIGNAL_PDF_CONFIGS:
+        defaults = dict(SIGNAL_PDF_CONFIGS[pdf_kind]['parameters'])
+    elif pdf_kind in BACKGROUND_PDF_CONFIGS:
+        defaults = dict(BACKGROUND_PDF_CONFIGS[pdf_kind]['parameters'])
+    else:  # KDE and histogram templates have no shape parameters
+        defaults = {}
+
+    if at_threshold:
+        defaults['massthr'] = {'init': pdg_api.get_particle_by_mcid(211).mass,  # pion mass
+                               'limits': [None, None], 'fix': True}
+        defaults['powerthr'] = {'init': 1., 'limits': [None, None], 'fix': False}
+
+    defaults['frac'] = {'init': 0.1, 'limits': [0., 1.], 'fix': False}
+
+    return defaults

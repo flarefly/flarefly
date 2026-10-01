@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import zfit
 from flarefly.utils import Logger
-from flarefly.components import PDFType, F2PDFBase
+from flarefly.components import PDFType, F2PDFBase, ZfitParameterConverter
 from flarefly.pdf_builder import PDFBuilder
 
 if TYPE_CHECKING:
@@ -200,6 +200,7 @@ class F2PDFComposer:
         self.total_pdf_binned = None
         self.total_pdf_norm = None
         self.is_pdf_built = False
+        self.converter = None  # flarefly -> zfit parameters, one per build
 
         # Fractions and Yields containers
         self.fracs = []
@@ -259,12 +260,7 @@ class F2PDFComposer:
             return
 
         for ipdf, pdf in enumerate(self.signal_pdfs):
-            PDFBuilder.build_signal_pdf(
-                pdf,
-                obs,
-                self.name,
-                ipdf
-            )
+            PDFBuilder.build_signal_pdf(pdf, obs, self.name, ipdf, self.converter)
 
     def _build_background_pdfs(self, obs: zfit.Space):
         """
@@ -275,12 +271,7 @@ class F2PDFComposer:
             return
 
         for ipdf, pdf in enumerate(self.background_pdfs):
-            PDFBuilder.build_bkg_pdf(
-                pdf,
-                obs,
-                self.name,
-                ipdf
-            )
+            PDFBuilder.build_bkg_pdf(pdf, obs, self.name, ipdf, self.converter)
 
             if str(pdf.kind) in ['powlaw', 'expopow', 'expopowext'] and\
                     self.data_handler.get_limits()[0] < pdf.get_init_par("mass"):
@@ -367,7 +358,6 @@ class F2PDFComposer:
         """
         # We set all the fractions
         for ipdf, pdf in enumerate(self.signal_pdfs):
-            pdf.set_default_par('frac', init=0.1, fix=False, limits=[0, 1.])
             if self.no_background and ipdf == len(self.signal_pdfs) - 1:
                 # No need to define frac for last signal pdf if no background
                 continue
@@ -379,7 +369,6 @@ class F2PDFComposer:
 
         if len(self.background_pdfs) > 1:
             for ipdf, pdf in enumerate(self.background_pdfs[:-1]):
-                pdf.set_default_par('frac', init=0.1, fix=False, limits=[0, 1.])
                 self.fracs[ipdf + len(self.signal_pdfs)] = zfit.Parameter(
                     f'{self.name}_frac_bkg{ipdf}',
                     pdf.get_init_par('frac'),
@@ -399,7 +388,8 @@ class F2PDFComposer:
             obs = self.data_handler.get_obs()
 
         # order of the pdfs is signal, background
-
+        # one converter for all the pdfs, so that shared parameters become a single zfit parameter
+        self.converter = ZfitParameterConverter()
         self._build_signal_pdfs(obs)
         self._build_background_pdfs(obs)
 

@@ -1,6 +1,8 @@
 """Module defining the base class for PDFs"""
 from flarefly.utils import Logger
 from flarefly.components.pdf_kind import PDFKind, SignalBkgOrRefl
+from flarefly.components.parameters import Parameter
+from flarefly import pdf_configs
 
 
 class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-attributes
@@ -26,8 +28,12 @@ class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-a
         self._kde_option = None
         self._refl_over_sgn = 0.0
         self._at_threshold = kwargs.get('at_threshold', False)
-        self._pars = {}
-        self._parameter_setup = {}
+        self._pars = {
+            name: Parameter(name, value=default['init'], limits=list(default['limits']),
+                            floating=not default['fix'])
+            for name, default in pdf_configs.get_default_parameters(
+                self._kind_pdf, self._at_threshold).items()
+        }
 
     def set_signal_bkg_or_refl(self, signal_bkg_or_refl):
         """Set whether the PDF is signal, background, or reflection"""
@@ -46,7 +52,15 @@ class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-a
     def __repr__(self):
         return (f"F2PDFBase(PDF={self._pdf}, label={self._label_pdf}, kind={self._kind_pdf}, "
                 f"Signal/Background/Reflection={self._signal_bkg_or_refl.name}, at_threshold={self._at_threshold}), "
-                f"parameter_setup={self._parameter_setup}, parameters={self._pars}")
+                f"parameters={self._pars}")
+
+    def __getitem__(self, name):
+        """Get the parameter by name"""
+        return self._pars[name]
+
+    def __setitem__(self, name, value):
+        """Set the parameter by name"""
+        self._pars[name] = value
 
     # ------------------
     # --- Properties ---
@@ -125,6 +139,13 @@ class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-a
         """Get the PDF label"""
         return self._label_pdf
 
+    # --- signal_bkg_or_refl ---
+    @property
+    def signal_bkg_or_refl(self):
+        """Get whether the PDF is signal, background, or reflection"""
+        return self._signal_bkg_or_refl
+
+
     # ----------------------
     # --- Public Methods ---
     # ----------------------
@@ -150,75 +171,54 @@ class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-a
 
     def par_exists(self, name):
         """Check if the parameter exists"""
-        return name in self._parameter_setup
+        return name in self._pars
 
     def create_par(self, name):
         """Create a new parameter"""
-        self._parameter_setup[name] = {}
+        self._pars[name] = Parameter(name)
+
+    def get_par(self, name):
+        """Get the parameter"""
+        return self._pars[name]
 
     def get_init_par(self, name):
         """Get the parameter initial value"""
-        return self._parameter_setup[name]["init"]
+        return self._pars[name].value
 
     def get_limits_par(self, name):
         """Get the parameter limits"""
-        return self._parameter_setup[name]["limits"]
+        return self._pars[name].limits
 
     def get_fix_par(self, name):
         """Get the parameter fix flag"""
-        return self._parameter_setup[name]["fix"]
+        return not self._pars[name].floating
 
     def get_init_pars(self):
         """Get the parameters initial value dictionary"""
-        return {name: p["init"] for name, p in self._parameter_setup.items()}
+        return {name: p.value for name, p in self._pars.items()}
 
     def get_limits_pars(self):
         """Get the parameters limits dictionary"""
-        return {name: p["limits"] for name, p in self._parameter_setup.items()}
+        return {name: p.limits for name, p in self._pars.items()}
 
     def get_fix_pars(self):
         """Get the parameters fix dictionary"""
-        return {name: p["fix"] for name, p in self._parameter_setup.items()}
+        return {name: not p.floating for name, p in self._pars.items()}
 
     def set_init_par(self, name, value):
         """Set the parameter"""
         self._check_and_create_par(name)
-        self._parameter_setup[name]["init"] = value
+        self._pars[name].value = value
 
     def set_limits_par(self, name, value):
         """Set the parameter limits"""
         self._check_and_create_par(name)
-        self._parameter_setup[name]["limits"] = value
+        self._pars[name].limits = value
 
     def set_fix_par(self, name, value):
         """Set the parameter fix flag"""
         self._check_and_create_par(name)
-        self._parameter_setup[name]["fix"] = value
-
-    def set_default_init_par(self, name, value):
-        """Set default parameter"""
-        self._check_and_create_par(name)
-        self._parameter_setup[name].setdefault("init", value)
-
-    def set_default_limits_par(self, name, value):
-        """Set default parameter limits"""
-        self._check_and_create_par(name)
-        self._parameter_setup[name].setdefault("limits", value)
-
-    def set_default_fix_par(self, name, value):
-        """Set default parameter fix flag"""
-        self._check_and_create_par(name)
-        self._parameter_setup[name].setdefault("fix", value)
-
-    def set_default_par(self, name, init=None, limits=None, fix=None):
-        """Set default values for a parameter (only if not already defined)."""
-        self._check_and_create_par(name)
-        if init is not None:
-            self._parameter_setup[name].setdefault("init", init)
-        if limits is not None:
-            self._parameter_setup[name].setdefault("limits", limits)
-        if fix is not None:
-            self._parameter_setup[name].setdefault("fix", fix)
+        self._pars[name].floating = not value
 
     # -----------------------
     # --- Private Methods ---
