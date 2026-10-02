@@ -16,7 +16,6 @@ class ParKind(Enum):
     DIFFERENCE = "difference"
     PRODUCT = "product"
     RATIO = "ratio"
-    POWER = "power"
     NEGATION = "negation"
 
 
@@ -26,7 +25,6 @@ _OPERATIONS = {
     ParKind.DIFFERENCE: (operator.sub, "-"),
     ParKind.PRODUCT: (operator.mul, "*"),
     ParKind.RATIO: (operator.truediv, "/"),
-    ParKind.POWER: (operator.pow, "**"),
     ParKind.NEGATION: (operator.neg, "-"),
 }
 
@@ -190,12 +188,6 @@ class Parameter:  # pylint: disable=too-many-instance-attributes
 
     def __rtruediv__(self, other):
         return self._binary(other, ParKind.RATIO, reflected=True)
-
-    def __pow__(self, other):
-        return self._binary(other, ParKind.POWER)
-
-    def __rpow__(self, other):
-        return self._binary(other, ParKind.POWER, reflected=True)
 
     def __neg__(self):
         return self._compose(ParKind.NEGATION, self)
