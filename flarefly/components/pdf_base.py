@@ -173,10 +173,6 @@ class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-a
         """Check if the parameter exists"""
         return name in self._pars
 
-    def create_par(self, name):
-        """Create a new parameter"""
-        self._pars[name] = Parameter(name)
-
     def get_par(self, name):
         """Get the parameter"""
         return self._pars[name]
@@ -207,23 +203,24 @@ class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-a
 
     def set_init_par(self, name, value):
         """Set the parameter"""
-        self._check_and_create_par(name)
+        self._check_par_exists(name)
         self._pars[name].value = value
 
     def set_limits_par(self, name, value):
         """Set the parameter limits"""
-        self._check_and_create_par(name)
+        self._check_par_exists(name)
         self._pars[name].limits = value
 
     def set_fix_par(self, name, value):
         """Set the parameter fix flag"""
-        self._check_and_create_par(name)
+        self._check_par_exists(name)
         self._pars[name].floating = not value
 
     # -----------------------
     # --- Private Methods ---
     # -----------------------
-    def _check_and_create_par(self, name: str):
-        """Check if parameter exists, if not create it"""
+    def _check_par_exists(self, name: str):
+        """Check if the parameter exists, fail if not (e.g. typo in the name)"""
         if not self.par_exists(name):
-            self.create_par(name)
+            Logger(f"Parameter '{name}' not defined for {self._kind_pdf.value} pdf '{self._label_pdf}', "
+                   f"available parameters: {list(self._pars)}", "FATAL")

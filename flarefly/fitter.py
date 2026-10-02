@@ -1276,12 +1276,7 @@ class F2MassFitter:
             mass_err = 0.
         else:
             mass_name = 'm' if self._signal_pdfs_[idx].uses_m_not_mu() else 'mu'
-            if self._signal_pdfs_[idx].get_fix_par(mass_name):
-                mass = self._signal_pdfs_[idx].get_init_par(mass_name)
-                mass_err = 0.
-            else:
-                mass = self._fit_result_.params[self._signal_pdfs_[idx][mass_name].name]['value']
-                mass_err = self._fit_result_.params[self._signal_pdfs_[idx][mass_name].name]['hesse']['error']
+            mass, mass_err = self._get_par_value_and_error(self._signal_pdfs_[idx][mass_name])
 
         return mass, mass_err
 
@@ -1316,12 +1311,7 @@ class F2MassFitter:
             sigma = np.sqrt(np.average((centres - mean)**2, weights=counts))
             sigma_err = 0.
         else:
-            if self._signal_pdfs_[idx].get_fix_par('sigma'):
-                sigma = self._signal_pdfs_[idx].get_init_par('sigma')
-                sigma_err = 0.
-            else:
-                sigma = self._fit_result_.params[self._signal_pdfs_[idx]['sigma'].name]['value']
-                sigma_err = self._fit_result_.params[self._signal_pdfs_[idx]['sigma'].name]['hesse']['error']
+            sigma, sigma_err = self._get_par_value_and_error(self._signal_pdfs_[idx]['sigma'])
 
         return sigma, sigma_err
 
@@ -1392,14 +1382,7 @@ class F2MassFitter:
                    'https://zfit.readthedocs.io/en/latest/user_api/pdf/_generated/basic/zfit.pdf.Cauchy.html',
                    'WARNING')
 
-        if self._signal_pdfs_[idx].get_fix_par(par_name):
-            parameter = self._signal_pdfs_[idx].get_init_par(par_name)
-            parameter_err = 0.
-        else:
-            parameter = self._fit_result_.params[self._signal_pdfs_[idx][par_name].name]['value']
-            parameter_err = self._fit_result_.params[self._signal_pdfs_[idx][par_name].name]['hesse']['error']
-
-        return parameter, parameter_err
+        return self._get_par_value_and_error(self._signal_pdfs_[idx][par_name])
 
     def get_background_parameter(self, idx, par_name):
         """
@@ -1421,14 +1404,7 @@ class F2MassFitter:
 
         """
 
-        if self._background_pdfs_[idx].get_fix_par(par_name):
-            parameter = self._background_pdfs_[idx].get_init_par(par_name)
-            parameter_err = 0.
-        else:
-            parameter = self._fit_result_.params[self._background_pdfs_[idx][par_name].name]['value']
-            parameter_err = self._fit_result_.params[self._background_pdfs_[idx][par_name].name]['hesse']['error']
-
-        return parameter, parameter_err
+        return self._get_par_value_and_error(self._background_pdfs_[idx][par_name])
 
     def get_signal(self, idx=0, **kwargs):
         """
@@ -2189,10 +2165,29 @@ class F2MassFitter:
             if par_name == 'frac':
                 continue
             try:
-                pars[par_name] = self._fit_result_.params[par.name]['value']
+                pars[par_name] = self._get_par_value(par)
             except KeyError:  # fixed parameter
                 pars[par_name] = par.value
         return pars
+
+    def _get_par_value(self, par):
+        """
+        Return the value of a flarefly parameter after the fit
+        """
+        if par.is_composed():
+            return par.operation(*(self._get_par_value(src) for src in par.sources))
+        if par.is_floating():
+            return self._fit_result_.params[par.name]['value']
+        return par.value
+
+    def _get_par_value_and_error(self, par):
+        """
+        Return the value after the fit and the error of a flarefly parameter
+        """
+        if par.is_floating():
+            fitted = self._fit_result_.params[par.name]
+            return fitted['value'], fitted['hesse']['error']
+        return self._get_par_value(par), 0.  # fixed, constant, or composed
 
     def _get_shape_pars_uncs(self, pdf):
         """
