@@ -2170,24 +2170,38 @@ class F2MassFitter:
                 pars[par_name] = par.value
         return pars
 
-    def _get_par_value(self, par):
+    def _get_free_par_value(self, par):
         """
-        Return the value of a flarefly parameter after the fit
+        Return the value of a free flarefly parameter after the fit
         """
-        if par.is_composed():
-            return par.operation(*(self._get_par_value(src) for src in par.sources))
         if par.is_floating():
             return self._fit_result_.params[par.name]['value']
         return par.value
 
+    def _get_par_value(self, par):
+        """
+        Return the value of a flarefly parameter after the fit
+        """
+        return par.evaluate(self._get_free_par_value)
+
     def _get_par_value_and_error(self, par):
         """
-        Return the value after the fit and the error of a flarefly parameter
+        Return the value after the fit and the error of a flarefly parameter,
+        propagating the fit covariance for composed parameters
         """
         if par.is_floating():
             fitted = self._fit_result_.params[par.name]
             return fitted['value'], fitted['hesse']['error']
-        return self._get_par_value(par), 0.  # fixed, constant, or composed
+
+        value = self._get_par_value(par)
+        gradient = {src: der for src, der in par.gradient(self._get_free_par_value).items() if src.is_floating()}
+        if not gradient:
+            return value, 0.
+
+        zfit_pars = {zfit_par.name: zfit_par for zfit_par in self._fit_result_.params}
+        cov = self._fit_result_.covariance(params=[zfit_pars[src.name] for src in gradient])
+        der = np.array(list(gradient.values()))
+        return value, float(np.sqrt(der @ cov @ der))
 
     def _get_shape_pars_uncs(self, pdf):
         """
@@ -2198,7 +2212,7 @@ class F2MassFitter:
             if par_name == 'frac':
                 continue
             try:
-                uncs[par_name] = self._fit_result_.params[par.name]['hesse']['error']
+                uncs[par_name] = self._get_par_value_and_error(par)[1]
             except KeyError:  # fixed parameter
                 uncs[par_name] = 0.
         return uncs

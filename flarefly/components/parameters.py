@@ -28,6 +28,15 @@ _OPERATIONS = {
     ParKind.NEGATION: (operator.neg, "-"),
 }
 
+# partial derivatives of each composed kind with respect to its sources, given the source values
+_DERIVATIVES = {
+    ParKind.SUM: lambda a, b: (1., 1.),
+    ParKind.DIFFERENCE: lambda a, b: (1., -1.),
+    ParKind.PRODUCT: lambda a, b: (b, a),
+    ParKind.RATIO: lambda a, b: (1. / b, -a / b**2),
+    ParKind.NEGATION: lambda a: (-1.,),
+}
+
 
 class Parameter:  # pylint: disable=too-many-instance-attributes
     """
@@ -122,6 +131,51 @@ class Parameter:  # pylint: disable=too-many-instance-attributes
     def is_composed(self):
         """Check if the parameter is derived from other parameters"""
         return self.kind in _OPERATIONS
+
+    def evaluate(self, free_value):
+        """
+        Evaluate the parameter, taking the value of each free parameter from free_value
+
+        Parameters
+        -------------------------------------------------
+        free_value: callable
+            Function returning the value of a free parameter
+
+        Returns
+        -------------------------------------------------
+        value: float
+            The value of the parameter
+        """
+        if self.kind is ParKind.FREE:
+            return free_value(self)
+        if self.kind is ParKind.CONSTANT:
+            return self._value
+        return self.operation(*(src.evaluate(free_value) for src in self.sources))
+
+    def gradient(self, free_value):
+        """
+        Get the derivatives with respect to the free parameters this parameter depends on
+
+        Parameters
+        -------------------------------------------------
+        free_value: callable
+            Function returning the value of a free parameter, at which the derivatives are evaluated
+
+        Returns
+        -------------------------------------------------
+        gradient: dict
+            Dictionary {free parameter: derivative}
+        """
+        if self.kind is ParKind.FREE:
+            return {self: 1.}
+        if self.kind is ParKind.CONSTANT:
+            return {}
+        values = [src.evaluate(free_value) for src in self.sources]
+        gradient = {}
+        for src, derivative in zip(self.sources, _DERIVATIVES[self.kind](*values)):
+            for par, src_derivative in src.gradient(free_value).items():
+                gradient[par] = gradient.get(par, 0.) + derivative * src_derivative
+        return gradient
 
     def free_sources(self):
         """Get the free parameters this parameter ultimately depends on, without duplicates"""

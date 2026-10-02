@@ -60,6 +60,10 @@ class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-a
 
     def __setitem__(self, name, value):
         """Set the parameter by name"""
+        self._check_par_exists(name)
+        if not isinstance(value, Parameter):
+            Logger(f"Cannot assign {type(value).__name__} to parameter '{name}' of pdf '{self._label_pdf}', "
+                   "expected a Parameter: use set_init_par/set_fix_par to set its value", "FATAL")
         self._pars[name] = value
 
     # ------------------
