@@ -1,11 +1,13 @@
 """
 Module containing class for handling the different PDF components
 """
+import operator
+from functools import reduce
 from typing import TYPE_CHECKING
 import numpy as np
 import zfit
 from flarefly.utils import Logger
-from flarefly.components import PDFType, F2PDFBase, ZfitParameterConverter
+from flarefly.components import PDFType, F2PDFBase, Parameter, ZfitParameterConverter
 from flarefly.pdf_builder import PDFBuilder
 
 if TYPE_CHECKING:
@@ -185,7 +187,7 @@ class F2PDFComposer:
             Logger(
                 'Reflection pdfs will be deprecated in future versions, '
                 'please use background pdfs instead and fix the normalisation '
-                'with fix_bkg_frac_to_signal_pdf',
+                "with background_pdfs[i]['frac'] = factor * signal_pdfs[j]['frac']",
                 'WARNING'
             )
             n_signal = len(self.signal_pdfs)
@@ -205,19 +207,17 @@ class F2PDFComposer:
         # Fractions and Yields containers
         self.fracs = []
         self._init_fracs_storage()
+        self.frac_pars = []
 
         self.total_yield = None
         self.yields = [None for _ in range(len(self.fracs) + 1)]
+        self.yield_pars = []
         if self.extended:
-            self.total_yield = zfit.Parameter(
+            self.total_yield = Parameter(
                 f'{self.name}_yield',
-                self.data_handler.get_norm(),
-                0,
-                floating=True
+                value=self.data_handler.get_norm(),
+                limits=[0., None]
             )
-
-        # Constraints storage
-        self.fix_fracs_to_pdfs = []
 
         # Limits management
         if 'limits' in kwargs and self.is_binned:
@@ -281,53 +281,24 @@ class F2PDFComposer:
                     'FATAL'
                 )
 
-    def _get_composed_parametr_product(
-            self,
-            name: str,
-            ref_par: zfit.Parameter | zfit.ComposedParameter,
-            factor_par: zfit.Parameter | zfit.ComposedParameter
-    ) -> zfit.ComposedParameter:
+    def _pdf_suffix(self, ipdf: int) -> str:
         """
-        Helper function to create a zfit.ComposedParameter as the product of two parameters
+        Helper function to get the parameter name suffix of a pdf from its index in signal + background pdfs
         """
-        def par_func(par, factor):
-            return par * factor
-        return zfit.ComposedParameter(
-            name, par_func, params=[ref_par, factor_par], unpack_params=True
-        )
+        n_signal = len(self.signal_pdfs)
+        return f'signal{ipdf}' if ipdf < n_signal else f'bkg{ipdf - n_signal}'
 
-    def _get_constrained_frac_par(
-            self,
-            frac_par: zfit.Parameter | zfit.ComposedParameter,
-            factor_par: zfit.Parameter | zfit.ComposedParameter,
-            refl: bool = False
-    ) -> zfit.ComposedParameter:
+    def _name_parameters(self):
         """
-        Helper function to create a fraction zfit.ComposedParameter constrained to another frac_par
-        multiplied by a factor factor_par
+        Helper function to name the parameters of all the pdfs before converting them,
+        a parameter shared between pdfs keeps the name of the first pdf using it
         """
-        type_str = "frac_refl" if refl else "frac"
-        name = f'{self.name}_{factor_par.name.replace("factor", type_str)}'
-
-        return self._get_composed_parametr_product(
-            name, frac_par, factor_par
-        )
-
-    def _set_frac_constraints(self):
-        for info in self.fix_fracs_to_pdfs:
-            target_idx = info['target_pdf_idx']
-            if info['target_pdf_type'] == 'bkg':
-                target_idx += len(self.signal_pdfs)
-
-            target_par = self.fracs[target_idx]
-
-            fixed_idx = info['fixed_pdf_idx']
-            if info['fixed_pdf_type'] == 'bkg':
-                fixed_idx += len(self.signal_pdfs)
-
-            self.fracs[fixed_idx] = self._get_constrained_frac_par(
-                target_par, info['factor']
-            )
+        named = set()
+        for ipdf, pdf in enumerate(self.signal_pdfs + self.background_pdfs):
+            for par_name, par in pdf.parameters.items():
+                if id(par) not in named:
+                    par.name = f'{self.name}_{par_name}_{self._pdf_suffix(ipdf)}'
+                    named.add(id(par))
 
     def _get_total_pdf_norm(self):
         """
@@ -347,7 +318,7 @@ class F2PDFComposer:
         """Helper for single component fits."""
         pdf = f2pdf.pdf.copy()
         if self.extended:
-            pdf.set_yield(self.total_yield)
+            pdf.set_yield(self.converter.convert(self.total_yield))
         if self.is_truncated:
             pdf = pdf.to_truncated(limits=self.limits, obs=obs)
         return pdf
@@ -356,27 +327,13 @@ class F2PDFComposer:
         """
         Helper function to setup all the fractions
         """
-        # We set all the fractions
-        for ipdf, pdf in enumerate(self.signal_pdfs):
-            if self.no_background and ipdf == len(self.signal_pdfs) - 1:
-                # No need to define frac for last signal pdf if no background
-                continue
-            self.fracs[ipdf] = zfit.Parameter(f'{self.name}_frac_signal{ipdf}',
-                                              pdf.get_init_par('frac'),
-                                              pdf.get_limits_par('frac')[0],
-                                              pdf.get_limits_par('frac')[1],
-                                              floating=not pdf.get_fix_par('frac'))
+        pdfs = self.signal_pdfs + self.background_pdfs
+        self.frac_pars = [pdf['frac'] for pdf in pdfs[:-1]]
+        self.fracs = [self.converter.convert(frac) for frac in self.frac_pars]
 
-        if len(self.background_pdfs) > 1:
-            for ipdf, pdf in enumerate(self.background_pdfs[:-1]):
-                self.fracs[ipdf + len(self.signal_pdfs)] = zfit.Parameter(
-                    f'{self.name}_frac_bkg{ipdf}',
-                    pdf.get_init_par('frac'),
-                    pdf.get_limits_par('frac')[0],
-                    pdf.get_limits_par('frac')[1],
-                    floating=not pdf.get_fix_par('frac'))
-
-        self._set_frac_constraints()
+        frac_last = 1 - reduce(operator.add, self.frac_pars)
+        frac_last.name = f'{self.name}_frac_{self._pdf_suffix(len(pdfs) - 1)}'
+        self.frac_pars.append(frac_last)
 
     def _build_total_pdf(self):
         """
@@ -390,6 +347,8 @@ class F2PDFComposer:
         # order of the pdfs is signal, background
         # one converter for all the pdfs, so that shared parameters become a single zfit parameter
         self.converter = ZfitParameterConverter()
+        self.frac_pars, self.yield_pars = [], []
+        self._name_parameters()
         self._build_signal_pdfs(obs)
         self._build_background_pdfs(obs)
 
@@ -406,26 +365,11 @@ class F2PDFComposer:
         self._setup_fractions()
 
         if self.extended:
-            for i_frac, frac in enumerate(self.fracs):
-                self.yields[i_frac] = self._get_composed_parametr_product(
-                    frac.name.replace('frac', 'yield'),
-                    frac, self.total_yield
-                )
-
-            def frac_last_pdf(pars):
-                return 1 - sum(par.value() for par in pars)
-
-            frac_last = zfit.ComposedParameter(
-                f'{self.name}_frac_bkg_{len(self.background_pdfs)-1}',
-                frac_last_pdf,
-                params=self.fracs,
-                unpack_params=False
-            )
-
-            self.yields[-1] = self._get_composed_parametr_product(
-                frac_last.name.replace('frac', 'yield'),
-                frac_last, self.total_yield
-            )
+            for ipdf, frac in enumerate(self.frac_pars):
+                yield_par = frac * self.total_yield
+                yield_par.name = f'{self.name}_yield_{self._pdf_suffix(ipdf)}'
+                self.yield_pars.append(yield_par)
+            self.yields = [self.converter.convert(yield_par) for yield_par in self.yield_pars]
 
             pdfs_sum = [pdf.pdf.copy() for pdf in self.signal_pdfs + self.background_pdfs]
             for pdf, y in zip(pdfs_sum, self.yields):
@@ -508,7 +452,7 @@ class F2PDFComposer:
             target_type: str = 'signal'
     ):
         """
-        Registers a fraction constraint to be applied during build.
+        Fix the fraction of a PDF to the fraction of another PDF multiplied by a factor.
 
         Parameters
         -------------------------------------------------
@@ -525,16 +469,6 @@ class F2PDFComposer:
         """
         self._check_consistency_fix_frac(idx_pdf, target_pdf, fixed_type, target_type)
 
-        # Generate parameter name
-        name_suffix = f'{fixed_type}{idx_pdf}_constrained_to_{target_type}{target_pdf}'
-        factor_par = zfit.Parameter(
-            f'factor_{name_suffix}', factor, floating=False
-        )
-
-        self.fix_fracs_to_pdfs.append({
-            'fixed_pdf_idx': idx_pdf,
-            'target_pdf_idx': target_pdf,
-            'factor': factor_par,
-            'fixed_pdf_type': fixed_type,
-            'target_pdf_type': target_type
-        })
+        fixed_pdfs = self.signal_pdfs if fixed_type == 'signal' else self.background_pdfs
+        target_pdfs = self.signal_pdfs if target_type == 'signal' else self.background_pdfs
+        fixed_pdfs[idx_pdf]['frac'] = factor * target_pdfs[target_pdf]['frac']

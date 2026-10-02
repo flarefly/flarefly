@@ -264,10 +264,6 @@ class ZfitParameterConverter:  # pylint: disable=too-few-public-methods
     def __init__(self):
         self._cache = {}
 
-    def __contains__(self, par):
-        """Check if a parameter was already converted"""
-        return id(par) in self._cache
-
     def convert(self, par):
         """
         Convert a flarefly parameter, and recursively its sources, into a zfit parameter.

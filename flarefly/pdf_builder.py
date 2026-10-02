@@ -45,7 +45,7 @@ class PDFBuilder:
             return
 
         config = get_signal_pdf_config(pdf.kind)
-        zfit_pars = PDFBuilder._convert_parameters(pdf, name, f'signal{ipdf}', converter)
+        zfit_pars = PDFBuilder._convert_parameters(pdf, converter)
 
         mapping = config.get('args_mapping', {})  # zfit argument -> flarefly parameter name
         pdf.pdf = config['pdf_class'](
@@ -141,7 +141,7 @@ class PDFBuilder:
             return
 
         config = get_bkg_pdf_config(pdf.kind)
-        zfit_pars = PDFBuilder._convert_parameters(pdf, name, f'bkg{ipdf}', converter)
+        zfit_pars = PDFBuilder._convert_parameters(pdf, converter)
 
         mapping = config.get('args_mapping', {})  # zfit argument -> flarefly parameter name
         pdf.pdf = config['pdf_class'](
@@ -152,12 +152,10 @@ class PDFBuilder:
     def _build_chebyshev_pdf(
         pdf: F2PDFBase,
         obs: zfit.Space,
-        name: str,
-        ipdf: int,
         converter: ZfitParameterConverter,
     ):
         """Build a Chebyshev polynomial background PDF."""
-        zfit_pars = PDFBuilder._convert_parameters(pdf, name, f'bkg{ipdf}', converter)
+        zfit_pars = PDFBuilder._convert_parameters(pdf, converter)
 
         pdf.pdf = zfit.pdf.Chebyshev(
             obs=obs,
@@ -220,16 +218,12 @@ class PDFBuilder:
     @staticmethod
     def _convert_parameters(
         pdf: F2PDFBase,
-        name: str,
-        suffix: str,
         converter: ZfitParameterConverter,
     ):
-        """Name the shape parameters of a PDF and convert them to zfit parameters.
+        """Convert the shape parameters of a PDF to zfit parameters.
 
         Args:
             pdf: The PDF whose parameters are converted
-            name: Base name for parameters
-            suffix: Suffix identifying the PDF, e.g. 'signal0' or 'bkg1'
             converter: Converter shared by all the PDFs of the model
 
         Returns:
@@ -239,7 +233,5 @@ class PDFBuilder:
         for par_name, par in pdf.parameters.items():
             if par_name == 'frac':  # fractions are built by the composer
                 continue
-            if par not in converter:  # shared parameters keep the name of the first pdf using them
-                par.name = f'{name}_{par_name}_{suffix}'
             zfit_pars[par_name] = converter.convert(par)
         return zfit_pars
