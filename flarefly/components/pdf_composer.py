@@ -260,7 +260,7 @@ class F2PDFComposer:
             return
 
         for ipdf, pdf in enumerate(self.signal_pdfs):
-            PDFBuilder.build_signal_pdf(pdf, obs, self.name, ipdf, self.converter)
+            PDFBuilder.build_pdf(pdf, obs, self.name, ipdf, self.converter, is_signal=True)
 
     def _build_background_pdfs(self, obs: zfit.Space):
         """
@@ -271,7 +271,7 @@ class F2PDFComposer:
             return
 
         for ipdf, pdf in enumerate(self.background_pdfs):
-            PDFBuilder.build_bkg_pdf(pdf, obs, self.name, ipdf, self.converter)
+            PDFBuilder.build_pdf(pdf, obs, self.name, ipdf, self.converter, is_signal=False)
 
             if str(pdf.kind) in ['powlaw', 'expopow', 'expopowext'] and\
                     self.data_handler.get_limits()[0] < pdf.get_init_par("mass"):

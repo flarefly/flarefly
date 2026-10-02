@@ -12,14 +12,15 @@ class PDFBuilder:
     """Class to build signal and background PDFs using zfit."""
 
     @staticmethod
-    def build_signal_pdf(
+    def build_pdf(
         pdf: F2PDFBase,
         obs: zfit.Space,
         name: str,
         ipdf: int,
         converter: ZfitParameterConverter,
+        is_signal: bool = True
     ):
-        """Build a signal PDF with configurable parameters.
+        """Build a signal or background PDF with configurable parameters.
 
         Args:
             pdf: The PDF to build
@@ -27,125 +28,87 @@ class PDFBuilder:
             name: Base name for parameters
             ipdf: Index of the PDF
             converter: Converter shared by all the PDFs of the model
+            is_signal: Whether the PDF is a signal or background
         """
         if pdf.is_kde():
-            PDFBuilder.build_signal_kde(
-                pdf,
-                name,
-                ipdf
-            )
+            PDFBuilder.build_kde(pdf, name, ipdf, is_signal)
             return
         if pdf.is_hist():
-            PDFBuilder.build_signal_hist(
-                pdf,
-                obs,
-                name,
-                ipdf
-            )
-            return
-
-        config = get_signal_pdf_config(pdf.kind)
-        zfit_pars = PDFBuilder._convert_parameters(pdf, converter)
-
-        mapping = config.get('args_mapping', {})  # zfit argument -> flarefly parameter name
-        pdf.pdf = config['pdf_class'](
-            obs=obs, **{arg: zfit_pars[mapping.get(arg, arg)] for arg in config['pdf_args']}
-        )
-
-        if pdf.at_threshold:
-            signalthr_pdf = cpdf.Pow(
-                obs=obs,
-                mass=zfit_pars['massthr'],
-                power=zfit_pars['powerthr']
-            )
-            pdf.pdf = zfit.pdf.ProductPDF([pdf.pdf, signalthr_pdf], obs=obs)
-
-    @staticmethod
-    def build_signal_kde(
-        pdf: F2PDFBase,
-        name: str,
-        ipdf: int,
-    ):
-        """Build a signal KDE PDF.
-
-        Args:
-            pdf: The PDF to build
-            name: Base name for the PDF
-            ipdf: Index of the PDF
-        """
-        if not pdf.kde_sample:
-            Logger(f'Missing datasample for Kernel Density Estimation of signal {ipdf}!', 'FATAL')
-
-        kde_options = pdf.kde_option or {}
-
-        pdf.pdf = get_kde_pdf(pdf.kind)(
-            data=pdf.kde_sample.get_data(),
-            obs=pdf.kde_sample.get_obs(),
-            name=f'{name}_kde_signal{ipdf}',
-            **kde_options
-        )
-
-    @staticmethod
-    def build_signal_hist(
-        pdf: F2PDFBase,
-        obs: zfit.Space,
-        name: str,
-        ipdf: int,
-    ):
-        """Build a signal PDF from a histogram template.
-
-        Args:
-            pdf: The PDF to build
-            obs: The observable space for the PDF
-            name: Base name for the PDF
-            ipdf: Index of the PDF
-        """
-        if not pdf.hist_sample:
-            Logger(f'Missing datasample for histogram template of signal {ipdf}!', 'FATAL')
-
-        pdf.pdf = zfit.pdf.SplinePDF(
-            zfit.pdf.HistogramPDF(
-                pdf.hist_sample.get_binned_data(),
-                name=f'{name}_hist_signal{ipdf}'
-            ),
-            order=3,
-            obs=obs
-        )
-
-    @staticmethod
-    def build_bkg_pdf(
-        pdf: F2PDFBase,
-        obs: zfit.Space,
-        name: str,
-        ipdf: int,
-        converter: ZfitParameterConverter,
-    ):
-        """Build a background PDF with configurable parameters.
-
-        Args:
-            pdf: The PDF to build
-            obs: The observable space for the PDF
-            name: Base name for parameters
-            ipdf: Index of the PDF
-            converter: Converter shared by all the PDFs of the model
-        """
-        if pdf.is_kde():
-            PDFBuilder.build_bkg_kde(pdf, name, ipdf)
-            return
-        if pdf.is_hist():
-            PDFBuilder.build_bkg_hist(pdf, obs, name, ipdf)
+            PDFBuilder.build_hist(pdf, obs, name, ipdf, is_signal)
             return
         if pdf.kind == PDFType.CHEBPOL:
             # Handle Chebyshev polynomials specially
             PDFBuilder._build_chebyshev_pdf(pdf, obs, name, ipdf, converter)
             return
 
-        config = get_bkg_pdf_config(pdf.kind)
+        config = get_signal_pdf_config(pdf.kind) if is_signal else get_bkg_pdf_config(pdf.kind)
         zfit_pars = PDFBuilder._convert_parameters(pdf, converter)
 
         mapping = config.get('args_mapping', {})  # zfit argument -> flarefly parameter name
         pdf.pdf = config['pdf_class'](
             obs=obs, **{arg: zfit_pars[mapping.get(arg, arg)] for arg in config['pdf_args']}
+        )
+
+        if is_signal and pdf.at_threshold:
+            signalthr_pdf = cpdf.Pow(obs=obs, mass=zfit_pars['massthr'], power=zfit_pars['powerthr'])
+            pdf.pdf = zfit.pdf.ProductPDF([pdf.pdf, signalthr_pdf], obs=obs)
+
+    @staticmethod
+    def build_kde(
+        pdf: F2PDFBase,
+        name: str,
+        ipdf: int,
+        is_signal: bool = True
+    ):
+        """Build a KDE PDF.
+
+        Args:
+            pdf: The PDF to build
+            name: Base name for the PDF
+            ipdf: Index of the PDF
+            is_signal: Whether the PDF is a signal or background
+        """
+        label, suffix = ('signal', 'signal') if is_signal else ('background', 'bkg')
+        if not pdf.kde_sample:
+            Logger(f'Missing datasample for Kernel Density Estimation of {label} {ipdf}!', 'FATAL')
+
+        kde_options = pdf.kde_option or {}
+
+        pdf.pdf = get_kde_pdf(pdf.kind)(
+            data=pdf.kde_sample.get_data(),
+            obs=pdf.kde_sample.get_obs(),
+            name=f'{name}_kde_{suffix}{ipdf}',
+            **kde_options
+        )
+
+    @staticmethod
+    def build_hist(
+        pdf: F2PDFBase,
+        obs: zfit.Space,
+        name: str,
+        ipdf: int,
+        is_signal: bool = True
+    ):
+        """Build a signal or background PDF from a histogram template.
+
+        Args:
+            pdf: The PDF to build
+            obs: The observable space for the PDF
+            name: Base name for the PDF
+            ipdf: Index of the PDF
+            is_signal: Whether the PDF is a signal or background
+        """
+        label, suffix = ('signal', 'signal') if is_signal else ('background', 'bkg')
+        if not pdf.hist_sample:
+            Logger(f'Missing datasample for histogram template of {label} {ipdf}!', 'FATAL')
+
+        pdf.pdf = zfit.pdf.SplinePDF(
+            zfit.pdf.HistogramPDF(
+                pdf.hist_sample.get_binned_data(),
+                name=f'{name}_hist_{suffix}{ipdf}'
+            ),
+            order=3,
+            obs=obs
         )
 
     @staticmethod
@@ -161,58 +124,6 @@ class PDFBuilder:
             obs=obs,
             coeff0=zfit_pars['c0'],
             coeffs=[zfit_pars[f'c{deg}'] for deg in range(1, pdf.kind.order + 1)]
-        )
-
-    @staticmethod
-    def build_bkg_kde(
-        pdf: F2PDFBase,
-        name: str,
-        ipdf: int,
-    ):
-        """Build a background KDE PDF.
-
-        Args:
-            pdf: The PDF to build (must have kde_sample and kde_option set)
-            name: Base name for the PDF
-            ipdf: Index of the PDF
-        """
-        if not pdf.kde_sample:
-            Logger(f'Missing datasample for Kernel Density Estimation of background {ipdf}!', 'FATAL')
-
-        kde_options = pdf.kde_option or {}
-
-        pdf.pdf = get_kde_pdf(pdf.kind)(
-            data=pdf.kde_sample.get_data(),
-            obs=pdf.kde_sample.get_obs(),
-            name=f'{name}_kde_bkg{ipdf}',
-            **kde_options
-        )
-
-    @staticmethod
-    def build_bkg_hist(
-        pdf: F2PDFBase,
-        obs: zfit.Space,
-        name: str,
-        ipdf: int,
-    ):
-        """Build a bkg PDF from a histogram template.
-
-        Args:
-            pdf: The PDF to build
-            obs: The observable space for the PDF
-            name: Base name for the PDF
-            ipdf: Index of the PDF
-        """
-        if not pdf.hist_sample:
-            Logger(f'Missing datasample for histogram template of background {ipdf}!', 'FATAL')
-
-        pdf.pdf = zfit.pdf.SplinePDF(
-            zfit.pdf.HistogramPDF(
-                pdf.hist_sample.get_binned_data(),
-                name=f'{name}_hist_bkg{ipdf}'
-            ),
-            order=3,
-            obs=obs
         )
 
     @staticmethod
