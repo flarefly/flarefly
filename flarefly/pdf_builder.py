@@ -38,7 +38,7 @@ class PDFBuilder:
             return
         if pdf.kind == PDFType.CHEBPOL:
             # Handle Chebyshev polynomials specially
-            PDFBuilder._build_chebyshev_pdf(pdf, obs, name, ipdf, converter)
+            PDFBuilder._build_chebyshev_pdf(pdf, obs, converter)
             return
 
         config = get_signal_pdf_config(pdf.kind) if is_signal else get_bkg_pdf_config(pdf.kind)
