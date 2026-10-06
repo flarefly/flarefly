@@ -37,25 +37,82 @@ def test_parameter_creation_and_retrieval():
     assert pdf.get_fix_par("mu") is False
 
 
-def test_parameter_defaults_do_not_override():
+def test_defaults_seeded_at_construction():
     pdf = F2PDFBase("gaussian", "Gaussian", "signal")
 
-    # Set explicit values
-    pdf.set_init_par("sigma", 0.3)
-    # Now default should NOT overwrite
-    pdf.set_default_init_par("sigma", 1.0)
-
-    assert pdf.get_init_par("sigma") == 0.3
+    assert set(pdf.parameters) == {"mu", "sigma", "frac"}
+    assert pdf.get_init_par("sigma") == 0.010
+    assert pdf.get_limits_par("sigma") == [0., None]
+    assert pdf.get_fix_par("sigma") is False
 
 
-def test_default_set_when_empty():
+def test_user_setting_overrides_default():
+    pdf = F2PDFBase("expopow", "ExpoPow", "background")
+
+    pdf.set_init_par("lam", 0.)
+    pdf.set_fix_par("mass", False)
+
+    assert pdf.get_init_par("lam") == 0.
+    assert pdf.get_fix_par("mass") is False  # default is fixed
+
+
+def test_defaults_chebpol_and_threshold():
+    cheb = F2PDFBase("chebpol2", "Chebyshev", "background")
+    assert {"c0", "c1", "c2"} <= set(cheb.parameters)
+
+    thr = F2PDFBase("gaussian", "Gaussian", "signal", at_threshold=True)
+    assert thr.get_fix_par("massthr") is True
+    assert thr.get_fix_par("powerthr") is False
+
+
+@pytest.mark.parametrize("setter, value", [
+    ("set_init_par", 0.01),
+    ("set_limits_par", [0., 1.]),
+    ("set_fix_par", True),
+])
+def test_unknown_parameter_fails(setter, value):
     pdf = F2PDFBase("gaussian", "Gaussian", "signal")
 
-    pdf.set_default_par("alpha", init=0.1, limits=(0, 1), fix=True)
+    with pytest.raises(RuntimeError, match="sgima"):
+        getattr(pdf, setter)("sgima", value)
+    assert "sgima" not in pdf.parameters
 
-    assert pdf.get_init_par("alpha") == 0.1
-    assert pdf.get_limits_par("alpha") == (0, 1)
-    assert pdf.get_fix_par("alpha") is True
+
+def test_setitem_shares_and_composes():
+    pdf1 = F2PDFBase("gaussian", "Gaussian", "signal")
+    pdf2 = F2PDFBase("gaussian", "Gaussian", "signal")
+
+    pdf2["sigma"] = pdf1["sigma"]
+    assert pdf2["sigma"] is pdf1["sigma"]
+
+    pdf2["sigma"] = 2 * pdf1["sigma"]
+    assert pdf2["sigma"].value == pytest.approx(2 * pdf1.get_init_par("sigma"))
+
+
+def test_setitem_number_fails():
+    pdf = F2PDFBase("gaussian", "Gaussian", "signal")
+
+    with pytest.raises(RuntimeError, match="sigma"):
+        pdf["sigma"] = 0.012
+    assert pdf.get_init_par("sigma") == 0.010
+
+
+def test_setitem_unknown_name_fails():
+    pdf1 = F2PDFBase("gaussian", "Gaussian", "signal")
+    pdf2 = F2PDFBase("gaussian", "Gaussian", "signal")
+
+    with pytest.raises(RuntimeError, match="sgima"):
+        pdf2["sgima"] = pdf1["sigma"]
+    assert "sgima" not in pdf2.parameters
+
+
+def test_defaults_not_shared_between_pdfs():
+    pdf1 = F2PDFBase("gaussian", "Gaussian", "signal")
+    pdf2 = F2PDFBase("gaussian", "Gaussian", "signal")
+
+    pdf1.get_limits_par("sigma")[1] = 1.
+
+    assert pdf2.get_limits_par("sigma") == [0., None]
 
 
 def test_repr_runs_without_crashing():
