@@ -420,9 +420,7 @@ class F2MassFitter:
         if excluded_regions[0][0] > self.model.limits[0][0]:
             limits_sb.append([self.model.limits[0][0], excluded_regions[0][0]])
         for iregion, region in enumerate(excluded_regions[:-1]):
-            if region[1] > self.model.limits[0][0] and \
-                excluded_regions[iregion+1][0] < self.model.limits[-1][-1] and \
-                    region[1] < excluded_regions[iregion+1][0]:
+            if self.model.limits[0][0] < region[1] < excluded_regions[iregion + 1][0] < self.model.limits[-1][-1]:
                 limits_sb.append([region[1], excluded_regions[iregion+1][0]])
         if excluded_regions[-1][1] < self.model.limits[-1][-1]:
             limits_sb.append([excluded_regions[-1][1], self.model.limits[-1][-1]])
