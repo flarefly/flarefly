@@ -149,7 +149,6 @@ class F2PDFBase:  # pylint: disable=too-many-public-methods, too-many-instance-a
         """Get whether the PDF is signal, background, or reflection"""
         return self._signal_bkg_or_refl
 
-
     # ----------------------
     # --- Public Methods ---
     # ----------------------

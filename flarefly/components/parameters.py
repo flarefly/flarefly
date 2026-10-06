@@ -150,7 +150,7 @@ class Parameter:  # pylint: disable=too-many-instance-attributes
             return free_value(self)
         if self.kind is ParKind.CONSTANT:
             return self._value
-        return self.operation(*(src.evaluate(free_value) for src in self.sources))
+        return self.operation(*(src.evaluate(free_value) for src in self.sources))  # pylint: disable=not-callable
 
     def gradient(self, free_value):
         """

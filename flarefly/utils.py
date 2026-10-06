@@ -2,6 +2,7 @@
 Simple module with a class to manage the data used in the analysis
 """
 
+
 # pylint: disable=too-few-public-methods
 class Logger:
     """

@@ -20,7 +20,7 @@ class F2PDFComposer:
     """
     Class used to handle the PDF components for signal and background
     """
-    def __init__(
+    def __init__(  # pylint: disable=too-many-statements
             self,
             data_handler: "DataHandler",
             name_signal_pdf: list[str],

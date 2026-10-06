@@ -1648,7 +1648,6 @@ class F2MassFitter:
             sweights[new_name] = sweights.pop(old_name)
         return sweights
 
-
     def set_particle_mass(self, idx, **kwargs):
         """
         Set the particle mass
@@ -2141,7 +2140,7 @@ class F2MassFitter:
 
         zfit_pars = {zfit_par.name: zfit_par for zfit_par in self._fit_result.params}
         cov = self._fit_result.covariance(params=[zfit_pars[src.name] for src in gradient],
-                                           method=self._hesse_method)
+                                          method=self._hesse_method)
         der = np.array(list(gradient.values()))
         return value, float(np.sqrt(der @ cov @ der))
 

@@ -117,6 +117,7 @@ class ZfitDataHandler:
 
         return data.to_hist()
 
+
 # pylint: disable=too-many-instance-attributes, too-many-public-methods
 class DataHandler:
     """
