@@ -58,9 +58,11 @@ class ZfitDataHandler:
     def add_data(data_old, data_new, obs, isbinned):
         """Add data to the existing dataset."""
         if isbinned:
-            data = zfit.data.concat(
-                [data_old.to_unbinned(), data_new.to_unbinned()]
-            ).to_binned(obs)
+            data = zfit.data.BinnedData.from_tensor(
+                obs,
+                data_old.values() + data_new.values(),
+                data_old.variances() + data_new.variances()
+            )
             norm = float(sum(data.values()))
         else:
             data = zfit.data.concat([data_old, data_new])
