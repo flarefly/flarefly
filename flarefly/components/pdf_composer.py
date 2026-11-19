@@ -316,7 +316,7 @@ class F2PDFComposer:
 
     def _setup_single_pdf(self, f2pdf: F2PDFBase, obs: zfit.Space) -> zfit.pdf.BasePDF:
         """Helper for single component fits."""
-        pdf = f2pdf.pdf.copy()
+        pdf = f2pdf.pdf
         if self.extended:
             pdf.set_yield(self.converter.convert(self.total_yield))
         if self.is_truncated:
@@ -371,7 +371,7 @@ class F2PDFComposer:
                 self.yield_pars.append(yield_par)
             self.yields = [self.converter.convert(yield_par) for yield_par in self.yield_pars]
 
-            pdfs_sum = [pdf.pdf.copy() for pdf in self.signal_pdfs + self.background_pdfs]
+            pdfs_sum = [pdf.pdf for pdf in self.signal_pdfs + self.background_pdfs]
             for pdf, y in zip(pdfs_sum, self.yields):
                 pdf.set_yield(y)
             self.total_pdf = zfit.pdf.SumPDF(pdfs_sum)
